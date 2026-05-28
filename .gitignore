@@ -2,3 +2,5 @@
 /node_modules/
 composer.lock
 .DS_Store
+.env
+.djinn-seed.json

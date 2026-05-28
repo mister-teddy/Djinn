@@ -4,6 +4,8 @@ declare( strict_types=1 );
 
 namespace Djinn\Provider;
 
+use Djinn\Usage\UsageRecorder;
+
 /**
  * OpenAI Chat Completions adapter. The normalized format mirrors OpenAI's, so the mapping is
  * mostly 1:1 (tool_calls / role:tool messages, function-call arguments as JSON).
@@ -38,6 +40,15 @@ class OpenAIProvider implements Provider {
 		$json    = $this->postJson( self::CHAT_URL, [ 'Authorization' => 'Bearer ' . $this->apiKey ], $payload );
 		$message = $json['choices'][0]['message'] ?? [];
 
+		$usage = $json['usage'] ?? [];
+		UsageRecorder::record(
+			'openai',
+			$this->chatModel,
+			'chat',
+			(int) ( $usage['prompt_tokens'] ?? 0 ),
+			(int) ( $usage['completion_tokens'] ?? 0 )
+		);
+
 		$toolCalls = [];
 		foreach ( $message['tool_calls'] ?? [] as $call ) {
 			$toolCalls[] = [
@@ -62,6 +73,10 @@ class OpenAIProvider implements Provider {
 			[ 'Authorization' => 'Bearer ' . $this->apiKey ],
 			[ 'model' => $this->embeddingModel, 'input' => array_values( $texts ) ]
 		);
+
+		$usage = $json['usage'] ?? [];
+		UsageRecorder::record( 'openai', $this->embeddingModel, 'embed', (int) ( $usage['prompt_tokens'] ?? 0 ), 0 );
+
 		return array_map( static fn( $row ) => $row['embedding'], $json['data'] ?? [] );
 	}
 

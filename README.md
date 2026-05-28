@@ -34,14 +34,28 @@ Admin SPA (bundled React)  ──fetch──▶  REST /djinn/v1/*  ──▶  PH
 
 ## Install (development)
 
+### Automated (recommended)
+
+Requires Docker and Node (for [`wp-env`](https://developer.wordpress.org/block-editor/reference-guides/packages/packages-env/)).
+
+```bash
+cp .env.example .env        # then paste your provider API key into .env
+make up                     # composer install + wp-env start + activate + seed settings
+make lamp                   # build the schema index ("Awaken the lamp")
+make open                   # open wp-admin (admin / password)
+```
+
+Then visit **Djinn → Lamp** and make a wish. Other targets: `make cli "<wp-cli args>"`,
+`make logs`, `make down` (stop), `make destroy` (wipe). `make up` is idempotent — re-run it
+(or `make seed`) after editing `.env` to re-apply the key.
+
+### Manual
+
 1. `composer install` in the plugin directory.
 2. Activate **Djinn** in wp-admin (creates the custom tables).
 3. **Djinn → Settings**: choose a provider, paste an API key (or define `DJINN_API_KEY` in
    `wp-config.php`), optionally set model names. Save.
 4. **Djinn → Lamp**: click **Awaken the lamp** to build the schema index, then make a wish.
-
-Recommended local environment: [`wp-env`](https://developer.wordpress.org/block-editor/reference-guides/packages/packages-env/)
-(`npx wp-env start`).
 
 ## Try it
 
