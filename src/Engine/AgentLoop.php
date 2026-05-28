@@ -9,6 +9,7 @@ use Djinn\Provider\ProviderFactory;
 use Djinn\Rag\Retriever;
 use Djinn\Security\Guard;
 use Djinn\Store\Repository;
+use Djinn\Usage\UsageRecorder;
 use Throwable;
 
 /**
@@ -32,7 +33,7 @@ class AgentLoop {
 			$chatId,
 			[ 'role' => 'user', 'content' => Guard::sanitize( $userText ) ]
 		);
-		return $this->loop( $chatId );
+		return $this->attachUsage( $chatId, $this->loop( $chatId ) );
 	}
 
 	/**
@@ -68,11 +69,25 @@ class AgentLoop {
 			]
 		);
 
-		return $this->loop( $chatId );
+		return $this->attachUsage( $chatId, $this->loop( $chatId ) );
+	}
+
+	/**
+	 * Attach the conversation's running token + cost totals so the in-chat meter can update.
+	 *
+	 * @param array<string,mixed> $result
+	 * @return array<string,mixed>
+	 */
+	private function attachUsage( int $chatId, array $result ): array {
+		$result['usage'] = Repository::chatUsage( $chatId );
+		return $result;
 	}
 
 	/** @return array<string,mixed> */
 	private function loop( int $chatId ): array {
+		// Attribute every provider call in this run (chat + schema-search embeddings) to the chat.
+		UsageRecorder::forChat( $chatId );
+
 		$provider = ProviderFactory::make();
 		$system   = SystemPrompt::build();
 		$tools    = Tools::specs();
