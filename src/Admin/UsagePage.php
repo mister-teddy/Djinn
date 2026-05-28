@@ -4,6 +4,8 @@ declare( strict_types=1 );
 
 namespace Djinn\Admin;
 
+use Djinn\Provider\ProxyAccount;
+use Djinn\Settings;
 use Djinn\Store\Repository;
 use Djinn\Usage\Pricing;
 
@@ -57,6 +59,28 @@ class UsagePage {
 
 		if ( isset( $_GET['reset'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			echo '<div class="notice notice-success is-dismissible"><p>The tally has been wiped clean.</p></div>';
+		}
+
+		// In proxy mode, the authoritative balance lives on the proxy — show it up top.
+		if ( Settings::usesProxy() ) {
+			$account = ProxyAccount::fetch();
+			if ( $account === null ) {
+				echo '<div class="notice notice-warning"><p>Couldn\'t reach your Djinn account. Check your token under <strong>Djinn → Settings</strong>.</p></div>';
+			} else {
+				echo '<div class="djinn-cards">';
+				printf(
+					'<div class="djinn-card"><div class="djinn-card-value">%d</div><div class="djinn-card-label">Free wishes left</div><div class="djinn-card-sub">of three</div></div>',
+					(int) ( $account['wishesLeft'] ?? 0 )
+				);
+				printf(
+					'<div class="djinn-card"><div class="djinn-card-value">$%s</div><div class="djinn-card-label">Account credit</div><div class="djinn-card-sub">%s</div></div>',
+					esc_html( number_format( (float) ( $account['balanceUsd'] ?? 0 ), 4 ) ),
+					! empty( $account['payg'] ) ? 'pay-as-you-go active' : 'top up to continue'
+				);
+				echo '</div>';
+				printf( '<p><a class="button" href="%s" target="_blank">Manage account / top up →</a></p>', esc_url( Settings::proxyUrl() ) );
+			}
+			echo '<h2>Local token tally</h2>';
 		}
 
 		if ( (int) $totals['calls'] === 0 ) {

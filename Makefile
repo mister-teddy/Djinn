@@ -93,9 +93,10 @@ open:
 docs:
 	bash bin/build-docs.sh "$(or $(SIZE),$(filter-out docs,$(MAKECMDGOALS)))"
 
-# Build an installable plugin ZIP (excludes the proxy, dev tooling, and build artifacts).
+# Build an installable plugin ZIP (excludes the proxy, dev tooling, build artifacts).
+# `make dist org` or `make dist EDITION=org` for the WordPress.org build; default is byo.
 dist:
-	bash bin/build-dist.sh
+	bash bin/build-dist.sh "$(or $(EDITION),$(filter-out dist,$(MAKECMDGOALS)))"
 
 # Swallow extra goals so `make cli "plugin list"` doesn't error on the trailing words.
 %:

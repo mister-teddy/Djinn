@@ -114,10 +114,60 @@ embeddings (search + the one-time index build) are effectively free on `gemini-e
 Model choice dominates: a flagship like GPT-4o runs roughly 30–50× pricier per wish. Figures are
 estimates from public list prices — tune them with the `djinn_model_pricing` filter.
 
+## Editions
+
+Djinn builds in two editions — **same capabilities**, differing only in how LLM calls are paid for:
+
+| | **BYO** (default) | **ORG** (free, for WordPress.org) |
+|---|---|---|
+| LLM access | Your own OpenAI/Gemini key (or our proxy) | Always our hosted proxy |
+| Settings page | Provider + key + model dropdowns | Account token only (no keys/models) |
+| Cost | You pay your provider directly | 3 free wishes, then prepaid auto-recharge |
+
+The edition is the `DJINN_EDITION` constant (default `byo`). Build installable ZIPs:
+
+```bash
+make dist                                    # byo → dist/djinn-byo-<ver>.zip
+make dist org PROXY_URL=https://your-proxy   # org → dist/djinn-org-<ver>.zip (URL baked in)
+```
+
+To test ORG locally, set in `wp-config.php`, then paste your account token under Djinn → Settings:
+
+```php
+define( 'DJINN_EDITION', 'org' );
+define( 'DJINN_PROXY_URL', 'https://your-proxy' );
+```
+
+## The hosted proxy (ORG edition)
+
+The free edition routes wishes through a small **OpenAI-compatible** gateway you host (`proxy/` —
+Rust/axum, **excluded from `make dist`**, included in `make docs`). It authenticates each site,
+enforces the 3-free-wishes + prepaid limits, forwards to your upstream key, meters spend, and
+auto-recharges via Stripe. Full detail in [`proxy/README.md`](proxy/README.md).
+
+Wire these to run it:
+
+1. **Supabase Postgres** → `DATABASE_URL` (the accounts table auto-creates on boot).
+2. **Upstream LLM** → `UPSTREAM_KEY` (+ `UPSTREAM_BASE` for Gemini's OpenAI-compatible endpoint),
+   and `ORG_CHAT_MODEL` / `ORG_EMBED_MODEL` (the proxy chooses the model, so cost is controlled).
+3. **Stripe (test mode)** → `STRIPE_SECRET_KEY`; add a webhook to `/stripe/webhook` → `STRIPE_WEBHOOK_SECRET`.
+4. **`ADMIN_TOKEN`** → protects `/admin/provision`.
+
+```bash
+cd proxy && cargo run                                  # local (needs DATABASE_URL)
+gcloud run deploy djinn-proxy --source .               # or deploy to Cloud Run
+curl -X POST <url>/admin/provision -H "x-admin-token: $ADMIN_TOKEN" -d '{"token":"site-abc"}'
+```
+
+Services you still own (not in this repo): the **sign-up site** (email verify → `/admin/provision`;
+card via Stripe **SetupIntent** set as the customer's default payment method) and a top-up page.
+The ORG data-use disclosure for WordPress.org is in [`docs/PRIVACY-DISCLOSURE.md`](docs/PRIVACY-DISCLOSURE.md).
+
 ## Status
 
 Known next steps:
 
+- The ORG **sign-up + Stripe billing** service (email verify, SetupIntent, top-up page).
 - Token-by-token streaming (the loop is synchronous; the UI shows step progress).
 - API-key encryption at rest.
 - A proper `@wordpress/scripts` (JSX/TypeScript) build for the front-end.

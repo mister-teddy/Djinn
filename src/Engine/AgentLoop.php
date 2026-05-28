@@ -6,6 +6,7 @@ namespace Djinn\Engine;
 
 use Djinn\GraphQL\Runner;
 use Djinn\Provider\ProviderFactory;
+use Djinn\Provider\ProxyProvider;
 use Djinn\Rag\Retriever;
 use Djinn\Security\Guard;
 use Djinn\Store\Repository;
@@ -33,6 +34,8 @@ class AgentLoop {
 			$chatId,
 			[ 'role' => 'user', 'content' => Guard::sanitize( $userText ) ]
 		);
+		// A fresh user wish — count it against the proxy's free-wish allowance (no-op off-proxy).
+		ProxyProvider::markNewWish();
 		return $this->attachUsage( $chatId, $this->loop( $chatId ) );
 	}
 

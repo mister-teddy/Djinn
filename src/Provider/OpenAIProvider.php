@@ -14,17 +14,37 @@ class OpenAIProvider implements Provider {
 
 	use Http;
 
-	private const CHAT_URL  = 'https://api.openai.com/v1/chat/completions';
-	private const EMBED_URL = 'https://api.openai.com/v1/embeddings';
-
 	public function __construct(
 		private string $apiKey,
 		private string $chatModel,
-		private string $embeddingModel
+		private string $embeddingModel,
+		private string $baseUrl = 'https://api.openai.com/v1'
 	) {}
 
 	public function embeddingModel(): string {
 		return $this->embeddingModel;
+	}
+
+	protected function chatUrl(): string {
+		return rtrim( $this->baseUrl, '/' ) . '/chat/completions';
+	}
+
+	protected function embedUrl(): string {
+		return rtrim( $this->baseUrl, '/' ) . '/embeddings';
+	}
+
+	/** Label recorded in usage telemetry (overridden by the proxy adapter). */
+	protected function providerLabel(): string {
+		return 'openai';
+	}
+
+	/** Per-request extra headers; subclasses (e.g. the proxy) add their own. */
+	protected function extraHeaders(): array {
+		return [];
+	}
+
+	private function headers(): array {
+		return array_merge( [ 'Authorization' => 'Bearer ' . $this->apiKey ], $this->extraHeaders() );
 	}
 
 	public function chat( string $system, array $messages, array $tools ): array {
@@ -37,12 +57,12 @@ class OpenAIProvider implements Provider {
 			$payload['tool_choice'] = 'auto';
 		}
 
-		$json    = $this->postJson( self::CHAT_URL, [ 'Authorization' => 'Bearer ' . $this->apiKey ], $payload );
+		$json    = $this->postJson( $this->chatUrl(), $this->headers(), $payload );
 		$message = $json['choices'][0]['message'] ?? [];
 
 		$usage = $json['usage'] ?? [];
 		UsageRecorder::record(
-			'openai',
+			$this->providerLabel(),
 			$this->chatModel,
 			'chat',
 			(int) ( $usage['prompt_tokens'] ?? 0 ),
@@ -69,13 +89,13 @@ class OpenAIProvider implements Provider {
 			return [];
 		}
 		$json = $this->postJson(
-			self::EMBED_URL,
-			[ 'Authorization' => 'Bearer ' . $this->apiKey ],
+			$this->embedUrl(),
+			$this->headers(),
 			[ 'model' => $this->embeddingModel, 'input' => array_values( $texts ) ]
 		);
 
 		$usage = $json['usage'] ?? [];
-		UsageRecorder::record( 'openai', $this->embeddingModel, 'embed', (int) ( $usage['prompt_tokens'] ?? 0 ), 0 );
+		UsageRecorder::record( $this->providerLabel(), $this->embeddingModel, 'embed', (int) ( $usage['prompt_tokens'] ?? 0 ), 0 );
 
 		return array_map( static fn( $row ) => $row['embedding'], $json['data'] ?? [] );
 	}

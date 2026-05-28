@@ -5,6 +5,7 @@ declare( strict_types=1 );
 namespace Djinn\Admin;
 
 use Djinn\Provider\ModelCatalog;
+use Djinn\Provider\ProxyAccount;
 use Djinn\Settings;
 use Djinn\Store\Repository;
 use Djinn\Usage\Pricing;
@@ -78,6 +79,51 @@ class AdminPage {
 	}
 
 	public function renderSettings(): void {
+		if ( Settings::isOrg() ) {
+			$this->renderOrgSettings();
+			return;
+		}
+		$this->renderByoSettings();
+	}
+
+	/** ORG edition: no keys or models — just connect a Djinn account and show credit. */
+	private function renderOrgSettings(): void {
+		$s       = Settings::all();
+		$account = ProxyAccount::fetch();
+		?>
+		<div class="wrap">
+			<h1>Djinn — Settings</h1>
+			<p>Connect your Djinn account to start granting wishes. No API keys needed — wishes run
+				through Djinn's hosted service.</p>
+			<form method="post" action="options.php">
+				<?php settings_fields( 'djinn' ); ?>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="djinn-token">Account token</label></th>
+						<td>
+							<input type="password" id="djinn-token" name="djinn_settings[site_token]" class="regular-text"
+								placeholder="<?php echo $s['site_token'] ? '•••••••• (saved — leave blank to keep)' : 'Paste your Djinn token'; ?>" autocomplete="off" />
+							<p class="description">Get your token at <a href="<?php echo esc_url( Settings::proxyUrl() ); ?>" target="_blank">your Djinn account</a>. Your first three wishes are free.</p>
+						</td>
+					</tr>
+				</table>
+				<?php submit_button( 'Save settings' ); ?>
+			</form>
+			<?php if ( $account !== null ) : ?>
+				<h2>Your account</h2>
+				<table class="form-table" role="presentation">
+					<tr><th scope="row">Free wishes left</th><td><?php echo (int) ( $account['wishesLeft'] ?? 0 ); ?></td></tr>
+					<tr><th scope="row">Credit</th><td>$<?php echo esc_html( number_format( (float) ( $account['balanceUsd'] ?? 0 ), 4 ) ); ?></td></tr>
+				</table>
+				<p><a class="button" href="<?php echo esc_url( Settings::proxyUrl() ); ?>" target="_blank">Top up →</a></p>
+			<?php endif; ?>
+			<p>Then open <strong>Djinn → Memory</strong> to build the schema index, and <strong>Djinn → Lamp</strong> to make a wish.</p>
+		</div>
+		<?php
+	}
+
+	/** BYO edition: provider + key (or our proxy via a token) + model dropdowns. */
+	private function renderByoSettings(): void {
 		// Allow a manual refresh of the discovered model list.
 		if ( isset( $_GET['djinn_refresh'] ) && check_admin_referer( 'djinn_refresh_models' ) ) {
 			ModelCatalog::flush();
@@ -97,10 +143,11 @@ class AdminPage {
 						<th scope="row"><label for="djinn-provider">LLM provider</label></th>
 						<td>
 							<select id="djinn-provider" name="djinn_settings[provider]">
-								<option value="openai" <?php selected( $s['provider'], 'openai' ); ?>>OpenAI</option>
-								<option value="gemini" <?php selected( $s['provider'], 'gemini' ); ?>>Google Gemini</option>
+								<option value="openai" <?php selected( $s['provider'], 'openai' ); ?>>OpenAI (your key)</option>
+								<option value="gemini" <?php selected( $s['provider'], 'gemini' ); ?>>Google Gemini (your key)</option>
+								<option value="proxy" <?php selected( $s['provider'], 'proxy' ); ?>>Djinn proxy (your account)</option>
 							</select>
-							<p class="description">Switch provider and <strong>Save</strong> to load that provider's models below.</p>
+							<p class="description">Switch provider and <strong>Save</strong>. OpenAI/Gemini use your API key; Djinn proxy uses your account token.</p>
 						</td>
 					</tr>
 					<tr>
@@ -108,20 +155,24 @@ class AdminPage {
 						<td>
 							<input type="password" id="djinn-key" name="djinn_settings[api_key]" class="regular-text"
 								placeholder="<?php echo $s['api_key'] ? '•••••••• (saved — leave blank to keep)' : 'Paste your key'; ?>" autocomplete="off" />
-							<p class="description">Or define <code>DJINN_API_KEY</code> in <code>wp-config.php</code> to keep it out of the database.</p>
+							<p class="description">For OpenAI/Gemini. Or define <code>DJINN_API_KEY</code> in <code>wp-config.php</code>.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="djinn-token">Djinn account token</label></th>
+						<td>
+							<input type="password" id="djinn-token" name="djinn_settings[site_token]" class="regular-text"
+								placeholder="<?php echo $s['site_token'] ? '•••••••• (saved — leave blank to keep)' : 'For the Djinn proxy provider'; ?>" autocomplete="off" />
+							<p class="description">Only needed if you pick the <strong>Djinn proxy</strong> provider.</p>
 						</td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="djinn-chat">Chat model</label></th>
-						<td>
-							<?php $this->modelSelect( 'chat_model', 'djinn-chat', $catalog['chat'], (string) $s['chat_model'] ); ?>
-						</td>
+						<td><?php $this->modelSelect( 'chat_model', 'djinn-chat', $catalog['chat'], (string) $s['chat_model'] ); ?></td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="djinn-embed">Embedding model</label></th>
-						<td>
-							<?php $this->modelSelect( 'embedding_model', 'djinn-embed', $catalog['embed'], (string) $s['embedding_model'] ); ?>
-						</td>
+						<td><?php $this->modelSelect( 'embedding_model', 'djinn-embed', $catalog['embed'], (string) $s['embedding_model'] ); ?></td>
 					</tr>
 				</table>
 
@@ -138,7 +189,7 @@ class AdminPage {
 
 				<?php submit_button( 'Save settings' ); ?>
 			</form>
-			<p>Once the offering is placed, open <strong>Djinn → Lamp</strong> and <strong>Awaken the lamp</strong> to build the schema index.</p>
+			<p>Once the offering is placed, open <strong>Djinn → Memory</strong> to build the schema index, then <strong>Djinn → Lamp</strong> and make a wish.</p>
 		</div>
 		<?php
 	}
