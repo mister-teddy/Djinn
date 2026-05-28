@@ -71,6 +71,7 @@ class AdminPage {
 				'configured'  => Settings::isConfigured(),
 				'indexed'     => Repository::chunkCount() > 0,
 				'settingsUrl' => admin_url( 'admin.php?page=' . self::SETTINGS_SLUG ),
+				'indexUrl'    => admin_url( 'admin.php?page=djinn-index' ),
 				'siteName'    => get_option( 'blogname' ),
 			]
 		);

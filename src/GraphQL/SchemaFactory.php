@@ -86,101 +86,111 @@ class SchemaFactory {
 			]
 		);
 
-		$r = new Resolvers();
+		$res = new Resolvers();
+		$reg = new Registry();
+		$reg->setType( 'Post', $post );
+		$reg->setType( 'User', $user );
+		$reg->setType( 'SiteInfo', $siteInfo );
+		$reg->setType( 'PostInput', $postInput );
 
-		$query = new ObjectType(
-			[
-				'name'   => 'Query',
-				'fields' => [
-					'siteInfo' => [
-						'type'    => $siteInfo,
-						'resolve' => [ $r, 'siteInfo' ],
-					],
-					'posts'    => [
-						'type'    => Type::listOf( $post ),
-						'args'    => [
-							'first'    => [ 'type' => Type::int(), 'defaultValue' => 10 ],
-							'postType' => [ 'type' => Type::string(), 'defaultValue' => 'post' ],
-							'status'   => [ 'type' => Type::string() ],
-							'search'   => [ 'type' => Type::string() ],
-						],
-						'resolve' => [ $r, 'posts' ],
-					],
-					'post'     => [
-						'type'    => $post,
-						'args'    => [ 'id' => [ 'type' => Type::nonNull( Type::id() ) ] ],
-						'resolve' => [ $r, 'post' ],
-					],
-					'users'    => [
-						'type'    => Type::listOf( $user ),
-						'args'    => [
-							'first'  => [ 'type' => Type::int(), 'defaultValue' => 10 ],
-							'search' => [ 'type' => Type::string() ],
-						],
-						'resolve' => [ $r, 'users' ],
-					],
-					'option'   => [
-						'type'        => Type::string(),
-						'description' => 'Read a wp_options value by name. Returns the value as a string (JSON-encoded if not scalar).',
-						'args'        => [ 'name' => [ 'type' => Type::nonNull( Type::string() ) ] ],
-						'resolve'     => [ $r, 'option' ],
-					],
-				],
-			]
-		);
+		// --- Core content/site fields -------------------------------------
+		$reg->addQuery( 'siteInfo', [ 'type' => $siteInfo, 'resolve' => [ $res, 'siteInfo' ] ] );
+		$reg->addQuery( 'posts', [
+			'type'    => Type::listOf( $post ),
+			'args'    => [
+				'first'    => [ 'type' => Type::int(), 'defaultValue' => 10 ],
+				'postType' => [ 'type' => Type::string(), 'defaultValue' => 'post' ],
+				'status'   => [ 'type' => Type::string() ],
+				'search'   => [ 'type' => Type::string() ],
+			],
+			'resolve' => [ $res, 'posts' ],
+		] );
+		$reg->addQuery( 'post', [
+			'type'    => $post,
+			'args'    => [ 'id' => [ 'type' => Type::nonNull( Type::id() ) ] ],
+			'resolve' => [ $res, 'post' ],
+		] );
+		$reg->addQuery( 'users', [
+			'type'    => Type::listOf( $user ),
+			'args'    => [
+				'first'  => [ 'type' => Type::int(), 'defaultValue' => 10 ],
+				'search' => [ 'type' => Type::string() ],
+			],
+			'resolve' => [ $res, 'users' ],
+		] );
+		$reg->addQuery( 'option', [
+			'type'        => Type::string(),
+			'description' => 'Read a wp_options value by name. Returns the value as a string (JSON-encoded if not scalar).',
+			'args'        => [ 'name' => [ 'type' => Type::nonNull( Type::string() ) ] ],
+			'resolve'     => [ $res, 'option' ],
+		] );
 
-		$mutation = new ObjectType(
-			[
-				'name'   => 'Mutation',
-				'fields' => [
-					'createPost'     => [
-						'type'    => $post,
-						'args'    => [ 'input' => [ 'type' => Type::nonNull( $postInput ) ] ],
-						'resolve' => [ $r, 'createPost' ],
-					],
-					'updatePost'     => [
-						'type'    => $post,
-						'args'    => [
-							'id'    => [ 'type' => Type::nonNull( Type::id() ) ],
-							'input' => [ 'type' => Type::nonNull( $postInput ) ],
-						],
-						'resolve' => [ $r, 'updatePost' ],
-					],
-					'deletePost'     => [
-						'type'    => Type::boolean(),
-						'args'    => [
-							'id'    => [ 'type' => Type::nonNull( Type::id() ) ],
-							'force' => [ 'type' => Type::boolean(), 'defaultValue' => false ],
-						],
-						'resolve' => [ $r, 'deletePost' ],
-					],
-					'updateOption'   => [
-						'type'        => Type::boolean(),
-						'description' => 'Set a wp_options value. Value is a string (use JSON for non-scalar values).',
-						'args'        => [
-							'name'  => [ 'type' => Type::nonNull( Type::string() ) ],
-							'value' => [ 'type' => Type::nonNull( Type::string() ) ],
-						],
-						'resolve'     => [ $r, 'updateOption' ],
-					],
-					'updateSiteInfo' => [
-						'type'    => Type::boolean(),
-						'args'    => [
-							'title'       => [ 'type' => Type::string() ],
-							'description' => [ 'type' => Type::string() ],
-						],
-						'resolve' => [ $r, 'updateSiteInfo' ],
-					],
-				],
-			]
-		);
+		$reg->addMutation( 'createPost', [
+			'type'    => $post,
+			'args'    => [ 'input' => [ 'type' => Type::nonNull( $postInput ) ] ],
+			'resolve' => [ $res, 'createPost' ],
+		] );
+		$reg->addMutation( 'updatePost', [
+			'type'    => $post,
+			'args'    => [
+				'id'    => [ 'type' => Type::nonNull( Type::id() ) ],
+				'input' => [ 'type' => Type::nonNull( $postInput ) ],
+			],
+			'resolve' => [ $res, 'updatePost' ],
+		] );
+		$reg->addMutation( 'deletePost', [
+			'type'    => Type::boolean(),
+			'args'    => [
+				'id'    => [ 'type' => Type::nonNull( Type::id() ) ],
+				'force' => [ 'type' => Type::boolean(), 'defaultValue' => false ],
+			],
+			'resolve' => [ $res, 'deletePost' ],
+		] );
+		$reg->addMutation( 'updateOption', [
+			'type'        => Type::boolean(),
+			'description' => 'Set a wp_options value. Value is a string (use JSON for non-scalar values).',
+			'args'        => [
+				'name'  => [ 'type' => Type::nonNull( Type::string() ) ],
+				'value' => [ 'type' => Type::nonNull( Type::string() ) ],
+			],
+			'resolve'     => [ $res, 'updateOption' ],
+		] );
+		$reg->addMutation( 'updateSiteInfo', [
+			'type'    => Type::boolean(),
+			'args'    => [
+				'title'       => [ 'type' => Type::string() ],
+				'description' => [ 'type' => Type::string() ],
+			],
+			'resolve' => [ $res, 'updateSiteInfo' ],
+		] );
+
+		// --- Built-in feature domains -------------------------------------
+		foreach ( self::features() as $feature ) {
+			$feature->register( $reg );
+		}
+
+		// --- Third-party extensions ---------------------------------------
+		// Plugins can add their own types/resolvers without touching core:
+		//   add_action( 'djinn_register_schema', fn( $reg ) => $reg->addQuery( ... ) );
+		do_action( 'djinn_register_schema', $reg );
 
 		self::$schema = new Schema(
 			[
-				'query'    => $query,
-				'mutation' => $mutation,
+				'query'    => new ObjectType( [ 'name' => 'Query', 'fields' => $reg->queries() ] ),
+				'mutation' => new ObjectType( [ 'name' => 'Mutation', 'fields' => $reg->mutations() ] ),
 			]
 		);
 		return self::$schema;
+	}
+
+	/**
+	 * Built-in capability domains, in menu-ish order. Add a class here to grow the schema.
+	 *
+	 * @return array<int,Feature>
+	 */
+	private static function features(): array {
+		return [
+			new Features\AppearanceFeature(),
+		];
 	}
 }

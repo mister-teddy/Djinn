@@ -20,12 +20,17 @@ use GraphQL\Utils\SchemaPrinter;
  */
 class Indexer {
 
-	/** @return int Number of chunks indexed. */
-	public static function reindex(): int {
-		$schema = SchemaFactory::build();
-		$chunks = [];
+	private const META_OPTION = 'djinn_index_meta';
 
-		foreach ( $schema->getTypeMap() as $name => $type ) {
+	/**
+	 * The current schema as RAG chunks: one printed SDL fragment per named type. Shared by the
+	 * indexer and the index-status page (which diffs these against what's stored).
+	 *
+	 * @return array<string,string> type name => SDL fragment, sorted by name.
+	 */
+	public static function chunks(): array {
+		$chunks = [];
+		foreach ( SchemaFactory::build()->getTypeMap() as $name => $type ) {
 			if ( str_starts_with( $name, '__' ) ) {
 				continue; // introspection types
 			}
@@ -34,27 +39,57 @@ class Indexer {
 				|| $type instanceof EnumType
 				|| $type instanceof InterfaceType
 				|| $type instanceof UnionType ) ) {
-				continue; // skip built-in scalars
+				continue; // built-in scalars
 			}
-			$chunks[] = [
-				'name'     => $name,
-				'fragment' => SchemaPrinter::printType( $type ),
-			];
+			$chunks[ $name ] = SchemaPrinter::printType( $type );
 		}
+		ksort( $chunks );
+		return $chunks;
+	}
 
+	/** A stable hash of the current schema, so we can tell when the index is out of date. */
+	public static function fingerprint(): string {
+		$parts = [];
+		foreach ( self::chunks() as $name => $fragment ) {
+			$parts[] = $name . ':' . $fragment;
+		}
+		return md5( implode( "\n", $parts ) );
+	}
+
+	/** @return array{fingerprint?:string,model?:string,count?:int,indexed_at?:string} */
+	public static function meta(): array {
+		$meta = get_option( self::META_OPTION, [] );
+		return is_array( $meta ) ? $meta : [];
+	}
+
+	/** @return int Number of chunks indexed. */
+	public static function reindex(): int {
+		$chunks   = self::chunks();
 		$provider = ProviderFactory::make();
-		$vectors  = $provider->embed( array_column( $chunks, 'fragment' ) );
+		$vectors  = $provider->embed( array_values( $chunks ) );
 
 		$rows = [];
-		foreach ( $chunks as $i => $chunk ) {
+		$i    = 0;
+		foreach ( $chunks as $name => $fragment ) {
 			$rows[] = [
-				'name'      => $chunk['name'],
-				'fragment'  => $chunk['fragment'],
+				'name'      => $name,
+				'fragment'  => $fragment,
 				'embedding' => $vectors[ $i ] ?? [],
 			];
+			$i++;
 		}
 
 		Repository::replaceChunks( $rows, $provider->embeddingModel() );
+
+		update_option(
+			self::META_OPTION,
+			[
+				'fingerprint' => self::fingerprint(),
+				'model'       => $provider->embeddingModel(),
+				'count'       => count( $rows ),
+				'indexed_at'  => current_time( 'mysql', true ),
+			]
+		);
 		return count( $rows );
 	}
 }
