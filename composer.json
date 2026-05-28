@@ -1,0 +1,22 @@
+{
+    "name": "djinn/djinn",
+    "description": "WordPress admin AI assistant — whisper a wish, the Djinn grants it via GraphQL against your site's in-house schema.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=8.0",
+        "webonyx/graphql-php": "^15.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Djinn\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}
