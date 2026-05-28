@@ -49,7 +49,7 @@ class Settings {
 		if ( $model ) {
 			return $model;
 		}
-		return self::provider() === 'gemini' ? 'text-embedding-004' : 'text-embedding-3-small';
+		return self::provider() === 'gemini' ? 'gemini-embedding-001' : 'text-embedding-3-small';
 	}
 
 	public static function isConfigured(): bool {

@@ -54,6 +54,12 @@ class Controller {
 			'permission_callback' => $auth,
 			'callback'            => [ $this, 'reindex' ],
 		] );
+
+		register_rest_route( self::NS, '/usage', [
+			'methods'             => 'GET',
+			'permission_callback' => $auth,
+			'callback'            => [ $this, 'usage' ],
+		] );
 	}
 
 	public function canManage(): bool {
@@ -116,6 +122,10 @@ class Controller {
 		} catch ( Throwable $e ) {
 			return new WP_REST_Response( [ 'status' => 'error', 'message' => $e->getMessage() ], 500 );
 		}
+	}
+
+	public function usage(): WP_REST_Response {
+		return new WP_REST_Response( Repository::usageSummary() );
 	}
 
 	private function ownsChat( int $chatId ): bool {

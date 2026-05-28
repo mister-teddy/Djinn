@@ -4,6 +4,8 @@ declare( strict_types=1 );
 
 namespace Djinn\Provider;
 
+use Djinn\Usage\UsageRecorder;
+
 /**
  * Google Gemini adapter (generateContent / batchEmbedContents REST endpoints). Gemini has no
  * tool-call IDs, which is fine: the agent loop handles one tool call per turn, so function
@@ -38,6 +40,15 @@ class GeminiProvider implements Provider {
 		$url  = self::BASE . rawurlencode( $this->chatModel ) . ':generateContent?key=' . rawurlencode( $this->apiKey );
 		$json = $this->postJson( $url, [], $payload );
 
+		$usage = $json['usageMetadata'] ?? [];
+		UsageRecorder::record(
+			'gemini',
+			$this->chatModel,
+			'chat',
+			(int) ( $usage['promptTokenCount'] ?? 0 ),
+			(int) ( $usage['candidatesTokenCount'] ?? 0 )
+		);
+
 		$parts     = $json['candidates'][0]['content']['parts'] ?? [];
 		$text      = null;
 		$toolCalls = [];
@@ -61,14 +72,22 @@ class GeminiProvider implements Provider {
 		if ( empty( $texts ) ) {
 			return [];
 		}
-		$model    = 'models/' . $this->embeddingModel;
-		$requests = array_map(
-			static fn( $t ) => [ 'model' => $model, 'content' => [ 'parts' => [ [ 'text' => $t ] ] ] ],
-			array_values( $texts )
-		);
-		$url  = self::BASE . rawurlencode( $this->embeddingModel ) . ':batchEmbedContents?key=' . rawurlencode( $this->apiKey );
-		$json = $this->postJson( $url, [], [ 'requests' => $requests ] );
-		return array_map( static fn( $e ) => $e['values'] ?? [], $json['embeddings'] ?? [] );
+
+		// Current Gemini embedding models (gemini-embedding-001, …) support embedContent but not
+		// the older synchronous batchEmbedContents, so embed one text per call. Djinn embeds in
+		// small batches (a handful of schema chunks, one query per wish), so this stays cheap.
+		$url     = self::BASE . rawurlencode( $this->embeddingModel ) . ':embedContent?key=' . rawurlencode( $this->apiKey );
+		$vectors = [];
+		foreach ( array_values( $texts ) as $text ) {
+			$json      = $this->postJson( $url, [], [ 'content' => [ 'parts' => [ [ 'text' => $text ] ] ] ] );
+			$vectors[] = $json['embedding']['values'] ?? [];
+		}
+
+		// embedContent returns no usage metadata, so approximate tokens (~4 chars/token).
+		$chars = array_sum( array_map( 'strlen', array_values( $texts ) ) );
+		UsageRecorder::record( 'gemini', $this->embeddingModel, 'embed', (int) ceil( $chars / 4 ), 0, true );
+
+		return $vectors;
 	}
 
 	/** @param array<string,mixed> $entry */
