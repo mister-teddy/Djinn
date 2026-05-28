@@ -20,12 +20,30 @@ WP := $(WPENV) run cli wp
 # wp-env mounts this directory as a plugin under its folder name (case-sensitive).
 SLUG := $(notdir $(CURDIR))
 
-.PHONY: up start activate seed lamp cli logs down destroy open
+.PHONY: up start restart check activate seed lamp cli logs down destroy open
 
 up: start activate seed
 	@echo ""
 	@echo "Djinn is awake → http://localhost:8888/wp-admin (admin / password)"
 	@echo "Next: 'make lamp' to build the schema index, then visit Djinn → Lamp and make a wish."
+
+# One command to run after a coding session: validate code, then bounce the server so the
+# freshly-edited PHP/JS is live and ready to test. Checks run first, so a broken build leaves
+# the current server untouched instead of tearing it down.
+restart: check down start
+	@echo ""
+	@echo "✔  Restarted → http://localhost:8888/wp-admin (admin / password)"
+
+# Static checks: lint every PHP file, syntax-check the front-end, refresh the autoloader.
+check:
+	@echo "→ Linting PHP…"
+	@err=0; for f in djinn.php $$(find src -name '*.php'); do \
+		php -l "$$f" >/dev/null 2>&1 || { echo "  ✗ $$f"; php -l "$$f"; err=1; }; \
+	done; [ $$err -eq 0 ] || exit 1; echo "  ✓ PHP OK"
+	@echo "→ Checking front-end JS…"
+	@node --check assets/admin.js && echo "  ✓ assets/admin.js OK"
+	@echo "→ Regenerating Composer autoloader…"
+	@composer dump-autoload -o 2>&1 | tail -1
 
 start:
 	composer install --no-interaction
@@ -61,7 +79,7 @@ logs:
 	$(WPENV) run cli tail -f /var/www/html/wp-content/debug.log
 
 down:
-	$(WPENV) stop
+	$(WPENV) stop || true
 
 destroy:
 	$(WPENV) destroy

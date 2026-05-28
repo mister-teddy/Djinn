@@ -15,7 +15,7 @@ namespace Djinn\Store;
 class Repository {
 
 	/** Bumped whenever the table layout changes; drives maybeUpgrade(). */
-	private const DB_VERSION = 2;
+	private const DB_VERSION = 3;
 
 	private const DB_VERSION_OPTION = 'djinn_db_version';
 
@@ -96,6 +96,7 @@ class Repository {
 			"CREATE TABLE $usage (
 				id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 				user_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+				chat_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
 				provider VARCHAR(20) NOT NULL DEFAULT '',
 				model VARCHAR(100) NOT NULL DEFAULT '',
 				kind VARCHAR(20) NOT NULL DEFAULT '',
@@ -106,7 +107,8 @@ class Repository {
 				created_at DATETIME NOT NULL,
 				PRIMARY KEY (id),
 				KEY created_at (created_at),
-				KEY model (model)
+				KEY model (model),
+				KEY chat_id (chat_id)
 			) $charset;"
 		);
 
@@ -212,6 +214,23 @@ class Repository {
 		$wpdb->update( $wpdb->prefix . 'djinn_pending', [ 'status' => $status ], [ 'id' => $id ] );
 	}
 
+	/**
+	 * The conversation's mutation still awaiting a grant, if any. The loop allows only one open
+	 * wish at a time, so this is unambiguous (and avoids relying on tool_call_ids, which some
+	 * providers — e.g. Gemini — don't make unique).
+	 *
+	 * @return array<string,mixed>|null
+	 */
+	public static function openPending( int $chatId ): ?array {
+		global $wpdb;
+		$table = $wpdb->prefix . 'djinn_pending';
+		$row   = $wpdb->get_row(
+			$wpdb->prepare( "SELECT id, summary FROM $table WHERE chat_id = %d AND status = 'pending' ORDER BY id DESC LIMIT 1", $chatId ),
+			ARRAY_A
+		);
+		return $row ?: null;
+	}
+
 	// ---- Schema chunks (RAG index) ----------------------------------------
 
 	/** @param array<int,array{name:string,fragment:string,embedding:array<int,float>}> $chunks */
@@ -258,8 +277,8 @@ class Repository {
 	// ---- Usage (token + cost telemetry) -----------------------------------
 
 	/**
-	 * @param array{user_id:int,provider:string,model:string,kind:string,prompt_tokens:int,
-	 *              completion_tokens:int,estimated:int,cost:float} $row
+	 * @param array{user_id:int,chat_id:int,provider:string,model:string,kind:string,
+	 *              prompt_tokens:int,completion_tokens:int,estimated:int,cost:float} $row
 	 */
 	public static function recordUsage( array $row ): void {
 		global $wpdb;
@@ -267,6 +286,7 @@ class Repository {
 			$wpdb->prefix . 'djinn_usage',
 			[
 				'user_id'           => (int) $row['user_id'],
+				'chat_id'           => (int) ( $row['chat_id'] ?? 0 ),
 				'provider'          => (string) $row['provider'],
 				'model'             => (string) $row['model'],
 				'kind'              => (string) $row['kind'],
@@ -276,8 +296,38 @@ class Repository {
 				'cost'              => (float) $row['cost'],
 				'created_at'        => current_time( 'mysql', true ),
 			],
-			[ '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%f', '%s' ]
+			[ '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%f', '%s' ]
 		);
+	}
+
+	/**
+	 * Running token + cost totals for a single conversation, for the in-chat meter.
+	 *
+	 * @return array{prompt:int,completion:int,tokens:int,cost:float,calls:int}
+	 */
+	public static function chatUsage( int $chatId ): array {
+		global $wpdb;
+		$table = $wpdb->prefix . 'djinn_usage';
+		$row   = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT COUNT(*) AS calls,
+				        COALESCE(SUM(prompt_tokens),0) AS prompt,
+				        COALESCE(SUM(completion_tokens),0) AS completion,
+				        COALESCE(SUM(cost),0) AS cost
+				   FROM $table WHERE chat_id = %d",
+				$chatId
+			),
+			ARRAY_A
+		) ?: [];
+		$prompt     = (int) ( $row['prompt'] ?? 0 );
+		$completion = (int) ( $row['completion'] ?? 0 );
+		return [
+			'prompt'     => $prompt,
+			'completion' => $completion,
+			'tokens'     => $prompt + $completion,
+			'cost'       => (float) ( $row['cost'] ?? 0 ),
+			'calls'      => (int) ( $row['calls'] ?? 0 ),
+		];
 	}
 
 	/**

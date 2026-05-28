@@ -363,3 +363,206 @@
 	background: rgba( 251, 191, 36, 0.12 ) !important;
 	border-color: var( --djinn-gold ) !important;
 }
+
+/* ----------- Layout: history sidebar + main -------------------------------- */
+/* Widen the wrap to make room for the conversation rail. */
+.djinn-wrap {
+	max-width: 1180px;
+}
+.djinn-layout {
+	display: flex;
+	gap: 16px;
+	align-items: flex-start;
+}
+.djinn-app {
+	flex: 1 1 auto;
+	min-width: 0; /* let the thread shrink instead of overflowing */
+}
+
+.djinn-sidebar {
+	flex: 0 0 232px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 16px 14px;
+	background: linear-gradient( 160deg, var( --djinn-midnight ), var( --djinn-violet ) );
+	border: 1px solid rgba( 251, 191, 36, 0.16 );
+	border-radius: var( --djinn-radius );
+	box-shadow: 0 12px 40px -16px rgba( 15, 10, 30, 0.55 );
+}
+.djinn-newchat.components-button.is-primary {
+	justify-content: center;
+	gap: 6px;
+	background: linear-gradient( 135deg, var( --djinn-gold ), var( --djinn-gold-deep ) ) !important;
+	color: var( --djinn-midnight ) !important;
+	border: none !important;
+	font-weight: 600;
+}
+.djinn-history-label {
+	color: var( --djinn-ivory-muted );
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	padding: 4px 4px 0;
+}
+.djinn-history {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	max-height: 60vh;
+	overflow-y: auto;
+}
+.djinn-history-empty {
+	color: var( --djinn-ivory-muted );
+	font-size: 13px;
+	font-style: italic;
+	padding: 4px;
+}
+.djinn-history-item {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	text-align: left;
+	width: 100%;
+	padding: 8px 10px;
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 9px;
+	color: var( --djinn-ivory );
+	cursor: pointer;
+	transition: background 160ms ease, border-color 160ms ease;
+}
+.djinn-history-item:hover:not( :disabled ) {
+	background: var( --djinn-violet-soft );
+}
+.djinn-history-item.is-active {
+	background: rgba( 251, 191, 36, 0.12 );
+	border-color: rgba( 251, 191, 36, 0.35 );
+}
+.djinn-history-item:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+.djinn-history-title {
+	font-size: 13px;
+	line-height: 1.3;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.djinn-history-date {
+	font-size: 11px;
+	color: var( --djinn-ivory-muted );
+}
+
+/* ----------- Per-conversation token + cost meter --------------------------- */
+.djinn-header-right {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.djinn-meter {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 11px;
+	border-radius: 999px;
+	background: rgba( 15, 10, 30, 0.45 );
+	border: 1px solid rgba( 251, 191, 36, 0.28 );
+	color: var( --djinn-ivory );
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+.djinn-meter .djinn-sparkle {
+	color: var( --djinn-gold );
+}
+.djinn-meter-sep {
+	color: var( --djinn-ivory-muted );
+}
+.djinn-meter-cost {
+	font-weight: 600;
+	color: var( --djinn-gold );
+}
+
+@media ( max-width: 782px ) {
+	.djinn-layout {
+		flex-direction: column;
+	}
+	.djinn-sidebar {
+		flex-basis: auto;
+		width: 100%;
+	}
+}
+
+/* ----------- Executed-operation "incantation" cards ------------------------ */
+/* Read-only record of a GraphQL op the Djinn ran — quieter than a pending wish. */
+.djinn-action {
+	margin: 12px 0;
+	padding: 12px 16px;
+	background: rgba( 26, 18, 48, 0.55 );
+	border: 1px solid rgba( 255, 255, 255, 0.08 );
+	border-left: 3px solid var( --djinn-ivory-muted );
+	border-radius: 10px;
+}
+.djinn-action-granted { border-left-color: var( --djinn-gold ); }
+.djinn-action-ok      { border-left-color: #6ee7b7; }
+.djinn-action-refused { border-left-color: var( --djinn-ivory-muted ); opacity: 0.85; }
+.djinn-action-error   { border-left-color: #f87171; }
+
+.djinn-action-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12px;
+}
+.djinn-action-head .djinn-sparkle {
+	color: var( --djinn-ivory-muted );
+}
+.djinn-action-kind {
+	font-weight: 600;
+	letter-spacing: 0.4px;
+	text-transform: uppercase;
+	color: var( --djinn-ivory );
+}
+.djinn-action-badge {
+	margin-left: auto;
+	padding: 1px 9px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 600;
+	background: rgba( 255, 255, 255, 0.08 );
+	color: var( --djinn-ivory-muted );
+}
+.djinn-action-granted .djinn-action-badge { background: rgba( 251, 191, 36, 0.18 ); color: var( --djinn-gold ); }
+.djinn-action-ok .djinn-action-badge      { background: rgba( 110, 231, 183, 0.16 ); color: #6ee7b7; }
+.djinn-action-error .djinn-action-badge    { background: rgba( 248, 113, 113, 0.16 ); color: #f87171; }
+
+.djinn-action-summary {
+	margin: 8px 0 0;
+	color: var( --djinn-ivory );
+	font-size: 14px;
+	line-height: 1.5;
+}
+.djinn-action-msg {
+	margin: 8px 0 0;
+	color: #f87171;
+	font-size: 13px;
+}
+.djinn-action .djinn-pending-details {
+	margin: 8px 0 0;
+}
+
+/* Labels + response block inside an incantation card. */
+.djinn-code-label {
+	margin: 10px 0 0;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var( --djinn-ivory-muted );
+}
+.djinn-code-result {
+	background: rgba( 0, 0, 0, 0.32 );
+	max-height: 260px;
+	overflow-y: auto;
+}

@@ -13,6 +13,14 @@ use Throwable;
  */
 class UsageRecorder {
 
+	/** The conversation provider calls are currently attributed to (0 = none, e.g. reindex). */
+	private static int $chatId = 0;
+
+	/** Set by the agent loop so each provider call is billed to the right conversation. */
+	public static function forChat( int $chatId ): void {
+		self::$chatId = $chatId;
+	}
+
 	/**
 	 * @param string $kind 'chat' or 'embed'
 	 * @param bool   $estimated True when token counts were inferred (e.g. Gemini embeddings,
@@ -23,6 +31,7 @@ class UsageRecorder {
 			Repository::recordUsage(
 				[
 					'user_id'           => function_exists( 'get_current_user_id' ) ? get_current_user_id() : 0,
+					'chat_id'           => self::$chatId,
 					'provider'          => $provider,
 					'model'             => $model,
 					'kind'              => $kind,

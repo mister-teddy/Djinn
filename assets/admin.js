@@ -12,6 +12,26 @@
 		} ).then( ( r ) => r.json() );
 	}
 
+	// Persist the active conversation so a page reload returns to it (per site, keyed by REST URL).
+	const ACTIVE_CHAT_KEY = 'djinn_active_chat:' + Djinn.restUrl;
+	function readActiveChat() {
+		try {
+			return window.localStorage.getItem( ACTIVE_CHAT_KEY ) || '';
+		} catch ( e ) {
+			return '';
+		}
+	}
+	function writeActiveChat( id ) {
+		try {
+			window.localStorage.setItem( ACTIVE_CHAT_KEY, String( id ) );
+		} catch ( e ) {}
+	}
+	function clearActiveChat() {
+		try {
+			window.localStorage.removeItem( ACTIVE_CHAT_KEY );
+		} catch ( e ) {}
+	}
+
 	// Minimal line-art lamp glyph — the wordmark of the product.
 	function Lamp( { size = 28, glow = false } ) {
 		return el(
@@ -96,9 +116,46 @@
 		);
 	}
 
+	// Status labels for an executed/resolved GraphQL operation.
+	const ACTION_BADGE = {
+		ok: 'ran',
+		granted: 'granted',
+		refused: 'refused',
+		error: 'failed',
+	};
+
+	// A read-only record of a GraphQL operation the Djinn already ran (or that was resolved),
+	// so you can always see the exact incantation — even ones that didn't need your approval.
+	function IncantationCard( { action } ) {
+		const hasVars = action.variables && Object.keys( action.variables ).length > 0;
+		const kind = action.kind === 'mutation' ? 'Mutation' : 'Query';
+		return el(
+			'div',
+			{ className: 'djinn-action djinn-action-' + action.status },
+			el( 'div', { className: 'djinn-action-head' },
+				el( Sparkle ),
+				el( 'span', { className: 'djinn-action-kind' }, kind ),
+				el( 'span', { className: 'djinn-action-badge' }, ACTION_BADGE[ action.status ] || action.status )
+			),
+			action.summary ? el( 'p', { className: 'djinn-action-summary' }, action.summary ) : null,
+			action.message ? el( 'p', { className: 'djinn-action-msg' }, action.message ) : null,
+			el( 'details', { className: 'djinn-pending-details' },
+				el( 'summary', null, 'Show the incantation' ),
+				el( 'pre', { className: 'djinn-code' }, action.operation ),
+				hasVars ? el( 'div', { className: 'djinn-code-label' }, 'Variables' ) : null,
+				hasVars ? el( 'pre', { className: 'djinn-code djinn-code-vars' }, JSON.stringify( action.variables, null, 2 ) ) : null,
+				action.result ? el( 'div', { className: 'djinn-code-label' }, 'Response' ) : null,
+				action.result ? el( 'pre', { className: 'djinn-code djinn-code-result' }, JSON.stringify( action.result, null, 2 ) ) : null
+			)
+		);
+	}
+
 	function Message( { msg, busy, onConfirm, onCancel } ) {
 		if ( msg.role === 'pending' ) {
-			return el( PendingCard, { pending: msg.pending, busy, onConfirm, onCancel } );
+			return el( PendingCard, { pending: msg, busy, onConfirm, onCancel } );
+		}
+		if ( msg.role === 'action' ) {
+			return el( IncantationCard, { action: msg } );
 		}
 		return el(
 			'div',
@@ -108,11 +165,80 @@
 		);
 	}
 
+	// created_at is a UTC MySQL datetime ("YYYY-MM-DD HH:MM:SS"); render it in the admin's locale.
+	function formatDate( s ) {
+		if ( ! s ) {
+			return '';
+		}
+		const d = new Date( s.replace( ' ', 'T' ) + 'Z' );
+		return isNaN( d ) ? '' : d.toLocaleDateString( undefined, { month: 'short', day: 'numeric' } );
+	}
+
+	function Sidebar( { chats, activeId, busy, onNew, onOpen } ) {
+		return el(
+			'aside',
+			{ className: 'djinn-sidebar' },
+			el( Button, { className: 'djinn-newchat', variant: 'primary', disabled: busy, onClick: onNew }, el( Sparkle ), 'New wish' ),
+			el( 'div', { className: 'djinn-history-label' }, 'Past wishes' ),
+			el(
+				'div',
+				{ className: 'djinn-history' },
+				! chats.length
+					? el( 'p', { className: 'djinn-history-empty' }, 'Nothing yet.' )
+					: chats.map( ( c ) =>
+							el(
+								'button',
+								{
+									key: c.id,
+									type: 'button',
+									className: 'djinn-history-item' + ( c.id === activeId ? ' is-active' : '' ),
+									disabled: busy,
+									onClick: () => onOpen( c.id ),
+									title: c.title,
+								},
+								el( 'span', { className: 'djinn-history-title' }, c.title || 'Untitled wish' ),
+								el( 'span', { className: 'djinn-history-date' }, formatDate( c.created_at ) )
+							)
+					  )
+			)
+		);
+	}
+
+	// Adaptive currency: keep tiny amounts legible instead of rounding to $0.00.
+	function formatCost( usd ) {
+		const n = Number( usd ) || 0;
+		if ( n === 0 ) {
+			return '$0.00';
+		}
+		if ( n < 0.01 ) {
+			return '$' + n.toFixed( 6 ).replace( /0+$/, '' ).replace( /\.$/, '' );
+		}
+		return '$' + n.toFixed( n < 1 ? 4 : 2 );
+	}
+
+	// Running token + cost total for the open conversation. Updates after each wish/grant.
+	function Meter( { usage } ) {
+		if ( ! usage || ! usage.calls ) {
+			return null;
+		}
+		const tokens = ( usage.tokens || 0 ).toLocaleString();
+		return el(
+			'div',
+			{ className: 'djinn-meter', title: usage.prompt.toLocaleString() + ' in · ' + usage.completion.toLocaleString() + ' out · ' + usage.calls + ' calls' },
+			el( Sparkle ),
+			el( 'span', { className: 'djinn-meter-tokens' }, tokens, ' tokens' ),
+			el( 'span', { className: 'djinn-meter-sep' }, '·' ),
+			el( 'span', { className: 'djinn-meter-cost' }, formatCost( usage.cost ) )
+		);
+	}
+
 	function App() {
 		const [ messages, setMessages ] = useState( [] );
 		const [ input, setInput ] = useState( '' );
 		const [ busy, setBusy ] = useState( false );
 		const [ chatId, setChatId ] = useState( 0 );
+		const [ chats, setChats ] = useState( [] );
+		const [ usage, setUsage ] = useState( null );
 		const [ indexed, setIndexed ] = useState( Djinn.indexed );
 		const [ error, setError ] = useState( '' );
 		const scroller = useRef( null );
@@ -123,19 +249,43 @@
 			}
 		}, [ messages, busy ] );
 
-		function handleResult( result ) {
-			if ( result.chat_id ) {
-				setChatId( result.chat_id );
+		// On mount: load the conversation list, and reopen the chat we were last in so a page
+		// refresh keeps you in the same conversation (and follow-ups keep its chat_id + history).
+		useEffect( () => {
+			refreshChats();
+			const saved = parseInt( readActiveChat(), 10 );
+			if ( saved ) {
+				openChat( saved );
 			}
-			if ( result.status === 'error' ) {
-				setError( result.message || 'The lamp dimmed.' );
-				return;
+		}, [] );
+
+		// Remember the open conversation across reloads.
+		useEffect( () => {
+			if ( chatId ) {
+				writeActiveChat( chatId );
 			}
-			setError( '' );
-			if ( result.status === 'awaiting_confirmation' ) {
-				setMessages( ( m ) => [ ...m, { role: 'pending', pending: result.pending } ] );
-			} else if ( result.status === 'complete' ) {
-				setMessages( ( m ) => [ ...m, { role: 'assistant', content: result.message } ] );
+		}, [ chatId ] );
+
+		async function refreshChats() {
+			try {
+				const r = await api( '/chats' );
+				if ( Array.isArray( r ) ) {
+					setChats( r );
+				}
+			} catch ( e ) {
+				// A failed history fetch shouldn't break the lamp.
+			}
+		}
+
+		// The server holds the canonical conversation — wishes, replies, the GraphQL it ran, and
+		// any mutation still awaiting a grant. Reloading it after every turn means one render
+		// path, and a page refresh restores the full state (pending cards included).
+		async function loadTranscript( id ) {
+			const r = await api( '/chats/' + id );
+			if ( r && Array.isArray( r.messages ) ) {
+				setMessages( r.messages );
+				setChatId( r.chat_id || id );
+				setUsage( r.usage || null );
 			}
 		}
 
@@ -144,11 +294,20 @@
 			if ( ! text || busy ) {
 				return;
 			}
+			const isNew = chatId === 0;
 			setInput( '' );
-			setMessages( ( m ) => [ ...m, { role: 'user', content: text } ] );
+			setMessages( ( m ) => [ ...m, { role: 'user', content: text } ] ); // optimistic echo
 			setBusy( true );
 			try {
-				handleResult( await api( '/wish', { chat_id: chatId, message: text } ) );
+				const r = await api( '/wish', { chat_id: chatId, message: text } );
+				setError( r.status === 'error' ? ( r.message || 'The lamp dimmed.' ) : '' );
+				const id = r.chat_id || chatId;
+				if ( id ) {
+					await loadTranscript( id );
+				}
+				if ( isNew ) {
+					refreshChats(); // pick up the freshly-created conversation
+				}
 			} catch ( e ) {
 				setError( String( e ) );
 			} finally {
@@ -156,12 +315,38 @@
 			}
 		}
 
-		async function resolvePending( idx, confirmed ) {
-			const pending = messages[ idx ].pending;
-			setMessages( ( m ) => m.filter( ( _, i ) => i !== idx ) );
+		function newChat() {
+			if ( busy ) {
+				return;
+			}
+			setMessages( [] );
+			setChatId( 0 );
+			setUsage( null );
+			setError( '' );
+			clearActiveChat();
+		}
+
+		async function openChat( id ) {
+			if ( busy || id === chatId ) {
+				return;
+			}
+			setBusy( true );
+			setError( '' );
+			try {
+				await loadTranscript( id );
+			} catch ( e ) {
+				setError( String( e ) );
+			} finally {
+				setBusy( false );
+			}
+		}
+
+		async function resolvePending( pending, confirmed ) {
 			setBusy( true );
 			try {
-				handleResult( await api( '/grant', { chat_id: chatId, pending_id: pending.id, confirmed } ) );
+				const r = await api( '/grant', { chat_id: chatId, pending_id: pending.pending_id, confirmed } );
+				setError( r.status === 'error' ? ( r.message || 'The lamp dimmed.' ) : '' );
+				await loadTranscript( chatId );
 			} catch ( e ) {
 				setError( String( e ) );
 			} finally {
@@ -201,6 +386,10 @@
 
 		return el(
 			'div',
+			{ className: 'djinn-layout' },
+			el( Sidebar, { chats, activeId: chatId, busy, onNew: newChat, onOpen: openChat } ),
+			el(
+			'div',
 			{ className: 'djinn-app' },
 			el(
 				'div',
@@ -212,10 +401,13 @@
 						el( 'p', { className: 'djinn-tag' }, 'Whisper a wish. The Djinn of ', el( 'em', null, Djinn.siteName ), ' will grant it.' )
 					)
 				),
-				el(
-					Button,
-					{ variant: 'secondary', isBusy: busy, disabled: busy, onClick: reindex },
-					indexed ? 'Refresh the lamp' : 'Awaken the lamp'
+				el( 'div', { className: 'djinn-header-right' },
+					el( Meter, { usage } ),
+					el(
+						Button,
+						{ variant: 'secondary', isBusy: busy, disabled: busy, onClick: reindex },
+						indexed ? 'Refresh the lamp' : 'Awaken the lamp'
+					)
 				)
 			),
 			! indexed
@@ -236,8 +428,8 @@
 								key: i,
 								msg,
 								busy,
-								onConfirm: () => resolvePending( i, true ),
-								onCancel: () => resolvePending( i, false ),
+								onConfirm: () => resolvePending( msg, true ),
+								onCancel: () => resolvePending( msg, false ),
 							} )
 					  ),
 				busy && ! empty ? el( 'div', { className: 'djinn-thinking' }, el( Spinner, null ), el( 'span', null, 'The Djinn ponders…' ) ) : null
@@ -260,6 +452,7 @@
 					},
 				} ),
 				el( Button, { className: 'djinn-send', disabled: busy || ! input.trim(), onClick: send }, el( Sparkle ), 'Make wish' )
+			)
 			)
 		);
 	}
