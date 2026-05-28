@@ -354,21 +354,6 @@
 			}
 		}
 
-		async function reindex() {
-			setBusy( true );
-			setError( '' );
-			try {
-				const r = await api( '/reindex', {} );
-				if ( r.status === 'ok' ) {
-					setIndexed( true );
-				} else {
-					setError( r.message || 'The lamp could not be awakened.' );
-				}
-			} finally {
-				setBusy( false );
-			}
-		}
-
 		if ( ! Djinn.configured ) {
 			return el(
 				'div',
@@ -402,16 +387,15 @@
 					)
 				),
 				el( 'div', { className: 'djinn-header-right' },
-					el( Meter, { usage } ),
-					el(
-						Button,
-						{ variant: 'secondary', isBusy: busy, disabled: busy, onClick: reindex },
-						indexed ? 'Refresh the lamp' : 'Awaken the lamp'
-					)
+					el( Meter, { usage } )
 				)
 			),
 			! indexed
-				? el( Notice, { status: 'info', isDismissible: false }, 'The lamp slumbers — Awaken it to sharpen the Djinn\'s memory of your site.' )
+				? el( Notice, { status: 'info', isDismissible: false },
+						'The lamp slumbers — ',
+						el( 'a', { href: Djinn.indexUrl }, 'awaken its memory' ),
+						' to sharpen the Djinn\'s knowledge of your site.'
+					)
 				: null,
 			error ? el( Notice, { status: 'error', onRemove: () => setError( '' ) }, error ) : null,
 			el(
