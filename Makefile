@@ -20,7 +20,7 @@ WP := $(WPENV) run cli wp
 # wp-env mounts this directory as a plugin under its folder name (case-sensitive).
 SLUG := $(notdir $(CURDIR))
 
-.PHONY: up start restart check activate seed lamp cli logs down destroy open
+.PHONY: up start restart check activate seed lamp cli logs down destroy open docs dist
 
 up: start activate seed
 	@echo ""
@@ -86,6 +86,16 @@ destroy:
 
 open:
 	open http://localhost:8888/wp-admin || true
+
+# Generate djinn-docs.pdf: README + docs/ + proxy docs + full syntax-highlighted source. Always
+# current. `make docs compact` (or `make docs SIZE=compact`) exports a compact page for foldable
+# phones (→ djinn-docs-compact.pdf).
+docs:
+	bash bin/build-docs.sh "$(or $(SIZE),$(filter-out docs,$(MAKECMDGOALS)))"
+
+# Build an installable plugin ZIP (excludes the proxy, dev tooling, and build artifacts).
+dist:
+	bash bin/build-dist.sh
 
 # Swallow extra goals so `make cli "plugin list"` doesn't error on the trailing words.
 %:
