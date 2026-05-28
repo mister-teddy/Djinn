@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+#
+# Build a single, offline-readable PDF of the whole project: the README, the proxy docs, and an
+# appendix with every source file, syntax-highlighted. One command, always current — it reads the
+# files fresh each run. Rendering uses a Dockerized pandoc, so no host LaTeX install is required.
+#
+set -euo pipefail
+cd "$( dirname "$0" )/.."
+
+VERSION="$( grep -oE "DJINN_VERSION', '[^']+" djinn.php | cut -d"'" -f3 )"
+
+# Optional first arg selects a page preset. "compact" (aka phone/foldable) → a compact, near-square
+# page with tiny margins, sized to read comfortably on a foldable's inner screen (e.g. OnePlus Open).
+SIZE="${1:-}"
+OUT="djinn-docs.pdf"
+case "$SIZE" in
+	compact|phone|foldable) SIZE=compact; OUT="djinn-docs-compact.pdf" ;;
+	'' ) ;;
+	*) echo "Unknown size '$SIZE' (use: compact). Falling back to default." >&2; SIZE='' ;;
+esac
+
+BUILD="build"
+DOC="$BUILD/docs.md"
+HEADER="$BUILD/header.tex"
+FONTS="$BUILD/fonts"
+mkdir -p "$BUILD" "$FONTS"
+
+# Vendor the Cardo body font (OFL) once into a cached dir; load it by path so we don't depend on
+# the font being present in the pandoc image.
+CARDO_BASE="https://raw.githubusercontent.com/google/fonts/main/ofl/cardo"
+for style in Regular Bold Italic; do
+	if [ ! -f "$FONTS/Cardo-${style}.ttf" ]; then
+		echo "→ Fetching Cardo-${style}"
+		curl -fsSL "$CARDO_BASE/Cardo-${style}.ttf" -o "$FONTS/Cardo-${style}.ttf"
+	fi
+done
+
+# Map a file path to a pandoc highlight language.
+lang_for() {
+	case "$1" in
+		*.php) echo php ;;
+		*.js)  echo javascript ;;
+		*.css) echo css ;;
+		*.sh)  echo bash ;;
+		*.json) echo json ;;
+		Makefile) echo makefile ;;
+		*) echo text ;;
+	esac
+}
+
+# --- Assemble the combined Markdown -------------------------------------------------------------
+{
+	cat <<-YAML
+	---
+	title: "Djinn — Full Documentation"
+	subtitle: "Plugin v$VERSION · generated $( date -u '+%Y-%m-%d %H:%M UTC' )"
+	toc: true
+	toc-depth: 2
+	---
+	YAML
+
+	# 1) Prose docs, rendered: the README, anything under docs/, then the proxy docs.
+	cat README.md
+	for d in docs/*.md; do
+		[ -f "$d" ] || continue
+		printf '\n\n\\newpage\n\n'
+		cat "$d"
+	done
+	printf '\n\n\\newpage\n\n# Proxy service\n\n'
+	cat proxy/README.md
+
+	# 2) Source appendix. Each file becomes a heading + a highlighted code block. Tilde fences (×5)
+	#    avoid colliding with backtick fences that appear inside source/markdown.
+	printf '\n\n\\newpage\n\n# Source code\n\n'
+	printf 'The full source, current as of this build.\n'
+
+	FILES=$(
+		{
+			echo djinn.php
+			git ls-files 'src/*.php' 'assets/*.js' 'assets/*.css' 'proxy/*.js' 'proxy/*.json' 'bin/*.sh' Makefile composer.json .wp-env.json 2>/dev/null
+		} | awk '!seen[$0]++'
+	)
+	for f in $FILES; do
+		[ -f "$f" ] || continue
+		printf '\n## `%s`\n\n~~~~~ {.%s}\n' "$f" "$( lang_for "$f" )"
+		cat "$f"
+		printf '\n~~~~~\n'
+	done
+} > "$DOC"
+
+# --- LaTeX header: wrap long code lines so nothing overflows the page ---------------------------
+cat > "$HEADER" <<'TEX'
+\usepackage{fvextra}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,fontsize=\small,commandchars=\\\{\}}
+\usepackage{microtype}
+TEX
+
+# --- Render via Dockerized pandoc ---------------------------------------------------------------
+if ! docker info >/dev/null 2>&1; then
+	echo "✗ Docker isn't running — start it (OrbStack/Docker Desktop) and retry." >&2
+	exit 1
+fi
+
+PANDOC_ARGS=(
+	"$DOC" -o "$OUT"
+	--pdf-engine=xelatex
+	--toc --toc-depth=2 --number-sections
+	--highlight-style=tango
+	-H "$HEADER"
+	-V mainfont=Cardo
+	-V "mainfontoptions=Path=/data/$FONTS/, Extension=.ttf, UprightFont=*-Regular, BoldFont=*-Bold, ItalicFont=*-Italic"
+	-V colorlinks=true -V linkcolor=NavyBlue -V urlcolor=NavyBlue
+	-V documentclass=report
+)
+case "$SIZE" in
+	compact)
+		# Compact near-square page for foldable inner screens; fit-to-width gives large text.
+		PANDOC_ARGS+=( -V geometry:paperwidth=130mm -V geometry:paperheight=150mm -V geometry:margin=6mm -V fontsize=9pt )
+		;;
+	*)
+		PANDOC_ARGS+=( -V geometry:margin=2cm )
+		;;
+esac
+
+echo "→ Rendering $OUT (pandoc via Docker)…"
+# pandoc/latex ships amd64 only; run under emulation on arm64 hosts (Apple Silicon). fvextra (for
+# wrapping long code lines) isn't preinstalled, so install it, then exec pandoc with the args
+# passed positionally (so the font options keep their spaces/commas without re-quoting).
+docker run --rm --platform=linux/amd64 -v "$PWD":/data -w /data --entrypoint sh pandoc/latex:latest -c '
+	tlmgr install fvextra >/dev/null 2>&1 || true
+	exec pandoc "$@"
+' pandoc "${PANDOC_ARGS[@]}"
+
+echo "✓ Wrote $OUT ($( du -h "$OUT" | cut -f1 ))"

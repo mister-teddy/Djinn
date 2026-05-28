@@ -4,3 +4,14 @@ composer.lock
 .DS_Store
 .env
 .djinn-seed.json
+
+# Proxy service local files
+/proxy/node_modules/
+/proxy/.env
+/proxy/accounts.json
+
+# Build artifacts
+/build/
+/dist/
+*.zip
+*.pdf

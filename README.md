@@ -99,6 +99,21 @@ after editing), `make cli "<wp-cli args>"`, `make logs`, `make down` (stop), `ma
 The chat keeps a history sidebar (reopened across reloads), shows the exact GraphQL it ran (with
 the response), and meters tokens + cost per conversation. **Djinn → Spend** has the running total.
 
+## What it costs
+
+Every provider call is metered (**Djinn → Spend**). Measured from real local usage on
+`gemini-2.5-flash-lite` (14 wishes):
+
+| Per wish (average) | Value |
+|---|---|
+| Tokens | ~6,900 |
+| **Cost** | **~$0.0009** — about a tenth of a cent |
+
+A wish fans out to ~1–3 model calls (schema search → GraphQL → reply) plus a tiny embedding;
+embeddings (search + the one-time index build) are effectively free on `gemini-embedding-001`.
+Model choice dominates: a flagship like GPT-4o runs roughly 30–50× pricier per wish. Figures are
+estimates from public list prices — tune them with the `djinn_model_pricing` filter.
+
 ## Status
 
 Known next steps:
