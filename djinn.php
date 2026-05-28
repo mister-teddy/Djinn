@@ -18,6 +18,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'DJINN_VERSION', '0.3.0' );
 define( 'DJINN_FILE', __FILE__ );
+
+// Build edition: 'byo' (bring-your-own-key) by default; the dist build stamps 'org' for the free,
+// proxy-only WordPress.org build. Override in wp-config.php for local testing if needed.
+if ( ! defined( 'DJINN_EDITION' ) ) {
+	define( 'DJINN_EDITION', 'byo' );
+}
 define( 'DJINN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'DJINN_URL', plugin_dir_url( __FILE__ ) );
 

@@ -43,6 +43,10 @@ lang_for() {
 		*.css) echo css ;;
 		*.sh)  echo bash ;;
 		*.json) echo json ;;
+		*.rs)  echo rust ;;
+		*.toml) echo toml ;;
+		*.sql) echo sql ;;
+		*Dockerfile) echo dockerfile ;;
 		Makefile) echo makefile ;;
 		*) echo text ;;
 	esac
@@ -74,10 +78,21 @@ lang_for() {
 	printf '\n\n\\newpage\n\n# Source code\n\n'
 	printf 'The full source, current as of this build.\n'
 
+	# Use find (not git ls-files) so untracked proxy sources are included too.
 	FILES=$(
 		{
 			echo djinn.php
-			git ls-files 'src/*.php' 'assets/*.js' 'assets/*.css' 'proxy/*.js' 'proxy/*.json' 'bin/*.sh' Makefile composer.json .wp-env.json 2>/dev/null
+			find src -name '*.php' 2>/dev/null | sort
+			echo assets/admin.js
+			echo assets/admin.css
+			find bin -name '*.sh' 2>/dev/null | sort
+			echo Makefile
+			echo composer.json
+			echo .wp-env.json
+			echo proxy/Cargo.toml
+			echo proxy/Dockerfile
+			find proxy/src -name '*.rs' 2>/dev/null | sort
+			find proxy/migrations -name '*.sql' 2>/dev/null | sort
 		} | awk '!seen[$0]++'
 	)
 	for f in $FILES; do

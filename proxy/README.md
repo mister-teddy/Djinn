@@ -41,26 +41,40 @@ safety headroom.
 The intended sign-up — easy enough that most users breeze through it, restrictive enough to stop
 free-credit farming:
 
-1. **Email + verify** (one click) → issues a per-site token. → 3 free wishes.
-2. To continue past the trial, **add a card** (Stripe SetupIntent — no upfront charge). That flips
-   the account to `payg` (metered pay-as-you-go); trial limits no longer apply.
+1. **Email + verify** (one click) → your sign-up service calls `/admin/provision` to mint a
+   per-site token with 3 free wishes.
+2. To continue past the trial, **add a card** (Stripe SetupIntent — no upfront charge, set as the
+   customer's default payment method). The proxy then **auto-recharges** prepaid credit: when the
+   balance drops below the threshold, it charges a top-up off-session. You never deliver unpaid
+   usage, so a user can't run up a bill and vanish.
 
-A card on file means we only extend ongoing usage to people who *could* pay, which is the real
-abuse deterrent — no heavy KYC needed.
+A card on file means we only extend ongoing usage to people who *could* pay — the real abuse
+deterrent, no heavy KYC.
 
 > Both plugin editions have the **same full capabilities** (including system/install/core ops).
 > The only difference: the free ORG edition always routes through this proxy and can't enter its
 > own API key; BYO can.
 
+## Stack
+
+**Rust (axum) + Postgres (Supabase) via `sqlx`**, deployed on **Google Cloud Run**. Small static
+binary, fast cold starts, scales to zero. `rustls` (no OpenSSL) keeps the image minimal.
+
 ## Run locally
 
 ```bash
-cp .env.example .env      # set UPSTREAM_KEY
-npm install
-npm start                 # :8787
-# grant a site some credit (scaffold admin endpoint):
-curl -X POST localhost:8787/admin/credit -H "x-admin-token: $ADMIN_TOKEN" \
-  -H 'content-type: application/json' -d '{"token":"site-abc","addUsd":1,"payg":false}'
+cp .env.example .env       # set DATABASE_URL (Supabase) + UPSTREAM_KEY
+cargo run                  # :8080 — creates the accounts table on startup
+# mint a trial token:
+curl -X POST localhost:8080/admin/provision -H "x-admin-token: $ADMIN_TOKEN" \
+  -H 'content-type: application/json' -d '{"token":"site-abc"}'
+```
+
+## Deploy (Cloud Run)
+
+```bash
+gcloud run deploy djinn-proxy --source . --allow-unauthenticated \
+  --set-env-vars "DATABASE_URL=…,UPSTREAM_KEY=…,STRIPE_SECRET_KEY=…,STRIPE_WEBHOOK_SECRET=…,ADMIN_TOKEN=…"
 ```
 
 ## Endpoints
@@ -69,13 +83,13 @@ curl -X POST localhost:8787/admin/credit -H "x-admin-token: $ADMIN_TOKEN" \
 |---|---|---|
 | POST | `/v1/chat/completions` | Metered chat (OpenAI shape). |
 | POST | `/v1/embeddings` | Metered embeddings. |
-| GET | `/v1/account` | Remaining credit + spend (the plugin's Spend page reads this). |
-| POST | `/admin/credit` | Create/top-up an account (replace with Stripe webhooks). |
+| GET | `/v1/account` | Remaining credit, spend, free wishes (the plugin's Spend page reads this). |
+| POST | `/admin/provision` | Mint a trial token (sign-up service; `x-admin-token`). |
+| POST | `/stripe/webhook` | Credit the balance on `payment_intent.succeeded` (durable source of truth). |
 
-## Before production (scaffold TODOs)
+## Before production (TODOs)
 
-- Replace the JSON `accounts.json` store with a real database.
-- Issue site tokens on sign-up; bind each to a Stripe customer.
-- Drive credit from **Stripe** (one-off top-ups and/or pay-as-you-go metered billing) instead of
-  the `/admin/credit` endpoint.
-- Add per-account rate limits and an abuse/spend ceiling.
+- Use **integer cents** for money instead of `f64`.
+- Build the sign-up service (email verify → `/admin/provision`; card via Stripe SetupIntent → set
+  default payment method) and a billing/top-up page.
+- Add per-account rate limits and an upstream-failure circuit breaker.
