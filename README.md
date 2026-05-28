@@ -28,9 +28,39 @@ Admin SPA (bundled React)  ──fetch──▶  REST /djinn/v1/*  ──▶  PH
   `webonyx/graphql-php` library. Resolvers wrap `WP_Query`, `wp_insert_post`, `update_option`, …
 - **Capabilities are enforced in every resolver** (`current_user_can`) — the Djinn can never
   exceed the logged-in admin's real rights.
+- **Extensible schema.** Capabilities are modular features (`src/GraphQL/Features/`); a plugin can
+  register its own types/resolvers via the `djinn_register_schema` action — no core edits.
 - **Multi-provider.** OpenAI and Google Gemini adapters ship today (`src/Provider/`); the
   `Provider` interface makes adding others straightforward.
-- **No build step for the MVP front-end** — it uses WordPress's bundled `wp-element` (React).
+- **No build step for the front-end** — it uses WordPress's bundled `wp-element` (React).
+
+Four admin screens: **Lamp** (chat), **Settings** (provider/key/models), **Memory** (build &
+inspect the schema index), **Spend** (token + cost usage).
+
+## What you can wish for
+
+The Djinn's reach is whatever the schema exposes. Today, across modular features:
+
+- **Content** — posts, pages, any post type: list, read, create, update, delete.
+- **Taxonomies** — categories, tags, custom taxonomies: list/create/delete terms, assign to posts.
+- **Comments** — list, approve/spam/trash, reply, delete.
+- **Users** — list, create, change role, delete.
+- **Media** — list, import from a URL, set featured image, delete.
+- **Appearance** — list/switch themes, edit the site's Additional CSS.
+- **Site & options** — title, tagline, and any `wp_options` value.
+- **System** — activate/deactivate, install (from WordPress.org), and update plugins & themes;
+  update WordPress core. *(Powerful — gated by the user's capabilities and the Grant step.)*
+
+Register more from a plugin without touching core:
+
+```php
+add_action( 'djinn_register_schema', function ( $registry ) {
+    $registry->addQuery( 'myThing', [ /* a graphql-php field definition */ ] );
+} );
+```
+
+After any schema change, rebuild the index from **Djinn → Memory** (it shows a diff of what
+changed and the estimated embedding cost first).
 
 ## Install (development)
 
@@ -41,36 +71,38 @@ Requires Docker and Node (for [`wp-env`](https://developer.wordpress.org/block-e
 ```bash
 cp .env.example .env        # then paste your provider API key into .env
 make up                     # composer install + wp-env start + activate + seed settings
-make lamp                   # build the schema index ("Awaken the lamp")
+make lamp                   # build the schema index (same as Djinn → Memory → Rebuild)
 make open                   # open wp-admin (admin / password)
 ```
 
-Then visit **Djinn → Lamp** and make a wish. Other targets: `make cli "<wp-cli args>"`,
-`make logs`, `make down` (stop), `make destroy` (wipe). `make up` is idempotent — re-run it
-(or `make seed`) after editing `.env` to re-apply the key.
+Then visit **Djinn → Lamp** and make a wish. Other targets: `make restart` (validate + bounce
+after editing), `make cli "<wp-cli args>"`, `make logs`, `make down` (stop), `make destroy`
+(wipe). `make up` is idempotent — re-run it (or `make seed`) after editing `.env`.
 
 ### Manual
 
 1. `composer install` in the plugin directory.
 2. Activate **Djinn** in wp-admin (creates the custom tables).
 3. **Djinn → Settings**: choose a provider, paste an API key (or define `DJINN_API_KEY` in
-   `wp-config.php`), optionally set model names. Save.
-4. **Djinn → Lamp**: click **Awaken the lamp** to build the schema index, then make a wish.
+   `wp-config.php`); models are picked from dropdowns discovered from your key. Save.
+4. **Djinn → Memory**: **Awaken the lamp** to build the schema index, then open **Djinn → Lamp**
+   and make a wish.
 
 ## Try it
 
 - *"List my 5 most recent posts."* → `search_schema` → `run_graphql` (query) → answer.
-- *"Create a draft page titled 'Hello'."* → "Grant this wish?" card with the mutation →
-  **Grant** → the page exists in wp-admin.
-- *"Set the site tagline to 'Built with Djinn'."* → Grant → applied.
+- *"Create a draft page titled 'Hello'."* → "Grant this wish?" card → **Grant** → it exists.
+- *"Make all headings dark red."* → Grant → Additional CSS updated.
+- *"Install and activate the Classic Editor plugin."* → Grant → installed from WordPress.org.
+- *"Are any updates available?"* → query → answer.
+
+The chat keeps a history sidebar (reopened across reloads), shows the exact GraphQL it ran (with
+the response), and meters tokens + cost per conversation. **Djinn → Spend** has the running total.
 
 ## Status
 
-This is an MVP. Known next steps:
+Known next steps:
 
-- Token-by-token streaming (currently the loop is synchronous; the UI shows step progress).
-- Broader schema coverage (custom post types, taxonomies, menus, plugin options) and a filter
-  for third-party plugins to register their own types/resolvers.
+- Token-by-token streaming (the loop is synchronous; the UI shows step progress).
 - API-key encryption at rest.
 - A proper `@wordpress/scripts` (JSX/TypeScript) build for the front-end.
-- Loading prior conversations (the chat list REST endpoint exists; the UI starts fresh).
