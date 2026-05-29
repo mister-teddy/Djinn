@@ -12,9 +12,9 @@ VERSION="$( grep -oE "DJINN_VERSION', '[^']+" djinn.php | cut -d"'" -f3 )"
 # Optional first arg selects a page preset. "compact" (aka phone/foldable) → a compact, near-square
 # page with tiny margins, sized to read comfortably on a foldable's inner screen (e.g. OnePlus Open).
 SIZE="${1:-}"
-OUT="djinn-docs.pdf"
+OUT="Djinn — Full Documentation.pdf"
 case "$SIZE" in
-	compact|phone|foldable) SIZE=compact; OUT="djinn-docs-compact.pdf" ;;
+	compact|phone|foldable) SIZE=compact; OUT="Djinn — Full Documentation (Compact).pdf" ;;
 	'' ) ;;
 	*) echo "Unknown size '$SIZE' (use: compact). Falling back to default." >&2; SIZE='' ;;
 esac

@@ -60,15 +60,19 @@ jobs:
         if: always()
         run: wp-env stop || true
 
-      # 4) Publish the release with the zips + the showcase-bearing PDFs.
+      # 4) Bundle the raw showcase PNGs into a zip (release assets are flat — no folders).
+      - name: Bundle showcase images
+        run: ( cd build/screenshots && zip -qr "$GITHUB_WORKSPACE/Djinn — Showcase.zip" . -x '*.DS_Store' )
+
+      # 5) Publish the release: edition ZIPs + the showcase-bearing PDFs + the showcase image zip.
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/*.zip
-            djinn-docs.pdf
-            djinn-docs-compact.pdf
+            *.pdf
+            *Showcase*.zip
           generate_release_notes: true
 
       # On a manual dry run (no tag), keep the artifacts for inspection instead of releasing.
@@ -79,5 +83,5 @@ jobs:
           name: djinn-release-${{ github.sha }}
           path: |
             dist/*.zip
-            djinn-docs.pdf
-            djinn-docs-compact.pdf
+            *.pdf
+            *Showcase*.zip
