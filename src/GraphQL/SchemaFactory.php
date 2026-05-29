@@ -189,8 +189,8 @@ class SchemaFactory {
 	 * @return array<int,Feature>
 	 */
 	private static function features(): array {
-		return [
-			new Features\DiscoveryFeature(),
+		$features = [
+			new Features\MetaFeature(),
 			new Features\AppearanceFeature(),
 			new Features\TaxonomyFeature(),
 			new Features\CommentsFeature(),
@@ -199,5 +199,13 @@ class SchemaFactory {
 			new Features\SystemFeature(),
 			new Features\RestFeature(),
 		];
+
+		// Curated per-plugin domains, registered only when their plugin is active — so their types
+		// (and therefore their RAG chunks) never appear on sites that don't have the plugin.
+		if ( Features\WooCommerceFeature::isActive() ) {
+			$features[] = new Features\WooCommerceFeature();
+		}
+
+		return $features;
 	}
 }
