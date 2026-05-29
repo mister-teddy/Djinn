@@ -50,6 +50,36 @@ class Tools {
 					'required'   => [ 'operation' ],
 				],
 			],
+			[
+				'name'        => 'rest_call',
+				'description' => 'Call a WordPress REST route — the escape hatch for plugins with no native GraphQL field. Discover routes first via the `restRoutes` GraphQL query. GET/HEAD run immediately; POST/PUT/PATCH/DELETE are paused for the user to Grant. Each route enforces its own permissions.',
+				'parameters'  => [
+					'type'       => 'object',
+					'properties' => [
+						'method'  => [
+							'type'        => 'string',
+							'description' => 'HTTP method: GET, POST, PUT, PATCH, or DELETE.',
+						],
+						'path'    => [
+							'type'        => 'string',
+							'description' => 'REST route path beginning with "/", e.g. "/wp/v2/pages" or "/wc/v3/products/12".',
+						],
+						'body'    => [
+							'type'        => 'object',
+							'description' => 'Body parameters for writes. Omit for reads.',
+						],
+						'params'  => [
+							'type'        => 'object',
+							'description' => 'Query-string parameters, e.g. {"per_page": 5, "search": "hat"}. Omit if none.',
+						],
+						'summary' => [
+							'type'        => 'string',
+							'description' => 'For writes: a one-sentence plain-language description, shown on the confirmation card.',
+						],
+					],
+					'required'   => [ 'method', 'path' ],
+				],
+			],
 		];
 	}
 }

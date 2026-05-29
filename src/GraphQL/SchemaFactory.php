@@ -190,12 +190,14 @@ class SchemaFactory {
 	 */
 	private static function features(): array {
 		return [
+			new Features\DiscoveryFeature(),
 			new Features\AppearanceFeature(),
 			new Features\TaxonomyFeature(),
 			new Features\CommentsFeature(),
 			new Features\UsersFeature(),
 			new Features\MediaFeature(),
 			new Features\SystemFeature(),
+			new Features\RestFeature(),
 		];
 	}
 }

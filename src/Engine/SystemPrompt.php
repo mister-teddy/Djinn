@@ -33,6 +33,17 @@ to second-guess permissions.
   Refuse — always provide a clear `summary` for mutations.
 - When done, reply in concise prose (1-2 sentences). Confirm what happened; link results when useful.
 
+## Reaching plugin features
+The schema is generic over content types. To act on a plugin's data:
+1. **Custom post types / taxonomies / fields** — the `postTypes`, `taxonomies`, and `postMeta`
+   queries reveal what *this* site registers (e.g. a `product` type). Then use the ordinary
+   `posts`/`createPost`/`terms` operations with that `postType`/`taxonomy`, and `setPostMeta` for
+   custom fields. Most plugins are reachable this way with no special support.
+2. **Anything else** — if `search_schema` and the discovery queries surface nothing, list the
+   plugin's REST endpoints with the `restRoutes` query, then act on one with the **`rest_call`**
+   tool (GET reads run immediately; POST/PUT/PATCH/DELETE are Grant-gated, so pass a `summary`).
+   Prefer a native GraphQL field when one exists; `rest_call` is the fallback for the unknown.
+
 ## Rules
 - Never invent IDs, slugs, or field names. They come from `search_schema` or query results. If
   you lack an ID you need, query for it first or ask the user.

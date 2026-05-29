@@ -14,6 +14,41 @@ use Djinn\Usage\Pricing;
  */
 class IndexStatus {
 
+	private static ?bool $needsReindex = null;
+
+	/**
+	 * Cheap "the index is stale" check for the admin menu (no embeddings, no network): true when a
+	 * key is configured and the index either was never built or no longer matches the live schema
+	 * or the chosen embedding model. Memoized so repeated menu renders cost one schema fingerprint.
+	 */
+	public static function needsReindex(): bool {
+		if ( self::$needsReindex !== null ) {
+			return self::$needsReindex;
+		}
+		if ( ! Settings::isConfigured() ) {
+			return self::$needsReindex = false;
+		}
+		if ( Repository::chunkCount() === 0 ) {
+			return self::$needsReindex = true; // never built
+		}
+		$meta = Indexer::meta();
+		return self::$needsReindex = ( $meta['fingerprint'] ?? '' ) !== Indexer::fingerprint()
+			|| ( $meta['model'] ?? '' ) !== Settings::embeddingModel();
+	}
+
+	/**
+	 * WordPress's native red update badge for the admin menu, or '' when the index is current.
+	 * Appended (unescaped, like core's own update counts) to the Memory + top-level menu titles.
+	 */
+	public static function menuBubble(): string {
+		if ( ! self::needsReindex() ) {
+			return '';
+		}
+		return ' <span class="update-plugins djinn-reindex" title="' .
+			esc_attr__( 'The schema changed — rebuild the index under Djinn → Memory.', 'djinn' ) .
+			'"><span class="update-count">!</span></span>';
+	}
+
 	/** @return array<string,mixed> */
 	public static function summary(): array {
 		$current = Indexer::chunks();                 // name => fragment (live schema)

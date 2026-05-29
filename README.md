@@ -114,6 +114,29 @@ embeddings (search + the one-time index build) are effectively free on `gemini-e
 Model choice dominates: a flagship like GPT-4o runs roughly 30–50× pricier per wish. Figures are
 estimates from public list prices — tune them with the `djinn_model_pricing` filter.
 
+**A wish in raw compute (just for fun).** Generating one token costs about `2 × model-parameters`
+FLOPs — for a small model (~10B params) ≈ 2×10¹⁰ FLOPs. An average ~6,900-token wish is then
+≈ **10¹⁴ FLOPs**. That's **well under a second of GPU time** (the wait you feel is mostly network
+latency), which is why a wish still costs only ~$0.0009 — but on a single CPU core that same
+arithmetic would take **~3 hours**. In those CPU-seconds, that core could instead have done roughly:
+
+- **~50,000** full Gutenberg page renders (front-end, uncached, ~0.2 s each)
+- **~200,000** WordPress bootstraps (a cold `wp-load`, ~50 ms each)
+- **~1–2 million** `WP_Query` post fetches (~5 ms each)
+- **~100 billion** lines of executed PHP
+
+Those are loose, though — PHP is branchy CPU work, while this is dense GPU float-multiply, and
+*generating* tokens is bound by **memory bandwidth**, not raw FLOPs. Two more apples-to-apples
+framings:
+
+- **Memory:** each token re-reads the entire ~20 GB model from VRAM, so a wish streams **several
+  terabytes** — closer to *reading a 20 GB file ~600 times* than to running code.
+- **Energy:** ≈ **~0.1 Wh** — about **1% of charging a phone** (or an LED bulb for ~a minute).
+
+So every wish is genuinely a *supercomputer-grade* burst — ~99% GPU matrix-multiply done in a
+blink, which is what makes it both cheap and fast. (Order-of-magnitude fun, not a benchmark: the
+model's true size, batching, and these per-op figures each swing it ±1–2 orders.)
+
 ## Editions
 
 Djinn builds in two editions — **same capabilities**, differing only in how LLM calls are paid for:

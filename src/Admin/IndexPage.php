@@ -26,7 +26,7 @@ class IndexPage {
 	}
 
 	public function menu(): void {
-		add_submenu_page( self::PARENT, 'Djinn — Memory', 'Memory', 'manage_options', self::SLUG, [ $this, 'render' ] );
+		add_submenu_page( self::PARENT, 'Djinn — Memory', 'Memory' . IndexStatus::menuBubble(), 'manage_options', self::SLUG, [ $this, 'render' ] );
 	}
 
 	public function handleReindex(): void {
