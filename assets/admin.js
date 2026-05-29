@@ -32,7 +32,8 @@
 		} catch ( e ) {}
 	}
 
-	// Minimal line-art lamp glyph — the wordmark of the product.
+	// Line-art genie lamp — the wordmark of the product. Rising spout + flame on the left, a
+	// bulbous body with a lid knob, a handle curl on the right, and a small foot.
 	function Lamp( { size = 28, glow = false } ) {
 		return el(
 			'svg',
@@ -42,45 +43,25 @@
 				height: size,
 				viewBox: '0 0 64 64',
 				fill: 'none',
+				stroke: 'currentColor',
+				strokeWidth: 2.2,
+				strokeLinecap: 'round',
+				strokeLinejoin: 'round',
 				'aria-hidden': true,
 			},
-			// flame/smoke wisp
-			el( 'path', {
-				d: 'M22 8 C22 14 28 16 28 22 C28 18 24 16 24 12',
-				stroke: 'currentColor',
-				strokeWidth: 2,
-				strokeLinecap: 'round',
-				className: 'djinn-lamp-wisp',
-			} ),
-			// spout
-			el( 'path', {
-				d: 'M8 38 L20 30 L20 42 Z',
-				stroke: 'currentColor',
-				strokeWidth: 2.2,
-				strokeLinejoin: 'round',
-			} ),
-			// body
-			el( 'path', {
-				d: 'M20 30 Q32 22 48 28 Q56 30 56 38 Q56 46 48 48 L24 48 Q18 48 18 42 Z',
-				stroke: 'currentColor',
-				strokeWidth: 2.2,
-				strokeLinejoin: 'round',
-			} ),
-			// handle
-			el( 'path', {
-				d: 'M48 28 Q58 30 56 40',
-				stroke: 'currentColor',
-				strokeWidth: 2.2,
-				strokeLinecap: 'round',
-				fill: 'none',
-			} ),
-			// base
-			el( 'path', {
-				d: 'M22 48 L50 48 L46 54 L26 54 Z',
-				stroke: 'currentColor',
-				strokeWidth: 2.2,
-				strokeLinejoin: 'round',
-			} )
+			// flame above the spout
+			el( 'path', { d: 'M7 21 C5 17 9 15 7.5 11 C10.5 14 10.5 18 9 20', className: 'djinn-lamp-wisp' } ),
+			// spout (left, rising) — a slim tapering funnel
+			el( 'path', { d: 'M20 35 C13 32 8 28 6 22 L10 20.5 C12 26 16 30 22 33 Z' } ),
+			// body (bulbous vessel)
+			el( 'path', { d: 'M19 45 C12 45 10 38 15 34 C21 29 31 27 41 29 C50 31 54 35 53 40 C52 45 46 47 39 47 L23 47 C21.5 47 20 46.2 19 45 Z' } ),
+			// lid dome + knob
+			el( 'path', { d: 'M27 28.5 C30 24 38 24 41 28.5' } ),
+			el( 'circle', { cx: 34, cy: 23, r: 2.2, fill: 'currentColor', stroke: 'none' } ),
+			// handle (right curl)
+			el( 'path', { d: 'M53 35 C60 36 62 43 56 47' } ),
+			// foot
+			el( 'path', { d: 'M24 47 L40 47 L37 52 L27 52 Z' } )
 		);
 	}
 
