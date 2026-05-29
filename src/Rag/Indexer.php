@@ -30,6 +30,8 @@ class Indexer {
 	 */
 	public static function chunks(): array {
 		$chunks = [];
+		// Build the schema first — this also registers features (e.g. WooCommerce) that claim
+		// post types via the djinn_curated_post_types filter siteChunks() reads below.
 		foreach ( SchemaFactory::build()->getTypeMap() as $name => $type ) {
 			if ( str_starts_with( $name, '__' ) ) {
 				continue; // introspection types
@@ -43,8 +45,61 @@ class Indexer {
 			}
 			$chunks[ $name ] = SchemaPrinter::printType( $type );
 		}
+		foreach ( self::siteChunks() as $name => $fragment ) {
+			$chunks[ $name ] = $fragment;
+		}
 		ksort( $chunks );
 		return $chunks;
+	}
+
+	/**
+	 * Synthetic, natural-language chunks describing the custom post types and taxonomies *this*
+	 * site registers (via plugins), so the Djinn discovers them through search_schema and drives
+	 * them with the generic post/term operations — no plugin cooperation, no extra round-trip.
+	 * Skips WordPress built-ins (already covered by the core schema) and any type a curated feature
+	 * has claimed. Because these are part of chunks(), they also flow into fingerprint(), so the
+	 * "needs reindex" red dot trips automatically when a CPT/taxonomy is added or removed.
+	 *
+	 * @return array<string,string>
+	 */
+	private static function siteChunks(): array {
+		$out          = [];
+		$curatedTypes = (array) apply_filters( 'djinn_curated_post_types', [] );
+		$curatedTax   = (array) apply_filters( 'djinn_curated_taxonomies', [] );
+
+		foreach ( get_post_types( [ '_builtin' => false ], 'objects' ) as $pt ) {
+			if ( ( ! $pt->public && ! $pt->show_ui ) || in_array( $pt->name, $curatedTypes, true ) ) {
+				continue;
+			}
+			$taxes = get_object_taxonomies( $pt->name );
+			$out[ 'site:cpt:' . $pt->name ] = sprintf(
+				'Custom content type "%s" — post type `%s`%s. Work with it using the generic post '
+				. 'operations and this exact postType: list with posts(postType: "%1$s"), read with '
+				. 'post(id), create with createPost(input: { postType: "%2$s", ... }), edit with '
+				. 'updatePost, delete with deletePost. Custom fields via postMeta / setPostMeta.%s%s',
+				$pt->labels->name ?? $pt->label ?? $pt->name,
+				$pt->name,
+				$pt->hierarchical ? ' (hierarchical, page-like)' : '',
+				$taxes ? ' Taxonomies: ' . implode( ', ', $taxes ) . '.' : '',
+				$pt->description ? ' ' . $pt->description : ''
+			);
+		}
+
+		foreach ( get_taxonomies( [ '_builtin' => false ], 'objects' ) as $tax ) {
+			if ( ( ! $tax->public && ! $tax->show_ui ) || in_array( $tax->name, $curatedTax, true ) ) {
+				continue;
+			}
+			$out[ 'site:tax:' . $tax->name ] = sprintf(
+				'Custom taxonomy "%s" — `%s`%s, applies to: %s. List terms with terms(taxonomy: '
+				. '"%2$s"), create with createTerm, attach to a post with assignTerms.',
+				$tax->labels->name ?? $tax->label ?? $tax->name,
+				$tax->name,
+				$tax->hierarchical ? ' (hierarchical, category-like)' : ' (flat, tag-like)',
+				implode( ', ', (array) $tax->object_type ) ?: 'posts'
+			);
+		}
+
+		return $out;
 	}
 
 	/** A stable hash of the current schema, so we can tell when the index is out of date. */
