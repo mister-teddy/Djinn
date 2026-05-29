@@ -6,6 +6,7 @@ namespace Djinn\Admin;
 
 use Djinn\Provider\ModelCatalog;
 use Djinn\Provider\ProxyAccount;
+use Djinn\Rag\IndexStatus;
 use Djinn\Settings;
 use Djinn\Store\Repository;
 use Djinn\Usage\Pricing;
@@ -28,11 +29,11 @@ class AdminPage {
 	public function menu(): void {
 		add_menu_page(
 			'Djinn',
-			'Djinn',
+			'Djinn' . IndexStatus::menuBubble(),
 			'manage_options',
 			self::SLUG,
 			[ $this, 'renderApp' ],
-			'dashicons-lightbulb',
+			self::menuIcon(),
 			58
 		);
 		add_submenu_page( self::SLUG, 'Djinn', 'Lamp', 'manage_options', self::SLUG, [ $this, 'renderApp' ] );
@@ -41,6 +42,20 @@ class AdminPage {
 
 	public function renderApp(): void {
 		echo '<div class="wrap djinn-wrap"><div id="djinn-root"></div></div>';
+	}
+
+	/**
+	 * The lamp menu icon as a base64 SVG data URI (WordPress recolors it to the admin scheme by
+	 * masking). Falls back to the lightbulb dashicon if the asset is missing.
+	 */
+	private static function menuIcon(): string {
+		$svg = file_exists( DJINN_DIR . 'assets/menu-icon.svg' )
+			? file_get_contents( DJINN_DIR . 'assets/menu-icon.svg' )
+			: false;
+		if ( ! is_string( $svg ) || $svg === '' ) {
+			return 'dashicons-lightbulb';
+		}
+		return 'data:image/svg+xml;base64,' . base64_encode( $svg );
 	}
 
 	public function enqueue( string $hook ): void {

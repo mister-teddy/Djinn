@@ -15,7 +15,7 @@ namespace Djinn\Store;
 class Repository {
 
 	/** Bumped whenever the table layout changes; drives maybeUpgrade(). */
-	private const DB_VERSION = 3;
+	private const DB_VERSION = 4;
 
 	private const DB_VERSION_OPTION = 'djinn_db_version';
 
@@ -69,6 +69,7 @@ class Repository {
 				id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 				chat_id BIGINT UNSIGNED NOT NULL,
 				tool_call_id VARCHAR(128) NOT NULL DEFAULT '',
+				kind VARCHAR(20) NOT NULL DEFAULT 'graphql',
 				operation LONGTEXT NOT NULL,
 				variables LONGTEXT NOT NULL,
 				summary TEXT NOT NULL,
@@ -180,13 +181,19 @@ class Repository {
 
 	// ---- Pending wishes ----------------------------------------------------
 
-	public static function createPending( int $chatId, string $toolCallId, string $operation, array $variables, string $summary ): int {
+	/**
+	 * @param string               $kind      'graphql' (operation = the document) or 'rest'
+	 *                                         (operation = the route path, variables = method/body/params).
+	 * @param array<string,mixed>  $variables
+	 */
+	public static function createPending( int $chatId, string $toolCallId, string $kind, string $operation, array $variables, string $summary ): int {
 		global $wpdb;
 		$wpdb->insert(
 			$wpdb->prefix . 'djinn_pending',
 			[
 				'chat_id'      => $chatId,
 				'tool_call_id' => $toolCallId,
+				'kind'         => $kind,
 				'operation'    => $operation,
 				'variables'    => wp_json_encode( $variables ),
 				'summary'      => $summary,

@@ -54,8 +54,21 @@ class AgentLoop {
 			return [ 'status' => 'error', 'message' => 'That wish was already resolved.' ];
 		}
 
+		$isRest   = ( $pending['kind'] ?? 'graphql' ) === 'rest';
+		$toolName = $isRest ? 'rest_call' : 'run_graphql';
+
 		if ( $confirmed ) {
-			$result = $this->executeGraphql( (string) $pending['operation'], (array) $pending['variables'] );
+			if ( $isRest ) {
+				$v      = (array) $pending['variables'];
+				$result = RestRunner::execute(
+					(string) $pending['operation'],
+					(string) ( $v['method'] ?? 'GET' ),
+					(array) ( $v['body'] ?? [] ),
+					(array) ( $v['params'] ?? [] )
+				);
+			} else {
+				$result = $this->executeGraphql( (string) $pending['operation'], (array) $pending['variables'] );
+			}
 			Repository::setPendingStatus( $pendingId, 'confirmed' );
 		} else {
 			$result = [ 'refused' => true, 'message' => 'The user refused this wish; it was not granted.' ];
@@ -67,7 +80,7 @@ class AgentLoop {
 			[
 				'role'         => 'tool',
 				'tool_call_id' => (string) $pending['tool_call_id'],
-				'name'         => 'run_graphql',
+				'name'         => $toolName,
 				'content'      => (string) wp_json_encode( $result ),
 			]
 		);
@@ -143,7 +156,7 @@ class AgentLoop {
 
 				if ( $type === 'mutation' ) {
 					$summary    = (string) ( $call['arguments']['summary'] ?? 'Grant a GraphQL mutation.' );
-					$pendingId  = Repository::createPending( $chatId, (string) $call['id'], $operation, $variables, $summary );
+					$pendingId  = Repository::createPending( $chatId, (string) $call['id'], 'graphql', $operation, $variables, $summary );
 					return [
 						'status'  => 'awaiting_confirmation',
 						'chat_id' => $chatId,
@@ -157,6 +170,46 @@ class AgentLoop {
 				}
 
 				$result = $this->executeGraphql( $operation, $variables );
+				$this->addToolResult( $chatId, $call, $result );
+				continue;
+			}
+
+			if ( $call['name'] === 'rest_call' ) {
+				$method = strtoupper( (string) ( $call['arguments']['method'] ?? 'GET' ) );
+				$path   = (string) ( $call['arguments']['path'] ?? '' );
+				$body   = (array) ( $call['arguments']['body'] ?? [] );
+				$params = (array) ( $call['arguments']['params'] ?? [] );
+
+				if ( $path === '' || $path[0] !== '/' ) {
+					$this->addToolResult( $chatId, $call, [ 'error' => 'path must be a REST route beginning with "/".' ] );
+					continue;
+				}
+
+				// Writes (POST/PUT/PATCH/DELETE) are gated like mutations; the method — not a GraphQL
+				// operation type — is the trustworthy read/write signal for REST.
+				if ( in_array( $method, RestRunner::WRITE_METHODS, true ) ) {
+					$summary   = (string) ( $call['arguments']['summary'] ?? "$method $path" );
+					$pendingId = Repository::createPending(
+						$chatId,
+						(string) $call['id'],
+						'rest',
+						$path,
+						[ 'method' => $method, 'body' => $body, 'params' => $params ],
+						$summary
+					);
+					return [
+						'status'  => 'awaiting_confirmation',
+						'chat_id' => $chatId,
+						'pending' => [
+							'id'        => $pendingId,
+							'summary'   => $summary,
+							'operation' => "$method $path",
+							'variables' => $body,
+						],
+					];
+				}
+
+				$result = RestRunner::execute( $path, $method, $body, $params );
 				$this->addToolResult( $chatId, $call, $result );
 				continue;
 			}
