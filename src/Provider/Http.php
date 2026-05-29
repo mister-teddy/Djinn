@@ -46,4 +46,46 @@ trait Http {
 		}
 		return $json;
 	}
+
+	/**
+	 * POST and stream the response body in chunks (for SSE token streaming). The WordPress HTTP
+	 * API can't surface a streaming body, so this uses cURL directly; callers should fall back to
+	 * postJson() when cURL is unavailable.
+	 *
+	 * @param array<string,string> $headers
+	 * @param array<string,mixed>  $body
+	 * @param callable(string):void $onChunk
+	 */
+	protected function postStream( string $url, array $headers, array $body, callable $onChunk ): void {
+		if ( ! function_exists( 'curl_init' ) ) {
+			throw new RuntimeException( 'Streaming requires the cURL PHP extension.' );
+		}
+		$hdr = [ 'Content-Type: application/json' ];
+		foreach ( $headers as $k => $v ) {
+			$hdr[] = $k . ': ' . $v;
+		}
+		$ch = curl_init( $url );
+		curl_setopt_array( $ch, [
+			CURLOPT_POST           => true,
+			CURLOPT_POSTFIELDS     => wp_json_encode( $body ),
+			CURLOPT_HTTPHEADER     => $hdr,
+			CURLOPT_RETURNTRANSFER => false,
+			CURLOPT_TIMEOUT        => 120,
+			CURLOPT_WRITEFUNCTION  => static function ( $ch, $data ) use ( $onChunk ) {
+				$onChunk( $data );
+				return strlen( $data );
+			},
+		] );
+		$ok   = curl_exec( $ch );
+		$err  = curl_error( $ch );
+		$code = (int) curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+		curl_close( $ch );
+
+		if ( $ok === false && $err ) {
+			throw new RuntimeException( 'LLM stream failed: ' . $err );
+		}
+		if ( $code >= 400 ) {
+			throw new RuntimeException( "LLM stream returned HTTP $code." );
+		}
+	}
 }

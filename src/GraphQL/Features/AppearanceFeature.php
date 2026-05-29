@@ -50,7 +50,7 @@ class AppearanceFeature implements Feature {
 		] );
 		$r->addMutation( 'setAdditionalCss', [
 			'type'        => Type::boolean(),
-			'description' => "Replace the active theme's Additional CSS. Pass the full CSS to apply.",
+			'description' => "Replaces ALL of the active theme's Additional CSS — first read it with the additionalCss query and include any existing CSS you want to keep.",
 			'args'        => [ 'css' => [ 'type' => Type::nonNull( Type::string() ) ] ],
 			'resolve'     => [ $this, 'setAdditionalCss' ],
 		] );

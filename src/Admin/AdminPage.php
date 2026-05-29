@@ -64,6 +64,13 @@ class AdminPage {
 		}
 
 		wp_enqueue_style( 'wp-components' );
+		// Cardo — the app's serif. Loaded from Google Fonts for the Lamp screen only.
+		wp_enqueue_style(
+			'djinn-cardo',
+			'https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&display=swap',
+			[],
+			null
+		);
 		wp_enqueue_script(
 			'djinn-app',
 			DJINN_URL . 'assets/admin.js',
@@ -74,7 +81,7 @@ class AdminPage {
 		wp_enqueue_style(
 			'djinn-app',
 			DJINN_URL . 'assets/admin.css',
-			[ 'wp-components' ],
+			[ 'wp-components', 'djinn-cardo' ],
 			DJINN_VERSION
 		);
 

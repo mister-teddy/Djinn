@@ -85,6 +85,12 @@ class SystemFeature implements Feature {
 			'args'    => [ 'file' => [ 'type' => Type::nonNull( Type::id() ) ] ],
 			'resolve' => [ $this, 'updatePlugin' ],
 		] );
+		$r->addMutation( 'deletePlugin', [
+			'type'        => Type::boolean(),
+			'description' => 'Delete an installed plugin by file. It must be deactivated first.',
+			'args'        => [ 'file' => [ 'type' => Type::nonNull( Type::id() ) ] ],
+			'resolve'     => [ $this, 'deletePlugin' ],
+		] );
 		$r->addMutation( 'installTheme', [
 			'type'        => Type::boolean(),
 			'description' => 'Install a theme from the WordPress.org repository by slug.',
@@ -95,6 +101,12 @@ class SystemFeature implements Feature {
 			'type'    => Type::boolean(),
 			'args'    => [ 'slug' => [ 'type' => Type::nonNull( Type::id() ) ] ],
 			'resolve' => [ $this, 'updateTheme' ],
+		] );
+		$r->addMutation( 'deleteTheme', [
+			'type'        => Type::boolean(),
+			'description' => 'Delete an installed theme by slug. It must not be the active theme.',
+			'args'        => [ 'slug' => [ 'type' => Type::nonNull( Type::id() ) ] ],
+			'resolve'     => [ $this, 'deleteTheme' ],
 		] );
 		$r->addMutation( 'updateCore', [
 			'type'        => Type::string(),
@@ -249,6 +261,40 @@ class SystemFeature implements Feature {
 		wp_update_themes();
 		$upgrader = new Theme_Upgrader( new Automatic_Upgrader_Skin() );
 		$result   = $upgrader->upgrade( (string) $args['slug'] );
+		if ( is_wp_error( $result ) ) {
+			throw new UserError( $result->get_error_message() );
+		}
+		return (bool) $result;
+	}
+
+	/** @param array<string,mixed> $args */
+	public function deletePlugin( $root, array $args ): bool {
+		if ( ! current_user_can( 'delete_plugins' ) ) {
+			throw new UserError( 'You do not have permission to delete plugins.' );
+		}
+		$this->bootstrapUpgrader();
+		$file = (string) $args['file'];
+		if ( is_plugin_active( $file ) ) {
+			throw new UserError( 'Deactivate the plugin before deleting it.' );
+		}
+		$result = delete_plugins( [ $file ] );
+		if ( is_wp_error( $result ) ) {
+			throw new UserError( $result->get_error_message() );
+		}
+		return (bool) $result;
+	}
+
+	/** @param array<string,mixed> $args */
+	public function deleteTheme( $root, array $args ): bool {
+		if ( ! current_user_can( 'delete_themes' ) ) {
+			throw new UserError( 'You do not have permission to delete themes.' );
+		}
+		$this->bootstrapUpgrader();
+		$slug = (string) $args['slug'];
+		if ( get_stylesheet() === $slug || get_template() === $slug ) {
+			throw new UserError( 'You cannot delete the active theme.' );
+		}
+		$result = delete_theme( $slug );
 		if ( is_wp_error( $result ) ) {
 			throw new UserError( $result->get_error_message() );
 		}

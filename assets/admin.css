@@ -18,31 +18,48 @@
 	--djinn-radius: 14px;
 }
 
-/* Remove WP admin's default padding flanking the app. */
+/* ----------- App shell: full-bleed, no page scroll (Lamp page only) -------- */
+/* Strip the WP admin chrome's padding/footer so the app meets every edge. */
+body.toplevel_page_djinn #wpcontent { padding-left: 0; }
+body.toplevel_page_djinn #wpbody-content { padding-bottom: 0; }
+body.toplevel_page_djinn #wpfooter { display: none; }
+body.toplevel_page_djinn #wpbody-content > .notice,
+body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
+
 .djinn-wrap {
-	max-width: 960px;
-	margin: 24px auto 40px;
-	padding: 0 8px;
+	margin: 0;
+	padding: 0;
+	max-width: none;
+	height: calc( 100vh - 32px ); /* fill the viewport below the admin bar */
+	overflow: hidden;
+}
+@media screen and ( max-width: 782px ) {
+	.djinn-wrap { height: calc( 100vh - 46px ); }
 }
 
 #djinn-root {
 	color: var( --djinn-ivory );
+	height: 100%;
+	font-family: 'Cardo', Georgia, 'Times New Roman', serif;
+	font-size: 16px;
 }
 
 /* ----------- Header / brand ------------------------------------------------ */
 .djinn-header {
+	flex: 0 0 auto;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: 16px;
-	margin-bottom: 16px;
-	padding: 18px 22px;
+	margin: 0;
+	padding: 16px 22px;
 	background:
 		radial-gradient( circle at 8% 50%, rgba( 251, 191, 36, 0.18 ), transparent 38% ),
 		linear-gradient( 135deg, var( --djinn-midnight ), var( --djinn-violet ) );
-	border-radius: var( --djinn-radius );
-	border: 1px solid rgba( 251, 191, 36, 0.18 );
-	box-shadow: 0 12px 40px -16px rgba( 15, 10, 30, 0.55 );
+	border: 0;
+	border-bottom: 1px solid rgba( 251, 191, 36, 0.18 );
+	border-radius: 0;
+	box-shadow: none;
 }
 .djinn-brand {
 	display: flex;
@@ -93,14 +110,15 @@
 
 /* ----------- Thread -------------------------------------------------------- */
 .djinn-thread {
-	height: 56vh;
+	flex: 1 1 auto;
+	min-height: 0; /* allow the thread to shrink in the column and scroll internally */
 	overflow-y: auto;
 	padding: 22px;
 	background:
 		radial-gradient( circle at 80% 8%, rgba( 251, 191, 36, 0.08 ), transparent 42% ),
 		linear-gradient( 180deg, var( --djinn-midnight ) 0%, var( --djinn-midnight-2 ) 100% );
-	border: 1px solid rgba( 251, 191, 36, 0.14 );
-	border-radius: var( --djinn-radius );
+	border: 0;
+	border-radius: 0;
 	box-shadow: inset 0 0 60px rgba( 0, 0, 0, 0.35 );
 }
 .djinn-thread-empty {
@@ -245,6 +263,7 @@
 	color: #e2e4e7;
 	border-radius: 8px;
 	overflow-x: auto;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 	font-size: 12px;
 	line-height: 1.5;
 	white-space: pre-wrap;
@@ -288,14 +307,16 @@
 
 /* ----------- Composer ------------------------------------------------------ */
 .djinn-composer {
+	flex: 0 0 auto;
 	display: flex;
 	gap: 10px;
 	align-items: flex-end;
-	margin-top: 16px;
-	padding: 12px;
+	margin: 0;
+	padding: 14px 16px;
 	background: linear-gradient( 135deg, var( --djinn-midnight ), var( --djinn-violet ) );
-	border: 1px solid rgba( 251, 191, 36, 0.2 );
-	border-radius: var( --djinn-radius );
+	border: 0;
+	border-top: 1px solid rgba( 251, 191, 36, 0.2 );
+	border-radius: 0;
 }
 .djinn-input {
 	flex: 1;
@@ -348,8 +369,9 @@
 
 /* ----------- Notices ------------------------------------------------------- */
 .djinn-app .components-notice {
-	margin: 8px 0 12px;
-	border-radius: 10px;
+	flex: 0 0 auto;
+	margin: 0;
+	border-radius: 0;
 }
 
 /* Refresh button next to the header */
@@ -364,31 +386,33 @@
 	border-color: var( --djinn-gold ) !important;
 }
 
-/* ----------- Layout: history sidebar + main -------------------------------- */
-/* Widen the wrap to make room for the conversation rail. */
-.djinn-wrap {
-	max-width: 1180px;
-}
+/* ----------- Layout: history sidebar + main (full-height, flush) ----------- */
 .djinn-layout {
 	display: flex;
-	gap: 16px;
-	align-items: flex-start;
+	gap: 0;
+	align-items: stretch;
+	height: 100%;
 }
 .djinn-app {
 	flex: 1 1 auto;
 	min-width: 0; /* let the thread shrink instead of overflowing */
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
 }
 
 .djinn-sidebar {
-	flex: 0 0 232px;
+	flex: 0 0 240px;
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 	padding: 16px 14px;
 	background: linear-gradient( 160deg, var( --djinn-midnight ), var( --djinn-violet ) );
-	border: 1px solid rgba( 251, 191, 36, 0.16 );
-	border-radius: var( --djinn-radius );
-	box-shadow: 0 12px 40px -16px rgba( 15, 10, 30, 0.55 );
+	border: 0;
+	border-right: 1px solid rgba( 251, 191, 36, 0.16 );
+	border-radius: 0;
+	box-shadow: none;
+	min-height: 0;
 }
 .djinn-newchat.components-button.is-primary {
 	justify-content: center;
@@ -409,7 +433,8 @@
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
-	max-height: 60vh;
+	flex: 1 1 auto;
+	min-height: 0;
 	overflow-y: auto;
 }
 .djinn-history-empty {
@@ -490,8 +515,11 @@
 		flex-direction: column;
 	}
 	.djinn-sidebar {
-		flex-basis: auto;
+		flex: 0 0 auto;
 		width: 100%;
+		max-height: 30vh;
+		border-right: 0;
+		border-bottom: 1px solid rgba( 251, 191, 36, 0.16 );
 	}
 }
 
@@ -566,3 +594,141 @@
 	max-height: 260px;
 	overflow-y: auto;
 }
+
+/* ----------- Markdown in assistant replies --------------------------------- */
+.djinn-md > :first-child { margin-top: 0; }
+.djinn-md > :last-child { margin-bottom: 0; }
+.djinn-md-p { margin: 0 0 8px; line-height: 1.55; }
+.djinn-md-h { margin: 12px 0 6px; line-height: 1.3; color: var( --djinn-ivory ); font-weight: 600; }
+h1.djinn-md-h { font-size: 20px; }
+h2.djinn-md-h { font-size: 18px; }
+h3.djinn-md-h { font-size: 16px; }
+h4.djinn-md-h, h5.djinn-md-h, h6.djinn-md-h { font-size: 14px; }
+.djinn-md-ul, .djinn-md-ol { margin: 4px 0 8px; padding-left: 22px; }
+.djinn-md-ul li, .djinn-md-ol li { margin: 2px 0; line-height: 1.5; }
+.djinn-md a { color: var( --djinn-gold ); text-decoration: underline; text-underline-offset: 2px; }
+.djinn-md a:hover { color: var( --djinn-gold-deep ); }
+.djinn-md-code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 0.88em;
+	background: rgba( 0, 0, 0, 0.35 );
+	border: 1px solid rgba( 255, 255, 255, 0.08 );
+	border-radius: 5px;
+	padding: 1px 5px;
+}
+.djinn-md-pre {
+	margin: 8px 0;
+	padding: 12px 14px;
+	background: rgba( 0, 0, 0, 0.45 );
+	border: 1px solid rgba( 255, 255, 255, 0.06 );
+	border-radius: 8px;
+	overflow-x: auto;
+}
+.djinn-md-pre code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 12px;
+	line-height: 1.5;
+	color: #e2e4e7;
+	white-space: pre;
+}
+.djinn-md-quote {
+	margin: 8px 0;
+	padding: 4px 12px;
+	border-left: 3px solid rgba( 251, 191, 36, 0.5 );
+	color: var( --djinn-ivory-muted );
+}
+.djinn-md-table {
+	border-collapse: collapse;
+	margin: 8px 0;
+	width: 100%;
+	font-size: 13px;
+}
+.djinn-md-table th, .djinn-md-table td {
+	border: 1px solid rgba( 251, 191, 36, 0.18 );
+	padding: 6px 10px;
+	text-align: left;
+}
+.djinn-md-table th { background: rgba( 251, 191, 36, 0.1 ); font-weight: 600; }
+.djinn-md-img { max-width: 100%; height: auto; border-radius: 8px; border: 1px solid rgba( 255, 255, 255, 0.08 ); margin: 6px 0; }
+.djinn-md hr { border: 0; border-top: 1px solid rgba( 251, 191, 36, 0.2 ); margin: 12px 0; }
+
+/* ----------- Result links on an incantation card --------------------------- */
+.djinn-action-links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 8px 0 2px;
+}
+.djinn-action-link-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 10px;
+	border-radius: 999px;
+	background: rgba( 251, 191, 36, 0.1 );
+	border: 1px solid rgba( 251, 191, 36, 0.28 );
+	font-size: 12px;
+}
+.djinn-action-link-label {
+	color: var( --djinn-ivory-muted );
+	max-width: 220px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.djinn-action-link {
+	color: var( --djinn-gold ) !important;
+	text-decoration: none;
+	font-weight: 600;
+}
+.djinn-action-link:hover { color: var( --djinn-gold-deep ) !important; }
+
+/* Download button on an incantation card. */
+.djinn-download.djinn-action-link {
+	display: inline-flex;
+	align-items: center;
+	padding: 5px 12px;
+	border-radius: 999px;
+	background: rgba( 251, 191, 36, 0.14 );
+	border: 1px solid rgba( 251, 191, 36, 0.4 );
+}
+.djinn-download.djinn-action-link:hover { background: rgba( 251, 191, 36, 0.22 ); }
+
+/* ----------- Composer attachments ------------------------------------------ */
+.djinn-composer { flex-direction: column; align-items: stretch; gap: 8px; }
+.djinn-composer-row { display: flex; gap: 10px; align-items: flex-end; }
+.djinn-attach.components-button {
+	height: 44px;
+	width: 44px;
+	justify-content: center;
+	font-size: 18px;
+	background: rgba( 255, 255, 255, 0.06 ) !important;
+	color: var( --djinn-ivory ) !important;
+	border: 1px solid rgba( 251, 191, 36, 0.3 ) !important;
+	border-radius: 10px !important;
+}
+.djinn-attach.components-button:hover:not(:disabled) { border-color: var( --djinn-gold ) !important; }
+.djinn-attach-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	align-self: flex-start;
+	max-width: 100%;
+	padding: 4px 6px 4px 12px;
+	border-radius: 999px;
+	background: rgba( 251, 191, 36, 0.12 );
+	border: 1px solid rgba( 251, 191, 36, 0.3 );
+	color: var( --djinn-ivory );
+	font-size: 12px;
+}
+.djinn-attach-x {
+	border: 0;
+	background: rgba( 0, 0, 0, 0.25 );
+	color: var( --djinn-ivory );
+	border-radius: 50%;
+	width: 18px;
+	height: 18px;
+	line-height: 1;
+	cursor: pointer;
+}
+.djinn-attach-x:hover { background: rgba( 248, 113, 113, 0.4 ); }

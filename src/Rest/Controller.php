@@ -5,6 +5,7 @@ declare( strict_types=1 );
 namespace Djinn\Rest;
 
 use Djinn\Engine\AgentLoop;
+use Djinn\Files\Downloads;
 use Djinn\GraphQL\Runner;
 use Djinn\Rag\Indexer;
 use Djinn\Store\Repository;
@@ -30,6 +31,12 @@ class Controller {
 			'methods'             => 'POST',
 			'permission_callback' => $auth,
 			'callback'            => [ $this, 'wish' ],
+		] );
+
+		register_rest_route( self::NS, '/wish/stream', [
+			'methods'             => 'POST',
+			'permission_callback' => $auth,
+			'callback'            => [ $this, 'wishStream' ],
 		] );
 
 		register_rest_route( self::NS, '/grant', [
@@ -61,6 +68,73 @@ class Controller {
 			'permission_callback' => $auth,
 			'callback'            => [ $this, 'usage' ],
 		] );
+
+		register_rest_route( self::NS, '/download', [
+			'methods'             => 'GET',
+			'permission_callback' => $auth,
+			'callback'            => [ $this, 'download' ],
+		] );
+
+		register_rest_route( self::NS, '/upload', [
+			'methods'             => 'POST',
+			'permission_callback' => $auth,
+			'callback'            => [ $this, 'upload' ],
+		] );
+	}
+
+	/**
+	 * Accept a chat attachment, store it in the private dir, and return a token the model can pass
+	 * to import tools (e.g. importWxr). Type-restricted; nonce + manage_options enforced.
+	 */
+	public function upload( WP_REST_Request $req ): WP_REST_Response {
+		$f = $_FILES['file'] ?? null; // phpcs:ignore WordPress.Security.NonceVerification — REST nonce already checked
+		if ( ! is_array( $f ) || ( $f['error'] ?? UPLOAD_ERR_NO_FILE ) !== UPLOAD_ERR_OK ) {
+			return new WP_REST_Response( [ 'message' => 'No file was uploaded.' ], 400 );
+		}
+		if ( (int) $f['size'] > wp_max_upload_size() ) {
+			return new WP_REST_Response( [ 'message' => 'That file is too large.' ], 413 );
+		}
+		$check   = wp_check_filetype_and_ext( $f['tmp_name'], $f['name'] );
+		$ext     = strtolower( (string) ( $check['ext'] ?: pathinfo( $f['name'], PATHINFO_EXTENSION ) ) );
+		$allowed = [ 'xml', 'json', 'csv', 'txt', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'zip' ];
+		if ( ! in_array( $ext, $allowed, true ) ) {
+			return new WP_REST_Response( [ 'message' => "Unsupported file type: .$ext" ], 415 );
+		}
+
+		$dir  = Downloads::dir();
+		$name = wp_unique_filename( $dir, sanitize_file_name( $f['name'] ) );
+		$path = trailingslashit( $dir ) . $name;
+		if ( ! @move_uploaded_file( $f['tmp_name'], $path ) ) {
+			return new WP_REST_Response( [ 'message' => 'Could not store the upload.' ], 500 );
+		}
+		$mime = $check['type'] ?: 'application/octet-stream';
+		return new WP_REST_Response( [
+			'token'    => Downloads::register( $path, $name, $mime ),
+			'filename' => $name,
+			'mime'     => $mime,
+			'size'     => (int) filesize( $path ),
+		] );
+	}
+
+	/**
+	 * Stream a generated export/dump for download by its short-lived token, then exit (we set our
+	 * own headers, so this bypasses WP_REST_Response). The token maps to a file in the private dir.
+	 */
+	public function download( WP_REST_Request $req ) {
+		$file = Downloads::resolve( (string) $req->get_param( 'token' ) );
+		if ( ! $file ) {
+			return new WP_REST_Response( [ 'message' => 'That download has expired or does not exist.' ], 404 );
+		}
+		nocache_headers();
+		header( 'Content-Type: ' . ( $file['mime'] ?: 'application/octet-stream' ) );
+		header( 'Content-Disposition: attachment; filename="' . basename( $file['filename'] ) . '"' );
+		header( 'Content-Length: ' . filesize( $file['path'] ) );
+		header( 'X-Content-Type-Options: nosniff' );
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+		readfile( $file['path'] );
+		exit;
 	}
 
 	public function canManage(): bool {
@@ -81,6 +155,50 @@ class Controller {
 		}
 
 		return new WP_REST_Response( ( new AgentLoop() )->run( $chatId, $text ) );
+	}
+
+	/**
+	 * Like wish(), but streams the turn over Server-Sent Events: an 'open' event with the chat_id,
+	 * then 'step'/'delta' events, and a terminal 'done' | 'pending' | 'error'. Bypasses
+	 * WP_REST_Response (we own the headers) and exits.
+	 */
+	public function wishStream( WP_REST_Request $req ) {
+		$text = trim( (string) $req->get_param( 'message' ) );
+		if ( $text === '' ) {
+			return new WP_REST_Response( [ 'status' => 'error', 'message' => 'Whisper something.' ], 400 );
+		}
+		$chatId = (int) $req->get_param( 'chat_id' );
+		if ( $chatId <= 0 ) {
+			$chatId = Repository::createChat( get_current_user_id(), $text );
+		} elseif ( ! $this->ownsChat( $chatId ) ) {
+			return new WP_REST_Response( [ 'status' => 'error', 'message' => 'Not your lamp.' ], 403 );
+		}
+
+		$this->openStream();
+		$emit = static function ( string $event, array $data ): void {
+			echo 'event: ' . $event . "\n";
+			echo 'data: ' . wp_json_encode( $data ) . "\n\n";
+			@ob_flush();
+			@flush();
+		};
+		$emit( 'open', [ 'chat_id' => $chatId ] );
+		( new AgentLoop() )->streamRun( $chatId, $text, $emit );
+		exit;
+	}
+
+	/** Prepare the request for Server-Sent Events: kill buffering, set streaming headers. */
+	private function openStream(): void {
+		@ini_set( 'zlib.output_compression', '0' );
+		@ini_set( 'output_buffering', '0' );
+		@ini_set( 'implicit_flush', '1' );
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+		ob_implicit_flush( true );
+		nocache_headers();
+		header( 'Content-Type: text/event-stream; charset=utf-8' );
+		header( 'Cache-Control: no-cache, no-transform' );
+		header( 'X-Accel-Buffering: no' );
 	}
 
 	public function grant( WP_REST_Request $req ): WP_REST_Response {

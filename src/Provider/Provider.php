@@ -28,6 +28,17 @@ interface Provider {
 	public function chat( string $system, array $messages, array $tools ): array;
 
 	/**
+	 * Streaming variant of chat(): identical return shape, but text deltas are passed to $onDelta
+	 * as they arrive. Adapters that can't stream may emit the whole content as a single delta.
+	 *
+	 * @param array<int,array<string,mixed>> $messages
+	 * @param array<int,array<string,mixed>> $tools
+	 * @param callable(string):void          $onDelta
+	 * @return array{content:?string,tool_calls:array<int,array{id:string,name:string,arguments:array}>}
+	 */
+	public function chatStream( string $system, array $messages, array $tools, callable $onDelta ): array;
+
+	/**
 	 * Embed a batch of texts.
 	 *
 	 * @param array<int,string> $texts

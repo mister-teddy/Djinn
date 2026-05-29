@@ -33,6 +33,21 @@ class UsersFeature implements Feature {
 			'resolve'     => [ $this, 'createUser' ],
 		] );
 
+		$r->addMutation( 'updateUser', [
+			'type'        => $user,
+			'description' => 'Update a user\'s profile: display name, email, first/last name, website, or password.',
+			'args'        => [
+				'id'          => [ 'type' => Type::nonNull( Type::id() ) ],
+				'displayName' => [ 'type' => Type::string() ],
+				'email'       => [ 'type' => Type::string() ],
+				'firstName'   => [ 'type' => Type::string() ],
+				'lastName'    => [ 'type' => Type::string() ],
+				'url'         => [ 'type' => Type::string() ],
+				'password'    => [ 'type' => Type::string() ],
+			],
+			'resolve'     => [ $this, 'updateUser' ],
+		] );
+
 		$r->addMutation( 'updateUserRole', [
 			'type'        => Type::boolean(),
 			'description' => 'Set a user\'s role (replaces existing roles).',
@@ -86,6 +101,36 @@ class UsersFeature implements Feature {
 		);
 		if ( is_wp_error( $id ) ) {
 			throw new UserError( $id->get_error_message() );
+		}
+		return $this->shape( get_userdata( $id ) );
+	}
+
+	/** @param array<string,mixed> $args */
+	public function updateUser( $root, array $args ): array {
+		$id = (int) $args['id'];
+		if ( ! current_user_can( 'edit_user', $id ) ) {
+			throw new UserError( 'You do not have permission to edit this user.' );
+		}
+		if ( ! get_userdata( $id ) ) {
+			throw new UserError( 'No such user.' );
+		}
+		$data = [ 'ID' => $id ];
+		$map  = [
+			'displayName' => 'display_name',
+			'email'       => 'user_email',
+			'firstName'   => 'first_name',
+			'lastName'    => 'last_name',
+			'url'         => 'user_url',
+			'password'    => 'user_pass',
+		];
+		foreach ( $map as $in => $col ) {
+			if ( isset( $args[ $in ] ) && $args[ $in ] !== '' ) {
+				$data[ $col ] = (string) $args[ $in ];
+			}
+		}
+		$res = wp_update_user( $data );
+		if ( is_wp_error( $res ) ) {
+			throw new UserError( $res->get_error_message() );
 		}
 		return $this->shape( get_userdata( $id ) );
 	}
