@@ -99,6 +99,12 @@ after editing), `make cli "<wp-cli args>"`, `make logs`, `make down` (stop), `ma
 The chat keeps a history sidebar (reopened across reloads), shows the exact GraphQL it ran (with
 the response), and meters tokens + cost per conversation. **Djinn → Spend** has the running total.
 
+Replies are **rich**: Markdown (headings, lists, tables, code, images), **View/Edit links** to
+whatever a wish touched, and **token streaming** (live typing, with step progress). You can
+**attach a file** (📎) for the Djinn to import, and ask it to **export** content (WXR) or **back
+up the database** (SQL) — both returned as gated download links. Streaming uses Server-Sent Events
+on direct OpenAI/Gemini; the hosted proxy edition replies in one shot (no SSE passthrough yet).
+
 ## What it costs
 
 Every provider call is metered (**Djinn → Spend**). Measured from real local usage on
@@ -191,6 +197,6 @@ The ORG data-use disclosure for WordPress.org is in [`docs/PRIVACY-DISCLOSURE.md
 Known next steps:
 
 - The ORG **sign-up + Stripe billing** service (email verify, SetupIntent, top-up page).
-- Token-by-token streaming (the loop is synchronous; the UI shows step progress).
+- SSE passthrough in the Rust proxy (so the ORG edition streams too).
 - API-key encryption at rest.
 - A proper `@wordpress/scripts` (JSX/TypeScript) build for the front-end.

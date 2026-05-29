@@ -40,6 +40,48 @@ class AgentLoop {
 	}
 
 	/**
+	 * Streaming variant of run(): drives the loop with an emitter that pushes 'step'/'delta'
+	 * events, then emits a terminal 'done' | 'pending' | 'error' event. The transcript is persisted
+	 * identically to run(), so a later reload shows the same canonical history.
+	 *
+	 * @param callable(string,array):void $emit
+	 */
+	public function streamRun( int $chatId, string $userText, callable $emit ): void {
+		Repository::addMessage( $chatId, [ 'role' => 'user', 'content' => Guard::sanitize( $userText ) ] );
+		ProxyProvider::markNewWish();
+
+		try {
+			$result = $this->loop( $chatId, $emit );
+		} catch ( Throwable $e ) {
+			$emit( 'error', [ 'message' => $e->getMessage(), 'chat_id' => $chatId ] );
+			return;
+		}
+		$result = $this->attachUsage( $chatId, $result );
+
+		$status = $result['status'] ?? 'complete';
+		if ( $status === 'awaiting_confirmation' ) {
+			$emit( 'pending', $result );
+		} elseif ( $status === 'error' ) {
+			$emit( 'error', $result );
+		} else {
+			$emit( 'done', $result );
+		}
+	}
+
+	private function stepLabel( string $tool ): string {
+		switch ( $tool ) {
+			case 'search_schema':
+				return 'Consulting the schema…';
+			case 'run_graphql':
+				return 'Composing the incantation…';
+			case 'rest_call':
+				return 'Reaching into WordPress…';
+			default:
+				return 'Working…';
+		}
+	}
+
+	/**
 	 * Resume after the user granted or refused a pending wish. We append the tool result for
 	 * the paused run_graphql call, then continue the loop.
 	 *
@@ -99,8 +141,12 @@ class AgentLoop {
 		return $result;
 	}
 
-	/** @return array<string,mixed> */
-	private function loop( int $chatId ): array {
+	/**
+	 * @param callable(string,array):void|null $emit When set, the turn streams: text deltas are
+	 *        sent as 'delta' events and each tool step as a 'step' event.
+	 * @return array<string,mixed>
+	 */
+	private function loop( int $chatId, ?callable $emit = null ): array {
 		// Attribute every provider call in this run (chat + schema-search embeddings) to the chat.
 		UsageRecorder::forChat( $chatId );
 
@@ -112,7 +158,9 @@ class AgentLoop {
 			$history = Repository::getMessages( $chatId );
 
 			try {
-				$turn = $provider->chat( $system, $history, $tools );
+				$turn = $emit
+					? $provider->chatStream( $system, $history, $tools, static fn( $d ) => $emit( 'delta', [ 'token' => $d ] ) )
+					: $provider->chat( $system, $history, $tools );
 			} catch ( Throwable $e ) {
 				return [ 'status' => 'error', 'message' => $e->getMessage(), 'chat_id' => $chatId ];
 			}
@@ -128,6 +176,9 @@ class AgentLoop {
 
 			// Handle exactly one tool call to keep the history consistent.
 			$call = $calls[0];
+			if ( $emit ) {
+				$emit( 'step', [ 'label' => $this->stepLabel( (string) $call['name'] ) ] );
+			}
 			Repository::addMessage(
 				$chatId,
 				[

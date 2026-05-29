@@ -24,6 +24,7 @@ class Resolvers {
 			'type'     => $post->post_type,
 			'slug'     => $post->post_name,
 			'link'     => (string) get_permalink( $post ),
+			'editUrl'  => (string) get_edit_post_link( $post->ID, 'raw' ),
 			'date'     => $post->post_date_gmt,
 			'authorId' => (string) $post->post_author,
 		];

@@ -38,7 +38,8 @@ class SchemaFactory {
 					'status'   => [ 'type' => Type::string(), 'description' => 'publish, draft, pending, private, etc.' ],
 					'type'     => [ 'type' => Type::string(), 'description' => 'The post type (post, page, ...).' ],
 					'slug'     => [ 'type' => Type::string() ],
-					'link'     => [ 'type' => Type::string(), 'description' => 'The permalink.' ],
+					'link'     => [ 'type' => Type::string(), 'description' => 'The public permalink (to view).' ],
+					'editUrl'  => [ 'type' => Type::string(), 'description' => 'The wp-admin edit URL.' ],
 					'date'     => [ 'type' => Type::string(), 'description' => 'Publish date (GMT, ISO-ish).' ],
 					'authorId' => [ 'type' => Type::id() ],
 				],
@@ -192,11 +193,18 @@ class SchemaFactory {
 		$features = [
 			new Features\MetaFeature(),
 			new Features\AppearanceFeature(),
+			new Features\MenusFeature(),
+			new Features\WidgetsFeature(),
+			new Features\CustomizerFeature(),
+			new Features\SiteEditorFeature(),
 			new Features\TaxonomyFeature(),
 			new Features\CommentsFeature(),
 			new Features\UsersFeature(),
 			new Features\MediaFeature(),
+			new Features\SettingsFeature(),
 			new Features\SystemFeature(),
+			new Features\ToolsFeature(),
+			new Features\CronFeature(),
 			new Features\RestFeature(),
 		];
 

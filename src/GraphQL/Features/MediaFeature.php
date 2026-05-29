@@ -52,6 +52,19 @@ class MediaFeature implements Feature {
 			'resolve'     => [ $this, 'sideloadMedia' ],
 		] );
 
+		$r->addMutation( 'updateMedia', [
+			'type'        => $media,
+			'description' => 'Update a media item\'s title, alt text, caption, or description.',
+			'args'        => [
+				'id'          => [ 'type' => Type::nonNull( Type::id() ) ],
+				'title'       => [ 'type' => Type::string() ],
+				'altText'     => [ 'type' => Type::string(), 'description' => 'Alt text (accessibility) for images.' ],
+				'caption'     => [ 'type' => Type::string() ],
+				'description' => [ 'type' => Type::string() ],
+			],
+			'resolve'     => [ $this, 'updateMedia' ],
+		] );
+
 		$r->addMutation( 'setFeaturedImage', [
 			'type'        => Type::boolean(),
 			'description' => 'Set a post\'s featured image to a media item.',
@@ -112,6 +125,37 @@ class MediaFeature implements Feature {
 			throw new UserError( $id->get_error_message() );
 		}
 		return $this->shape( get_post( (int) $id ) );
+	}
+
+	/** @param array<string,mixed> $args */
+	public function updateMedia( $root, array $args ): array {
+		$id = (int) $args['id'];
+		if ( get_post_type( $id ) !== 'attachment' ) {
+			throw new UserError( "No media item with id $id." );
+		}
+		if ( ! current_user_can( 'edit_post', $id ) ) {
+			throw new UserError( 'You do not have permission to edit this media item.' );
+		}
+		$post = [ 'ID' => $id ];
+		if ( isset( $args['title'] ) ) {
+			$post['post_title'] = (string) $args['title'];
+		}
+		if ( isset( $args['caption'] ) ) {
+			$post['post_excerpt'] = (string) $args['caption'];
+		}
+		if ( isset( $args['description'] ) ) {
+			$post['post_content'] = (string) $args['description'];
+		}
+		if ( count( $post ) > 1 ) {
+			$res = wp_update_post( $post, true );
+			if ( is_wp_error( $res ) ) {
+				throw new UserError( $res->get_error_message() );
+			}
+		}
+		if ( isset( $args['altText'] ) ) {
+			update_post_meta( $id, '_wp_attachment_image_alt', (string) $args['altText'] );
+		}
+		return $this->shape( get_post( $id ) );
 	}
 
 	/** @param array<string,mixed> $args */

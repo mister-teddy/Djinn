@@ -84,6 +84,82 @@ class OpenAIProvider implements Provider {
 		];
 	}
 
+	public function chatStream( string $system, array $messages, array $tools, callable $onDelta ): array {
+		$payload = [
+			'model'          => $this->chatModel,
+			'stream'         => true,
+			'stream_options' => [ 'include_usage' => true ],
+			'messages'       => array_merge( [ [ 'role' => 'system', 'content' => $system ] ], array_map( [ $this, 'mapMessage' ], $messages ) ),
+		];
+		if ( ! empty( $tools ) ) {
+			$payload['tools']       = array_map( [ $this, 'mapTool' ], $tools );
+			$payload['tool_choice'] = 'auto';
+		}
+
+		$content = '';
+		$calls   = []; // index => ['id','name','arguments'(string)]
+		$usage   = [];
+		$buffer  = '';
+
+		$this->postStream( $this->chatUrl(), $this->headers(), $payload, function ( $chunk ) use ( &$buffer, &$content, &$calls, &$usage, $onDelta ) {
+			$buffer .= $chunk;
+			while ( ( $nl = strpos( $buffer, "\n" ) ) !== false ) {
+				$line   = trim( substr( $buffer, 0, $nl ) );
+				$buffer = substr( $buffer, $nl + 1 );
+				if ( $line === '' || strpos( $line, 'data:' ) !== 0 ) {
+					continue;
+				}
+				$data = trim( substr( $line, 5 ) );
+				if ( $data === '[DONE]' ) {
+					return;
+				}
+				$json = json_decode( $data, true );
+				if ( ! is_array( $json ) ) {
+					continue;
+				}
+				if ( isset( $json['usage'] ) ) {
+					$usage = $json['usage'];
+				}
+				$delta = $json['choices'][0]['delta'] ?? [];
+				if ( isset( $delta['content'] ) && $delta['content'] !== null && $delta['content'] !== '' ) {
+					$content .= $delta['content'];
+					$onDelta( (string) $delta['content'] );
+				}
+				foreach ( $delta['tool_calls'] ?? [] as $tc ) {
+					$idx = (int) ( $tc['index'] ?? 0 );
+					if ( ! isset( $calls[ $idx ] ) ) {
+						$calls[ $idx ] = [ 'id' => '', 'name' => '', 'arguments' => '' ];
+					}
+					if ( isset( $tc['id'] ) ) {
+						$calls[ $idx ]['id'] = (string) $tc['id'];
+					}
+					if ( isset( $tc['function']['name'] ) ) {
+						$calls[ $idx ]['name'] .= (string) $tc['function']['name'];
+					}
+					if ( isset( $tc['function']['arguments'] ) ) {
+						$calls[ $idx ]['arguments'] .= (string) $tc['function']['arguments'];
+					}
+				}
+			}
+		} );
+
+		UsageRecorder::record(
+			$this->providerLabel(),
+			$this->chatModel,
+			'chat',
+			(int) ( $usage['prompt_tokens'] ?? 0 ),
+			(int) ( $usage['completion_tokens'] ?? 0 )
+		);
+
+		ksort( $calls );
+		$toolCalls = array_map(
+			static fn( $c ) => [ 'id' => $c['id'], 'name' => $c['name'], 'arguments' => json_decode( $c['arguments'] ?: '{}', true ) ?: [] ],
+			array_values( $calls )
+		);
+
+		return [ 'content' => $content !== '' ? $content : null, 'tool_calls' => $toolCalls ];
+	}
+
 	public function embed( array $texts ): array {
 		if ( empty( $texts ) ) {
 			return [];

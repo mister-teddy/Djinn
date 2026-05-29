@@ -42,6 +42,7 @@ rsync -a --exclude-from=- ./ "$STAGE/" <<'EXCL'
 /.env.example
 /.gitignore
 /.djinn-seed.json
+/CLAUDE.md
 /djinn-docs.pdf
 *.zip
 .DS_Store

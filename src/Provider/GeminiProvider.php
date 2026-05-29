@@ -68,6 +68,65 @@ class GeminiProvider implements Provider {
 		return [ 'content' => $text, 'tool_calls' => $toolCalls ];
 	}
 
+	public function chatStream( string $system, array $messages, array $tools, callable $onDelta ): array {
+		$payload = [
+			'systemInstruction' => [ 'parts' => [ [ 'text' => $system ] ] ],
+			'contents'          => array_map( [ $this, 'mapMessage' ], $messages ),
+		];
+		if ( ! empty( $tools ) ) {
+			$payload['tools']      = [ [ 'functionDeclarations' => array_map( [ $this, 'mapTool' ], $tools ) ] ];
+			$payload['toolConfig'] = [ 'functionCallingConfig' => [ 'mode' => 'AUTO' ] ];
+		}
+
+		$url = self::BASE . rawurlencode( $this->chatModel ) . ':streamGenerateContent?alt=sse&key=' . rawurlencode( $this->apiKey );
+
+		$text      = '';
+		$toolCalls = [];
+		$usage     = [];
+		$buffer    = '';
+
+		$this->postStream( $url, [], $payload, function ( $chunk ) use ( &$buffer, &$text, &$toolCalls, &$usage, $onDelta ) {
+			$buffer .= $chunk;
+			while ( ( $nl = strpos( $buffer, "\n" ) ) !== false ) {
+				$line   = trim( substr( $buffer, 0, $nl ) );
+				$buffer = substr( $buffer, $nl + 1 );
+				if ( $line === '' || strpos( $line, 'data:' ) !== 0 ) {
+					continue;
+				}
+				$json = json_decode( trim( substr( $line, 5 ) ), true );
+				if ( ! is_array( $json ) ) {
+					continue;
+				}
+				if ( isset( $json['usageMetadata'] ) ) {
+					$usage = $json['usageMetadata'];
+				}
+				foreach ( $json['candidates'][0]['content']['parts'] ?? [] as $part ) {
+					if ( isset( $part['text'] ) && $part['text'] !== '' ) {
+						$text .= $part['text'];
+						$onDelta( (string) $part['text'] );
+					}
+					if ( isset( $part['functionCall'] ) ) {
+						$toolCalls[] = [
+							'id'        => 'gemini-' . count( $toolCalls ),
+							'name'      => (string) ( $part['functionCall']['name'] ?? '' ),
+							'arguments' => (array) ( $part['functionCall']['args'] ?? [] ),
+						];
+					}
+				}
+			}
+		} );
+
+		UsageRecorder::record(
+			'gemini',
+			$this->chatModel,
+			'chat',
+			(int) ( $usage['promptTokenCount'] ?? 0 ),
+			(int) ( $usage['candidatesTokenCount'] ?? 0 )
+		);
+
+		return [ 'content' => $text !== '' ? $text : null, 'tool_calls' => $toolCalls ];
+	}
+
 	public function embed( array $texts ): array {
 		if ( empty( $texts ) ) {
 			return [];

@@ -44,4 +44,16 @@ class ProxyProvider extends OpenAIProvider {
 	protected function extraHeaders(): array {
 		return $this->sendNewWish ? [ 'X-Djinn-New-Wish' => '1' ] : [];
 	}
+
+	/**
+	 * The hosted proxy buffers responses (no SSE passthrough yet), so we can't truly stream through
+	 * it — run the normal request and emit the full reply as one delta.
+	 */
+	public function chatStream( string $system, array $messages, array $tools, callable $onDelta ): array {
+		$turn = $this->chat( $system, $messages, $tools );
+		if ( ! empty( $turn['content'] ) ) {
+			$onDelta( (string) $turn['content'] );
+		}
+		return $turn;
+	}
 }
