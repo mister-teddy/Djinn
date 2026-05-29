@@ -32,7 +32,7 @@ await page.waitForLoadState( 'networkidle' );
 await page.goto( `${ BASE }/wp-admin/admin.php?page=djinn`, { waitUntil: 'networkidle' } );
 await page.addStyleTag( { content: `
 	html,body{margin:0!important;padding:0!important;background:#160e2e!important;overflow:hidden!important}
-	#adminmenumain,#wpadminbar,#wpfooter,#screen-meta,#screen-meta-links{display:none!important}
+	#adminmenumain,#wpadminbar,#wpfooter,#screen-meta,#screen-meta-links,.update-nag,#update-nag{display:none!important}
 	#wpwrap,#wpcontent,#wpbody,#wpbody-content{margin:0!important;padding:0!important}
 	.wrap.djinn-wrap{margin:0!important;padding:0!important;max-width:none!important}
 	#djinn-root{width:100vw!important}
