@@ -1,0 +1,83 @@
+name: Release
+
+# Tag a version (e.g. `git tag v0.4.0 && git push --tags`) to build every artifact and publish a
+# GitHub Release. Also runnable on demand for a dry run (skips publishing unless a tag is given).
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # create the release + upload assets
+
+jobs:
+  release:
+    runs-on: ubuntu-latest   # has Docker, make, zip — everything the build needs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP + Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # The mounted plugin must boot in wp-env, so its prod deps have to exist first.
+      - name: Install Composer deps
+        run: composer install --no-interaction --prefer-dist
+
+      # 1) Installable ZIPs — both editions (each stamps its own DJINN_EDITION + fresh prod vendor).
+      - name: Build edition ZIPs
+        run: |
+          make dist byo
+          make dist org
+
+      # 2) Showcase — boot the real app, seed canned conversations, screenshot the live UI.
+      #    The PNGs are consumed by the docs step below (embedded in the PDF), not uploaded loose.
+      - name: Capture showcase screenshots
+        run: |
+          set -e
+          SLUG=$(basename "$PWD")
+          npm install --global @wordpress/env
+          wp-env start
+          wp-env run cli wp plugin activate "$SLUG"
+          wp-env run cli wp eval-file "wp-content/plugins/$SLUG/bin/seed-showcase.php"
+          npm install playwright@1.60.0
+          npx playwright install --with-deps chromium
+          node bin/showcase-shots.mjs
+
+      # 3) Docs — both variants. build-docs.sh embeds the screenshots captured above.
+      - name: Build docs (with showcases embedded)
+        run: |
+          make docs
+          make docs compact
+
+      - name: Stop wp-env
+        if: always()
+        run: wp-env stop || true
+
+      # 4) Publish the release with the zips + the showcase-bearing PDFs.
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.zip
+            djinn-docs.pdf
+            djinn-docs-compact.pdf
+          generate_release_notes: true
+
+      # On a manual dry run (no tag), keep the artifacts for inspection instead of releasing.
+      - name: Upload artifacts (dry run)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: djinn-release-${{ github.sha }}
+          path: |
+            dist/*.zip
+            djinn-docs.pdf
+            djinn-docs-compact.pdf

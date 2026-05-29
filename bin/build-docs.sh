@@ -65,6 +65,17 @@ lang_for() {
 
 	# 1) Prose docs, rendered: the README, anything under docs/, then the proxy docs.
 	cat README.md
+
+	# Showcase: embed the captured Lamp screenshots (bin/showcase-shots.mjs), if present, so the
+	# manual carries them instead of shipping loose image files. Graceful when none exist.
+	if compgen -G "build/screenshots/*.png" > /dev/null; then
+		printf '\n\n\\newpage\n\n# Showcase\n\nThe Lamp, granting real wishes — captured from the live UI.\n\n'
+		for img in build/screenshots/*.png; do
+			cap=$( basename "$img" .png | sed -E 's/^[0-9]+-//; s/-/ /g' )
+			printf '![%s](%s){ width=100%% }\n\n' "$cap" "$img"
+		done
+	fi
+
 	for d in docs/*.md; do
 		[ -f "$d" ] || continue
 		printf '\n\n\\newpage\n\n'
