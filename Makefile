@@ -20,7 +20,7 @@ WP := $(WPENV) run cli wp
 # wp-env mounts this directory as a plugin under its folder name (case-sensitive).
 SLUG := $(notdir $(CURDIR))
 
-.PHONY: up start restart check activate seed lamp cli logs down destroy open docs dist
+.PHONY: up start restart check activate seed lamp cli logs down destroy open docs dist release
 
 up: start activate seed
 	@echo ""
@@ -97,6 +97,21 @@ docs:
 # `make dist org` or `make dist EDITION=org` for the WordPress.org build; default is byo.
 dist:
 	bash bin/build-dist.sh "$(or $(EDITION),$(filter-out dist,$(MAKECMDGOALS)))"
+
+# Cut a release: verify the version is identical in all three spots, then tag it and push the tag,
+# which fires the GitHub "Release" workflow (builds the BYO + ORG zips + docs, publishes a Release).
+# Bump DJINN_VERSION + the plugin header + readme.txt's Stable tag together, commit, then `make release`.
+release:
+	@VER=$$(grep -oE "DJINN_VERSION', '[^']+" djinn.php | cut -d"'" -f3); \
+		HDR=$$(grep -oE "Version:[[:space:]]+[^[:space:]]+" djinn.php | head -1 | awk '{print $$2}'); \
+		TAG=$$(grep -i "Stable tag:" readme.txt | head -1 | awk '{print $$NF}'); \
+		test -n "$$VER" || { echo "✗ Could not read DJINN_VERSION from djinn.php."; exit 1; }; \
+		{ [ "$$VER" = "$$HDR" ] && [ "$$VER" = "$$TAG" ]; } || { echo "✗ Version drift — DJINN_VERSION=$$VER · plugin header=$$HDR · readme.txt Stable tag=$$TAG. Make all three match first."; exit 1; }; \
+		test -z "$$(git status --porcelain)" || { echo "✗ Working tree not clean — commit first; the release builds the tagged commit."; exit 1; }; \
+		if git rev-parse "v$$VER" >/dev/null 2>&1; then echo "✗ Tag v$$VER already exists — bump the version first."; exit 1; fi; \
+		echo "→ Releasing v$$VER (header, DJINN_VERSION, Stable tag all match)…"; \
+		git push origin HEAD && git tag "v$$VER" && git push origin "v$$VER" && \
+		echo "✔  Pushed tag v$$VER — the Release workflow is now building it on GitHub."
 
 # Swallow extra goals so `make cli "plugin list"` doesn't error on the trailing words.
 %:
