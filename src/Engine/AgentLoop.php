@@ -158,7 +158,9 @@ class AgentLoop {
 		UsageRecorder::forChat( $chatId );
 
 		$provider = ProviderFactory::make();
-		$system   = SystemPrompt::build();
+		ProxyProvider::setConversation( (string) $chatId );
+		$override = SystemPrompt::orgOverride();
+		$system   = $override !== '' ? $override : SystemPrompt::build();
 		$tools    = Tools::specs();
 		$stalls   = 0;
 

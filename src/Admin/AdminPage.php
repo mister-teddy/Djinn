@@ -59,10 +59,15 @@ class AdminPage {
 	}
 
 	public function enqueue( string $hook ): void {
-		if ( $hook !== 'toplevel_page_' . self::SLUG ) {
-			return;
+		if ( $hook === 'toplevel_page_' . self::SLUG ) {
+			$this->enqueueApp();
+		} elseif ( $hook === 'djinn_page_' . self::SETTINGS_SLUG && Settings::isOrg() ) {
+			$this->enqueueBilling();
 		}
+	}
 
+	/** The no-build React app for the Lamp screen. */
+	private function enqueueApp(): void {
 		wp_enqueue_style( 'wp-components' );
 		// Cardo — the app's serif. Loaded from Google Fonts for the Lamp screen only.
 		wp_enqueue_style(
@@ -98,6 +103,76 @@ class AdminPage {
 				'siteName'    => get_option( 'blogname' ),
 			]
 		);
+	}
+
+	/**
+	 * ORG settings page only: Stripe.js (the one sanctioned remote script) + the in-admin card
+	 * form's logic. The form calls our own REST relay (/billing-intent), so the site token never
+	 * leaves the server and there's no cross-origin request.
+	 */
+	private function enqueueBilling(): void {
+		wp_enqueue_script( 'stripe-js', 'https://js.stripe.com/v3/', [], null, true );
+		wp_register_script( 'djinn-billing', false, [ 'stripe-js' ], DJINN_VERSION, true );
+		wp_enqueue_script( 'djinn-billing' );
+		wp_localize_script(
+			'djinn-billing',
+			'DjinnBilling',
+			[
+				'restUrl' => esc_url_raw( rest_url( 'djinn/v1' ) ),
+				'nonce'   => wp_create_nonce( 'wp_rest' ),
+			]
+		);
+		wp_add_inline_script( 'djinn-billing', self::billingScript() );
+	}
+
+	/** Vanilla-JS card form: fetch a SetupIntent via our REST relay, mount Stripe's Payment Element, confirm. */
+	private static function billingScript(): string {
+		return <<<'JS'
+(function () {
+	var btn = document.getElementById('djinn-add-card');
+	if (!btn) { return; }
+	var msg = document.getElementById('djinn-billing-msg');
+	var mount = document.getElementById('djinn-payment-element');
+	var stripe, elements, ready = false;
+	btn.addEventListener('click', async function () {
+		if (!ready) {
+			btn.disabled = true;
+			msg.textContent = 'Loading the secure payment form…';
+			try {
+				var r = await fetch(DjinnBilling.restUrl + '/billing-intent', {
+					method: 'POST',
+					headers: { 'X-WP-Nonce': DjinnBilling.nonce }
+				});
+				var d = await r.json();
+				if (!r.ok || !d.clientSecret) {
+					throw new Error((d && d.message) || 'Billing is not available yet.');
+				}
+				stripe = Stripe(d.publishableKey);
+				elements = stripe.elements({ clientSecret: d.clientSecret });
+				elements.create('payment').mount(mount);
+				mount.style.display = 'block';
+				btn.textContent = 'Save card';
+				msg.textContent = '';
+				ready = true;
+			} catch (e) {
+				msg.textContent = e.message || 'Could not start billing.';
+			} finally {
+				btn.disabled = false;
+			}
+			return;
+		}
+		btn.disabled = true;
+		msg.textContent = 'Saving…';
+		var result = await stripe.confirmSetup({ elements: elements, redirect: 'if_required' });
+		if (result.error) {
+			msg.textContent = 'Error: ' + result.error.message;
+			btn.disabled = false;
+		} else {
+			msg.textContent = 'Card saved — automatic top-up is on. You can keep wishing past the free trial.';
+		}
+	});
+})();
+JS;
 	}
 
 	public function renderSettings(): void {
@@ -137,7 +212,15 @@ class AdminPage {
 					<tr><th scope="row">Free wishes left</th><td><?php echo (int) ( $account['wishesLeft'] ?? 0 ); ?></td></tr>
 					<tr><th scope="row">Credit</th><td>$<?php echo esc_html( number_format( (float) ( $account['balanceUsd'] ?? 0 ), 4 ) ); ?></td></tr>
 				</table>
-				<p><a class="button" href="<?php echo esc_url( Settings::proxyUrl() ); ?>" target="_blank">Top up →</a></p>
+				<h2>Payment method</h2>
+				<?php if ( ! empty( $account['payg'] ) ) : ?>
+					<p>✓ A card is on file — automatic top-up is enabled, so wishes keep working past the free trial.</p>
+				<?php else : ?>
+					<p>Add a card to keep wishing after your free wishes — prepaid with automatic top-up, no charge now.</p>
+					<div id="djinn-payment-element" style="max-width:480px;margin:.6em 0;display:none"></div>
+					<button type="button" class="button button-primary" id="djinn-add-card">Add a card</button>
+					<span id="djinn-billing-msg" style="margin-left:.6em"></span>
+				<?php endif; ?>
 			<?php endif; ?>
 			<p>Then open <strong>Djinn → Memory</strong> to build the schema index, and <strong>Djinn → Lamp</strong> to make a wish.</p>
 		</div>

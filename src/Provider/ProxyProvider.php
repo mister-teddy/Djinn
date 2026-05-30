@@ -15,6 +15,7 @@ namespace Djinn\Provider;
 class ProxyProvider extends OpenAIProvider {
 
 	private static bool $pendingNewWish = false;
+	private static string $conversationId = '';
 
 	private bool $sendNewWish = false;
 
@@ -25,6 +26,11 @@ class ProxyProvider extends OpenAIProvider {
 	/** Arm the new-wish marker for the next chat() call. */
 	public static function markNewWish(): void {
 		self::$pendingNewWish = true;
+	}
+
+	/** Tag every subsequent proxy call with the conversation (chat) it belongs to, for analytics. */
+	public static function setConversation( string $id ): void {
+		self::$conversationId = $id;
 	}
 
 	protected function providerLabel(): string {
@@ -42,7 +48,14 @@ class ProxyProvider extends OpenAIProvider {
 	}
 
 	protected function extraHeaders(): array {
-		return $this->sendNewWish ? [ 'X-Djinn-New-Wish' => '1' ] : [];
+		$headers = [];
+		if ( self::$conversationId !== '' ) {
+			$headers['X-Djinn-Conversation-Id'] = self::$conversationId;
+		}
+		if ( $this->sendNewWish ) {
+			$headers['X-Djinn-New-Wish'] = '1';
+		}
+		return $headers;
 	}
 
 	/**

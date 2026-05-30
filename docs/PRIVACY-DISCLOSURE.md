@@ -6,8 +6,6 @@ and how to control it. It doubles as the **"External services"** section require
 WordPress.org plugin guidelines — drop it into `readme.txt` and surface a short form of it in the
 plugin before the first wish.
 
-> Replace the **[bracketed]** placeholders (company name, URLs) before publishing.
-
 ## What is sent, and when
 
 Nothing is sent until you make a wish. When you do, Djinn transmits, for that request:
@@ -24,34 +22,38 @@ wholesale. It sends only what a given wish requires.
 
 ## Where it goes
 
-**Free (ORG) edition** — requests go to **Djinn's hosted proxy** at **[proxy URL]**, which forwards
-them to our LLM provider (**[OpenAI and/or Google Gemini]**) using our key, and meters usage. The
-proxy is operated by **[company]**; see **[Djinn Terms]** and **[Djinn Privacy Policy]**.
+**Free (ORG) edition** — requests go to **Djinn's hosted proxy** at
+**https://djinn-proxy-351601184057.asia-northeast1.run.app**, which forwards them to our LLM
+provider (**Google Gemini**) using our key, and meters usage. The proxy is operated by
+**Nguyễn Hồng Phát** (an individual); see the
+[Terms](https://djinn-proxy-351601184057.asia-northeast1.run.app/terms) and
+[Privacy Policy](https://djinn-proxy-351601184057.asia-northeast1.run.app/privacy).
 
 **Bring-your-own-key (BYO) edition** — requests go **directly from your server** to the provider
-you configure (**OpenAI** or **Google Gemini**) using *your* API key. (BYO may optionally use the
-Djinn proxy instead.)
+you configure (**OpenAI**, **Google Gemini**, or **Anthropic**) using *your* API key. (BYO may
+optionally use the Djinn proxy instead.)
 
 In all cases your data is also subject to the chosen provider's terms:
 
-- OpenAI — https://openai.com/policies/ (API data is not used to train their models by default).
 - Google Gemini — https://ai.google.dev/terms
+- OpenAI (BYO) — https://openai.com/policies/ (API data is not used to train their models by default).
+- Anthropic (BYO) — https://www.anthropic.com/legal/consumer-terms
 
 ## Retention
 
 - **Locally:** your conversations, the schema index, and per-call usage totals are stored in your
   own WordPress database (tables prefixed `djinn_`). You control them; deleting a chat or
   uninstalling removes them.
-- **Proxy (ORG):** we retain only what's needed to meter and bill usage (token counts, timestamps,
-  your account). We do **[not retain prompt/response bodies beyond what's needed to deliver the
-  request / retain them for N days for abuse prevention — pick one and state it truthfully]**.
+- **Proxy (ORG):** we retain only the **usage metadata** needed to meter and bill — token counts,
+  model, timestamps, and your account — tied to your per-site token. We do **not** retain your
+  prompt or response bodies.
 - **Providers:** per their policies above (typically a short abuse-monitoring window).
 
 ## Consent & control
 
 - Djinn only contacts an external service **when you make a wish** — it does not phone home in the
   background.
-- Before your first wish, the plugin shows this disclosure and asks you to proceed.
+- On the free edition the plugin shows a data-use notice in the admin, linking this disclosure.
 - To stop all external calls, don't make wishes (or deactivate the plugin). On BYO you can also
   remove your API key.
 
@@ -59,7 +61,8 @@ In all cases your data is also subject to the chosen provider's terms:
 
 > Djinn sends your typed requests, recent chat context, selected GraphQL schema fragments, and the
 > results of any read queries it runs to an LLM in order to fulfil your request. Free edition: via
-> Djinn's hosted proxy ([proxy URL], terms: [Djinn Terms], privacy: [Djinn Privacy Policy]) to
-> [OpenAI/Google]. BYO edition: directly to the provider you configure with your own key. Data is
-> sent only when you make a wish. See each provider's policy: OpenAI
-> https://openai.com/policies/ , Google https://ai.google.dev/terms .
+> Djinn's hosted proxy (https://djinn-proxy-351601184057.asia-northeast1.run.app — terms: /terms,
+> privacy: /privacy) to Google Gemini. BYO edition: directly to the provider you configure (OpenAI,
+> Google Gemini, or Anthropic) with your own key. Data is sent only when you make a wish. Provider
+> policies: Google https://ai.google.dev/terms , OpenAI https://openai.com/policies/ , Anthropic
+> https://www.anthropic.com/legal/consumer-terms .

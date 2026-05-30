@@ -65,6 +65,14 @@ class Settings {
 		return self::all()['site_token'];
 	}
 
+	/** Persist the per-site proxy token (used by automatic ORG site registration). */
+	public static function storeSiteToken( string $token ): void {
+		$stored = get_option( self::OPTION, [] );
+		$stored = is_array( $stored ) ? $stored : [];
+		$stored['site_token'] = $token;
+		update_option( self::OPTION, $stored );
+	}
+
 	/** Base URL of the hosted proxy (no trailing /v1). */
 	public static function proxyUrl(): string {
 		if ( defined( 'DJINN_PROXY_URL' ) && DJINN_PROXY_URL ) {

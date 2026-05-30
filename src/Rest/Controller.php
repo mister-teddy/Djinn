@@ -8,6 +8,7 @@ use Djinn\Engine\AgentLoop;
 use Djinn\Files\Downloads;
 use Djinn\GraphQL\Runner;
 use Djinn\Rag\Indexer;
+use Djinn\Settings;
 use Djinn\Store\Repository;
 use Throwable;
 use WP_REST_Request;
@@ -79,6 +80,59 @@ class Controller {
 			'methods'             => 'POST',
 			'permission_callback' => $auth,
 			'callback'            => [ $this, 'upload' ],
+		] );
+
+		// PUBLIC: the hosted proxy calls this back during /register to prove this site is a real,
+		// reachable Djinn install. It only echoes the proxy's nonce — no data, no auth (the proxy
+		// isn't a WP user). Safe: knowing the nonce just confirms the site is up and runs Djinn.
+		register_rest_route( self::NS, '/verify', [
+			'methods'             => 'GET',
+			'permission_callback' => '__return_true',
+			'callback'            => [ $this, 'verify' ],
+		] );
+
+		// Relay a Stripe SetupIntent from the proxy (server-side, so the browser never sees the site
+		// token and there's no cross-origin call). The in-admin card form calls this.
+		register_rest_route( self::NS, '/billing-intent', [
+			'methods'             => 'POST',
+			'permission_callback' => $auth,
+			'callback'            => [ $this, 'billingIntent' ],
+		] );
+	}
+
+	/** Echo the proxy's nonce, confirming the Djinn plugin is live on this site (site-binding). */
+	public function verify( WP_REST_Request $req ): WP_REST_Response {
+		return new WP_REST_Response( [ 'nonce' => (string) $req->get_param( 'nonce' ) ] );
+	}
+
+	/** Ask the proxy for a Stripe SetupIntent client secret + publishable key for this site's account. */
+	public function billingIntent(): WP_REST_Response {
+		$token = Settings::siteToken();
+		if ( $token === '' ) {
+			return new WP_REST_Response( [ 'message' => 'Connect a Djinn account first.' ], 400 );
+		}
+		$res = wp_remote_post(
+			Settings::proxyUrl() . '/billing/setup-intent',
+			[
+				'timeout' => 20,
+				'headers' => [ 'content-type' => 'application/json' ],
+				'body'    => wp_json_encode( [ 'token' => $token ] ),
+			]
+		);
+		if ( is_wp_error( $res ) ) {
+			return new WP_REST_Response( [ 'message' => 'Could not reach billing.' ], 502 );
+		}
+		$code = (int) wp_remote_retrieve_response_code( $res );
+		$json = json_decode( (string) wp_remote_retrieve_body( $res ), true );
+		if ( $code !== 200 || ! is_array( $json ) || empty( $json['clientSecret'] ) ) {
+			$msg = is_array( $json ) && isset( $json['error']['message'] )
+				? (string) $json['error']['message']
+				: 'Billing is not available yet.';
+			return new WP_REST_Response( [ 'message' => $msg ], $code ?: 502 );
+		}
+		return new WP_REST_Response( [
+			'clientSecret'   => (string) $json['clientSecret'],
+			'publishableKey' => (string) ( $json['publishableKey'] ?? '' ),
 		] );
 	}
 

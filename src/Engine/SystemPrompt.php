@@ -4,7 +4,41 @@ declare( strict_types=1 );
 
 namespace Djinn\Engine;
 
+use Djinn\Settings;
+
 class SystemPrompt {
+
+	/**
+	 * ORG only: the operator can override the whole prompt from the proxy (set the `SYSTEM_PROMPT`
+	 * constant there and redeploy — no plugin release). Returns '' when there's no override (the
+	 * common case) so the loop falls back to build(). Cached ~12h (it only changes on a proxy
+	 * redeploy) to avoid a per-wish call; a prompt change propagates within that window.
+	 *
+	 * An override REPLACES the entire prompt — it does NOT get the per-site/theme context build()
+	 * adds — so any needed context must be written into the override itself.
+	 */
+	public static function orgOverride(): string {
+		if ( ! Settings::isOrg() || Settings::siteToken() === '' ) {
+			return '';
+		}
+		$cached = get_transient( 'djinn_org_prompt' );
+		if ( is_string( $cached ) ) {
+			return $cached;
+		}
+		$prompt = '';
+		$res    = wp_remote_get(
+			Settings::proxyUrl() . '/v1/system-prompt',
+			[ 'timeout' => 8, 'headers' => [ 'Authorization' => 'Bearer ' . Settings::siteToken() ] ]
+		);
+		if ( ! is_wp_error( $res ) ) {
+			$json = json_decode( (string) wp_remote_retrieve_body( $res ), true );
+			if ( is_array( $json ) && isset( $json['systemPrompt'] ) ) {
+				$prompt = (string) $json['systemPrompt'];
+			}
+		}
+		set_transient( 'djinn_org_prompt', $prompt, 12 * HOUR_IN_SECONDS );
+		return $prompt;
+	}
 
 	public static function build(): string {
 		$user     = wp_get_current_user();
