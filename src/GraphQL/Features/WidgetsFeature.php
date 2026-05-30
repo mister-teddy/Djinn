@@ -48,6 +48,7 @@ class WidgetsFeature implements Feature {
 		$r->addQuery( 'sidebars', [
 			'type'        => Type::listOf( $sidebar ),
 			'description' => 'List widget areas (sidebars) and the widgets in each.',
+			'args'        => [ 'id' => [ 'type' => Type::string(), 'description' => 'Filter to one widget area by id, e.g. "footer-1".' ] ],
 			'resolve'     => [ $this, 'sidebars' ],
 		] );
 
@@ -80,13 +81,15 @@ class WidgetsFeature implements Feature {
 	}
 
 	/** @return array<int,array<string,mixed>> */
-	public function sidebars(): array {
+	/** @param array<string,mixed> $args */
+	public function sidebars( $root = null, array $args = [] ): array {
 		$this->gate();
 		global $wp_registered_sidebars, $wp_registered_widgets;
-		$map = wp_get_sidebars_widgets();
-		$out = [];
+		$only = isset( $args['id'] ) ? (string) $args['id'] : '';
+		$map  = wp_get_sidebars_widgets();
+		$out  = [];
 		foreach ( $wp_registered_sidebars as $id => $sb ) {
-			if ( $id === 'wp_inactive_widgets' ) {
+			if ( $id === 'wp_inactive_widgets' || ( $only !== '' && $id !== $only ) ) {
 				continue;
 			}
 			$widgets = [];

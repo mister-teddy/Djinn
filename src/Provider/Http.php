@@ -38,7 +38,7 @@ trait Http {
 			$msg = is_array( $json ) && isset( $json['error']['message'] )
 				? $json['error']['message']
 				: substr( $raw, 0, 300 );
-			throw new RuntimeException( "LLM request returned HTTP $code: $msg" );
+			throw new RuntimeException( "LLM request returned HTTP $code: $msg" . self::modelHint( $code ) );
 		}
 
 		if ( ! is_array( $json ) ) {
@@ -85,7 +85,17 @@ trait Http {
 			throw new RuntimeException( 'LLM stream failed: ' . $err );
 		}
 		if ( $code >= 400 ) {
-			throw new RuntimeException( "LLM stream returned HTTP $code." );
+			throw new RuntimeException( "LLM stream returned HTTP $code." . self::modelHint( $code ) );
 		}
+	}
+
+	/**
+	 * A 404 (and often a 400) from a provider almost always means the configured model name is
+	 * unknown — usually a retired or mistyped id — so point the user straight at the fix.
+	 */
+	private static function modelHint( int $code ): string {
+		return ( $code === 404 || $code === 400 )
+			? ' The selected model looks unavailable or retired — choose a current one under Djinn → Settings.'
+			: '';
 	}
 }

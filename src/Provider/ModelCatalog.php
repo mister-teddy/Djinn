@@ -123,6 +123,27 @@ class ModelCatalog {
 	}
 
 	/**
+	 * Classify a chat model by how well it handles Djinn's multi-step tool loop, so Settings can
+	 * group the dropdown. Heuristic and name-based — distilled/tiny variants (lite, 8b, nano, gemma,
+	 * 3.5) stumble on chained tool calls; large reasoners (pro, gpt-4o/4.1/5, o-series, flash) cope.
+	 *
+	 * @return 'recommended'|'standard'|'limited'
+	 */
+	public static function chatTier( string $model ): string {
+		$m = strtolower( $model );
+		if ( preg_match( '/lite|flash-8b|-8b|gemma|nano|gpt-3\.5/', $m ) ) {
+			return 'limited';
+		}
+		if ( preg_match( '/mini/', $m ) ) {
+			return 'standard';
+		}
+		if ( preg_match( '/pro|gpt-4o|gpt-4\.1|gpt-5|^o[0-9]|flash/', $m ) ) {
+			return 'recommended';
+		}
+		return 'standard';
+	}
+
+	/**
 	 * @param array<int,string> $models
 	 * @return array<int,string>
 	 */

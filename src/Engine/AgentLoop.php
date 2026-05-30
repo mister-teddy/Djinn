@@ -22,7 +22,14 @@ use Throwable;
  */
 class AgentLoop {
 
-	private const MAX_ROUNDS = 8;
+	private const MAX_ROUNDS = 16;
+
+	/**
+	 * A turn with neither a tool call nor any text is a provider stall, not an answer — Gemini does
+	 * this on MALFORMED_FUNCTION_CALL (it chokes serialising a long GraphQL string) or an empty STOP.
+	 * Resampling usually recovers, so we retry a stalled turn this many times before giving up.
+	 */
+	private const MAX_STALLS = 3;
 
 	/**
 	 * Start a turn from a new user wish.
@@ -153,6 +160,7 @@ class AgentLoop {
 		$provider = ProviderFactory::make();
 		$system   = SystemPrompt::build();
 		$tools    = Tools::specs();
+		$stalls   = 0;
 
 		for ( $round = 0; $round < self::MAX_ROUNDS; $round++ ) {
 			$history = Repository::getMessages( $chatId );
@@ -167,9 +175,17 @@ class AgentLoop {
 
 			$calls = $turn['tool_calls'] ?? [];
 
-			// No tool call → this is the final reply.
+			// No tool call → either the final reply, or a stalled empty turn to retry.
 			if ( empty( $calls ) ) {
-				$text = (string) ( $turn['content'] ?? '' );
+				$text = trim( (string) ( $turn['content'] ?? '' ) );
+				if ( $text === '' ) {
+					// Nothing was persisted (an empty turn has no parts), so a retry re-runs against
+					// identical history and the provider resamples a valid call or answer.
+					if ( ++$stalls <= self::MAX_STALLS ) {
+						continue;
+					}
+					$text = 'The lamp flickered and the wish slipped away. Could you put it to me again?';
+				}
 				Repository::addMessage( $chatId, [ 'role' => 'assistant', 'content' => $text ] );
 				return [ 'status' => 'complete', 'message' => $text, 'chat_id' => $chatId ];
 			}

@@ -31,7 +31,12 @@ class SiteEditorFeature implements Feature {
 					'description' => [ 'type' => Type::string() ],
 					'type'        => [ 'type' => Type::string(), 'description' => 'wp_template or wp_template_part.' ],
 					'source'      => [ 'type' => Type::string(), 'description' => 'theme (from files) or custom (edited).' ],
-					'content'     => [ 'type' => Type::string(), 'description' => 'Block markup.' ],
+					'content'     => [ 'type' => Type::string(), 'description' => 'Stored block markup. Often just a `wp:pattern` reference — select resolvedContent to see what it renders.' ],
+					'resolvedContent' => [
+						'type'        => Type::string(),
+						'description' => 'Block markup with every `wp:pattern` reference expanded inline — the real contents (links, text, images). Read this to answer "what is in" a part, or edit it and pass the result back to updateSiteTemplatePart.',
+						'resolve'     => fn( array $parent ): string => $this->expandPatterns( (string) ( $parent['content'] ?? '' ) ),
+					],
 				],
 			]
 		);
@@ -40,12 +45,14 @@ class SiteEditorFeature implements Feature {
 		$r->addQuery( 'siteTemplates', [
 			'type'        => Type::listOf( $template ),
 			'description' => 'List block-theme templates (home, single, archive, 404, …).',
-			'resolve'     => fn() => $this->templates( 'wp_template' ),
+			'args'        => [ 'slug' => [ 'type' => Type::string(), 'description' => 'Filter to one template by slug, e.g. "home".' ] ],
+			'resolve'     => fn( $root, array $args ) => $this->templates( 'wp_template', $args['slug'] ?? null ),
 		] );
 		$r->addQuery( 'siteTemplateParts', [
 			'type'        => Type::listOf( $template ),
 			'description' => 'List block-theme template parts (header, footer, sidebar, …).',
-			'resolve'     => fn() => $this->templates( 'wp_template_part' ),
+			'args'        => [ 'slug' => [ 'type' => Type::string(), 'description' => 'Filter to one part by slug, e.g. "footer".' ] ],
+			'resolve'     => fn( $root, array $args ) => $this->templates( 'wp_template_part', $args['slug'] ?? null ),
 		] );
 		$r->addQuery( 'globalStylesCss', [
 			'type'        => Type::string(),
@@ -64,7 +71,7 @@ class SiteEditorFeature implements Feature {
 		] );
 		$r->addMutation( 'updateSiteTemplatePart', [
 			'type'        => Type::boolean(),
-			'description' => 'Replace a template part\'s block markup (e.g. the header or footer).',
+			'description' => 'Replace a template part\'s block markup (e.g. the header or footer). To edit a part that is only a `wp:pattern` reference, read its resolvedContent, change that, and pass the whole result here — it saves as a custom override.',
 			'args'        => [
 				'id'      => [ 'type' => Type::nonNull( Type::id() ) ],
 				'content' => [ 'type' => Type::nonNull( Type::string() ) ],
@@ -80,13 +87,14 @@ class SiteEditorFeature implements Feature {
 	}
 
 	/** @return array<int,array<string,mixed>> */
-	private function templates( string $type ): array {
+	private function templates( string $type, ?string $slug = null ): array {
 		$this->gate();
 		if ( ! function_exists( 'get_block_templates' ) ) {
 			return [];
 		}
-		$out = [];
-		foreach ( get_block_templates( [], $type ) as $t ) {
+		$query = null !== $slug && '' !== $slug ? [ 'slug__in' => [ $slug ] ] : [];
+		$out   = [];
+		foreach ( get_block_templates( $query, $type ) as $t ) {
 			$out[] = [
 				'id'          => $t->id,
 				'slug'        => $t->slug,
@@ -98,6 +106,32 @@ class SiteEditorFeature implements Feature {
 			];
 		}
 		return $out;
+	}
+
+	/**
+	 * Replace every `<!-- wp:pattern {"slug":"…"} /-->` reference with the registered pattern's own
+	 * block markup, recursively (a pattern may embed patterns). Theme patterns live in PHP, not the
+	 * database, so this is the only way to read or edit what a part actually renders. Unknown slugs
+	 * and the depth limit leave the reference untouched rather than dropping content.
+	 */
+	private function expandPatterns( string $content, int $depth = 0 ): string {
+		if ( $depth >= 5 || ! class_exists( '\WP_Block_Patterns_Registry' ) || strpos( $content, 'wp:pattern' ) === false ) {
+			return $content;
+		}
+		$registry = \WP_Block_Patterns_Registry::get_instance();
+		return (string) preg_replace_callback(
+			'#<!--\s*wp:pattern\s*(\{.*?\})\s*/-->#s',
+			function ( array $m ) use ( $registry, $depth ): string {
+				$attrs = json_decode( $m[1], true );
+				$slug  = is_array( $attrs ) ? (string) ( $attrs['slug'] ?? '' ) : '';
+				$pat   = $slug !== '' ? $registry->get_registered( $slug ) : null;
+				if ( ! $pat || empty( $pat['content'] ) ) {
+					return $m[0];
+				}
+				return $this->expandPatterns( (string) $pat['content'], $depth + 1 );
+			},
+			$content
+		);
 	}
 
 	public function globalStylesCss(): ?string {

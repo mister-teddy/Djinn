@@ -190,7 +190,7 @@ class AdminPage {
 					</tr>
 					<tr>
 						<th scope="row"><label for="djinn-chat">Chat model</label></th>
-						<td><?php $this->modelSelect( 'chat_model', 'djinn-chat', $catalog['chat'], (string) $s['chat_model'] ); ?></td>
+						<td><?php $this->modelSelect( 'chat_model', 'djinn-chat', $catalog['chat'], (string) $s['chat_model'], true ); ?></td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="djinn-embed">Embedding model</label></th>
@@ -219,25 +219,55 @@ class AdminPage {
 	/**
 	 * A model <select> annotated with estimated prices. An empty first option keeps Djinn's
 	 * per-provider default. The saved value is always present, even if discovery didn't list it
-	 * (e.g. a now-retired model), so saving never silently changes the selection.
+	 * (e.g. a now-retired model), so saving never silently changes the selection. When $tiered,
+	 * chat models are grouped by capability so weak ones are clearly set apart.
 	 *
 	 * @param array<int,string> $models
 	 */
-	private function modelSelect( string $field, string $id, array $models, string $current ): void {
+	private function modelSelect( string $field, string $id, array $models, string $current, bool $tiered = false ): void {
 		if ( $current !== '' && ! in_array( $current, $models, true ) ) {
 			array_unshift( $models, $current );
 		}
 		echo '<select id="' . esc_attr( $id ) . '" name="djinn_settings[' . esc_attr( $field ) . ']" class="regular-text">';
 		echo '<option value="">Provider default</option>';
+
+		if ( ! $tiered ) {
+			foreach ( $models as $model ) {
+				$this->modelOption( $model, $current );
+			}
+			echo '</select>';
+			return;
+		}
+
+		$groups  = [
+			'recommended' => 'Recommended',
+			'standard'    => 'Other models',
+			'limited'     => 'Not recommended — too small for multi-step wishes',
+		];
+		$buckets = [ 'recommended' => [], 'standard' => [], 'limited' => [] ];
 		foreach ( $models as $model ) {
-			$label = $model . ' — ' . Pricing::describe( $model );
-			printf(
-				'<option value="%s" %s>%s</option>',
-				esc_attr( $model ),
-				selected( $current, $model, false ),
-				esc_html( $label )
-			);
+			$buckets[ ModelCatalog::chatTier( $model ) ][] = $model;
+		}
+		foreach ( $groups as $key => $groupLabel ) {
+			if ( empty( $buckets[ $key ] ) ) {
+				continue;
+			}
+			echo '<optgroup label="' . esc_attr( $groupLabel ) . '">';
+			foreach ( $buckets[ $key ] as $model ) {
+				$this->modelOption( $model, $current );
+			}
+			echo '</optgroup>';
 		}
 		echo '</select>';
+	}
+
+	/** One priced <option>, marked selected when it is the current value. */
+	private function modelOption( string $model, string $current ): void {
+		printf(
+			'<option value="%s" %s>%s</option>',
+			esc_attr( $model ),
+			selected( $current, $model, false ),
+			esc_html( $model . ' — ' . Pricing::describe( $model ) )
+		);
 	}
 }

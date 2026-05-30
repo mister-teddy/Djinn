@@ -66,7 +66,8 @@ class MenusFeature implements Feature {
 
 		$r->addQuery( 'navMenus', [
 			'type'        => Type::listOf( $menu ),
-			'description' => 'List the site\'s navigation menus.',
+			'description' => 'List the site\'s navigation menus, or pass a theme location (e.g. "primary", "footer") to get the menu assigned there.',
+			'args'        => [ 'location' => [ 'type' => Type::string(), 'description' => 'A theme location slug; returns only the menu assigned to it (empty if none).' ] ],
 			'resolve'     => [ $this, 'navMenus' ],
 		] );
 		$r->addQuery( 'navMenuItems', [
@@ -163,9 +164,18 @@ class MenusFeature implements Feature {
 		return $menu;
 	}
 
-	/** @return array<int,array<string,mixed>> */
-	public function navMenus(): array {
+	/**
+	 * @param array<string,mixed> $args
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function navMenus( $root = null, array $args = [] ): array {
 		$this->gate();
+		$location = isset( $args['location'] ) ? (string) $args['location'] : '';
+		if ( $location !== '' ) {
+			$menuId = get_nav_menu_locations()[ $location ] ?? 0;
+			$menu   = $menuId ? wp_get_nav_menu_object( (int) $menuId ) : false;
+			return $menu ? [ $this->shapeMenu( $menu ) ] : [];
+		}
 		return array_map( [ $this, 'shapeMenu' ], wp_get_nav_menus() );
 	}
 

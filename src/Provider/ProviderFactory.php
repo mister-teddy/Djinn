@@ -17,6 +17,11 @@ class ProviderFactory {
 			throw new RuntimeException( $msg );
 		}
 
+		// The proxy picks the model server-side; a bring-your-own-key provider needs one chosen.
+		if ( ! Settings::usesProxy() && Settings::chatModel() === '' ) {
+			throw new RuntimeException( 'Choose a chat model under Djinn → Settings before making a wish.' );
+		}
+
 		switch ( Settings::provider() ) {
 			case 'proxy':
 				return new ProxyProvider( Settings::siteToken(), Settings::proxyUrl() );

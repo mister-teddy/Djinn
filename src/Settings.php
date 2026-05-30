@@ -73,12 +73,9 @@ class Settings {
 		return 'https://proxy.djinn.app';
 	}
 
+	/** The chosen chat model, or '' if none is set. No fallback: the user must pick one explicitly. */
 	public static function chatModel(): string {
-		$model = self::all()['chat_model'];
-		if ( $model ) {
-			return $model;
-		}
-		return self::provider() === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o';
+		return self::all()['chat_model'];
 	}
 
 	public static function embeddingModel(): string {
