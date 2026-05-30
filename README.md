@@ -120,29 +120,6 @@ embeddings (search + the one-time index build) are effectively free on `gemini-e
 Model choice dominates: a flagship like GPT-4o runs roughly 30–50× pricier per wish. Figures are
 estimates from public list prices — tune them with the `djinn_model_pricing` filter.
 
-**A wish in raw compute (just for fun).** Generating one token costs about `2 × model-parameters`
-FLOPs — for a small model (~10B params) ≈ 2×10¹⁰ FLOPs. An average ~6,900-token wish is then
-≈ **10¹⁴ FLOPs**. That's **well under a second of GPU time** (the wait you feel is mostly network
-latency), which is why a wish still costs only ~$0.0009 — but on a single CPU core that same
-arithmetic would take **~3 hours**. In those CPU-seconds, that core could instead have done roughly:
-
-- **~50,000** full Gutenberg page renders (front-end, uncached, ~0.2 s each)
-- **~200,000** WordPress bootstraps (a cold `wp-load`, ~50 ms each)
-- **~1–2 million** `WP_Query` post fetches (~5 ms each)
-- **~100 billion** lines of executed PHP
-
-Those are loose, though — PHP is branchy CPU work, while this is dense GPU float-multiply, and
-*generating* tokens is bound by **memory bandwidth**, not raw FLOPs. Two more apples-to-apples
-framings:
-
-- **Memory:** each token re-reads the entire ~20 GB model from VRAM, so a wish streams **several
-  terabytes** — closer to *reading a 20 GB file ~600 times* than to running code.
-- **Energy:** ≈ **~0.1 Wh** — about **1% of charging a phone** (or an LED bulb for ~a minute).
-
-So every wish is genuinely a *supercomputer-grade* burst — ~99% GPU matrix-multiply done in a
-blink, which is what makes it both cheap and fast. (Order-of-magnitude fun, not a benchmark: the
-model's true size, batching, and these per-op figures each swing it ±1–2 orders.)
-
 ## Editions
 
 Djinn builds in two editions — **same capabilities**, differing only in how LLM calls are paid for:
@@ -167,36 +144,9 @@ define( 'DJINN_EDITION', 'org' );
 define( 'DJINN_PROXY_URL', 'https://your-proxy' );
 ```
 
-## The hosted proxy (ORG edition)
+## ORG edition: the hosted proxy
 
-The free edition routes wishes through a small **OpenAI-compatible** gateway you host (`proxy/` —
-Rust/axum, **excluded from `make dist`**, included in `make docs`). It authenticates each site,
-enforces the 3-free-wishes + prepaid limits, forwards to your upstream key, meters spend, and
-auto-recharges via Stripe. Full detail in [`proxy/README.md`](proxy/README.md).
-
-Wire these to run it:
-
-1. **Supabase Postgres** → `DATABASE_URL` (the accounts table auto-creates on boot).
-2. **Upstream LLM** → `UPSTREAM_KEY` (+ `UPSTREAM_BASE` for Gemini's OpenAI-compatible endpoint),
-   and `ORG_CHAT_MODEL` / `ORG_EMBED_MODEL` (the proxy chooses the model, so cost is controlled).
-3. **Stripe (test mode)** → `STRIPE_SECRET_KEY`; add a webhook to `/stripe/webhook` → `STRIPE_WEBHOOK_SECRET`.
-4. **`ADMIN_TOKEN`** → protects `/admin/provision`.
-
-```bash
-cd proxy && cargo run                                  # local (needs DATABASE_URL)
-gcloud run deploy djinn-proxy --source .               # or deploy to Cloud Run
-curl -X POST <url>/admin/provision -H "x-admin-token: $ADMIN_TOKEN" -d '{"token":"site-abc"}'
-```
-
-Services you still own (not in this repo): the **sign-up site** (email verify → `/admin/provision`;
-card via Stripe **SetupIntent** set as the customer's default payment method) and a top-up page.
-The ORG data-use disclosure for WordPress.org is in [`docs/PRIVACY-DISCLOSURE.md`](docs/PRIVACY-DISCLOSURE.md).
-
-## Status
-
-Known next steps:
-
-- The ORG **sign-up + Stripe billing** service (email verify, SetupIntent, top-up page).
-- SSE passthrough in the Rust proxy (so the ORG edition streams too).
-- API-key encryption at rest.
-- A proper `@wordpress/scripts` (JSX/TypeScript) build for the front-end.
+The free **ORG** edition takes no API key — wishes route through a small hosted, OpenAI-compatible
+gateway that meters usage and enforces the free-wishes + prepaid-credit limits. That gateway is a
+separate service (not in this repo, and excluded from `make dist`). The ORG data-use disclosure for
+WordPress.org is in [`docs/PRIVACY-DISCLOSURE.md`](docs/PRIVACY-DISCLOSURE.md).

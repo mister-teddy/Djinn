@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Build a single, offline-readable PDF of the whole project: the README, the proxy docs, and an
+# Build a single, offline-readable PDF of the whole project: the README, the proxy docs (if present), and an
 # appendix with every source file, syntax-highlighted. One command, always current — it reads the
 # files fresh each run. Rendering uses a Dockerized pandoc, so no host LaTeX install is required.
 #
@@ -81,8 +81,11 @@ lang_for() {
 		printf '\n\n\\newpage\n\n'
 		cat "$d"
 	done
-	printf '\n\n\\newpage\n\n# Proxy service\n\n'
-	cat proxy/README.md
+	# The proxy lives in its own repo now; embed its docs only if present (e.g. a local symlink).
+	if [ -f proxy/README.md ]; then
+		printf '\n\n\\newpage\n\n# Proxy service\n\n'
+		cat proxy/README.md
+	fi
 
 	# 2) Source appendix. Each file becomes a heading + a highlighted code block. Tilde fences (×5)
 	#    avoid colliding with backtick fences that appear inside source/markdown.
@@ -100,10 +103,12 @@ lang_for() {
 			echo Makefile
 			echo composer.json
 			echo .wp-env.json
-			echo proxy/Cargo.toml
-			echo proxy/Dockerfile
-			find proxy/src -name '*.rs' 2>/dev/null | sort
-			find proxy/migrations -name '*.sql' 2>/dev/null | sort
+			if [ -d proxy ]; then
+				echo proxy/Cargo.toml
+				echo proxy/Dockerfile
+				find proxy/src -name '*.rs' 2>/dev/null | sort
+				find proxy/migrations -name '*.sql' 2>/dev/null | sort
+			fi
 		} | awk '!seen[$0]++'
 	)
 	for f in $FILES; do
