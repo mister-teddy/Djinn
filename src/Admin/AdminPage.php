@@ -167,9 +167,16 @@ class AdminPage {
 							<select id="djinn-provider" name="djinn_settings[provider]">
 								<option value="openai" <?php selected( $s['provider'], 'openai' ); ?>>OpenAI (your key)</option>
 								<option value="gemini" <?php selected( $s['provider'], 'gemini' ); ?>>Google Gemini (your key)</option>
+								<option value="anthropic" <?php selected( $s['provider'], 'anthropic' ); ?>>Anthropic Claude (your key)</option>
+								<option value="claude-max" <?php selected( $s['provider'], 'claude-max' ); ?>>Claude Max subscription — experimental</option>
 								<option value="proxy" <?php selected( $s['provider'], 'proxy' ); ?>>Djinn proxy (your account)</option>
 							</select>
-							<p class="description">Switch provider and <strong>Save</strong>. OpenAI/Gemini use your API key; Djinn proxy uses your account token.</p>
+							<p class="description">Switch provider and <strong>Save</strong>. OpenAI/Gemini/Anthropic use your API key; Djinn proxy uses your account token.</p>
+							<?php if ( $s['provider'] === 'claude-max' ) : ?>
+								<p class="description" style="color:#b35900">⚠ <strong>Experimental.</strong> Paste a <code>claude setup-token</code> from your Claude Max subscription into the API key field. This uses your subscription's Claude Code quota — it may breach Anthropic's terms (subscriptions are sold for use <em>within</em> Claude Code), can be rate-limited or revoked, and the OAuth handshake may change. Anthropic has no embeddings, so search runs on the full schema.</p>
+							<?php elseif ( $s['provider'] === 'anthropic' ) : ?>
+								<p class="description">Anthropic has no embeddings API — schema search runs on the full schema (no index needed).</p>
+							<?php endif; ?>
 						</td>
 					</tr>
 					<tr>

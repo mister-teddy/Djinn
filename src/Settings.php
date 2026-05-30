@@ -107,7 +107,7 @@ class Settings {
 		$input   = is_array( $input ) ? $input : [];
 		$current = self::all();
 
-		$provider = isset( $input['provider'] ) && in_array( $input['provider'], [ 'openai', 'gemini', 'proxy' ], true )
+		$provider = isset( $input['provider'] ) && in_array( $input['provider'], [ 'openai', 'gemini', 'anthropic', 'claude-max', 'proxy' ], true )
 			? $input['provider']
 			: $current['provider'];
 

@@ -97,13 +97,31 @@
 		);
 	}
 
-	// Status labels for an executed/resolved GraphQL operation.
-	const ACTION_BADGE = {
-		ok: 'ran',
-		granted: 'granted',
-		refused: 'refused',
-		error: 'failed',
+	// Status icon + word for an executed/resolved GraphQL operation.
+	const ACTION_STATUS = {
+		ok:      { icon: '✓', text: 'done' },
+		granted: { icon: '✓', text: 'granted' },
+		refused: { icon: '⊘', text: 'refused' },
+		error:   { icon: '⚠', text: 'failed' },
 	};
+
+	function humanize( s ) {
+		return String( s || '' )
+			.replace( /([a-z0-9])([A-Z])/g, '$1 $2' )
+			.replace( /[_-]+/g, ' ' )
+			.replace( /^./, ( c ) => c.toUpperCase() );
+	}
+
+	// A concise, readable purpose for the operation: the model's summary for writes, else a
+	// humanized version of the operation's root field for reads.
+	function actionPurpose( action ) {
+		if ( action.summary ) {
+			return action.summary;
+		}
+		const m = /\{\s*([A-Za-z_][A-Za-z0-9_]*)/.exec( action.operation || '' );
+		const field = m ? humanize( m[ 1 ] ) : 'the site';
+		return ( action.kind === 'mutation' ? 'Changed ' : 'Looked up ' ) + field.toLowerCase();
+	}
 
 	// Pull View/Edit links out of a GraphQL result — any object carrying link/editUrl.
 	function collectLinks( node, acc ) {
@@ -155,45 +173,45 @@
 		return n.toFixed( 1 ) + ' ' + u[ i ];
 	}
 
-	// A read-only record of a GraphQL operation the Djinn already ran (or that was resolved),
-	// so you can always see the exact incantation — even ones that didn't need your approval.
+	// A single conjured line: ✦ purpose … ✓ status. Click to expand the incantation (operation,
+	// variables, response) and any links/downloads. Compact by design.
 	function IncantationCard( { action } ) {
+		const [ open, setOpen ] = useState( false );
 		const hasVars = action.variables && Object.keys( action.variables ).length > 0;
-		const kind = action.kind === 'mutation' ? 'Mutation' : 'Query';
 		const links = action.result ? collectLinks( action.result, [] ) : [];
 		const downloads = action.result ? collectDownloads( action.result, [] ) : [];
+
 		return el(
 			'div',
 			{ className: 'djinn-action djinn-action-' + action.status },
-			el( 'div', { className: 'djinn-action-head' },
-				el( Sparkle ),
-				el( 'span', { className: 'djinn-action-kind' }, kind ),
-				el( 'span', { className: 'djinn-action-badge' }, ACTION_BADGE[ action.status ] || action.status )
+			el( 'button', { type: 'button', className: 'djinn-act-row', onClick: () => setOpen( ( o ) => ! o ), 'aria-expanded': open },
+				el( 'span', { className: 'djinn-act-glyph' }, el( Sparkle ) ),
+				el( 'span', { className: 'djinn-act-purpose' }, actionPurpose( action ) ),
+				el( 'span', { className: 'djinn-act-caret' }, open ? '▾' : '▸' )
 			),
-			action.summary ? el( 'p', { className: 'djinn-action-summary' }, action.summary ) : null,
-			action.message ? el( 'p', { className: 'djinn-action-msg' }, action.message ) : null,
-			links.length ? el( 'div', { className: 'djinn-action-links' },
-				...links.slice( 0, 8 ).map( ( l, idx ) => el( 'span', { key: idx, className: 'djinn-action-link-chip' },
-					l.label ? el( 'span', { className: 'djinn-action-link-label' }, l.label ) : null,
-					l.view ? el( 'a', { className: 'djinn-action-link', href: l.view, target: '_blank', rel: 'noopener noreferrer' }, 'View ↗' ) : null,
-					l.edit ? el( 'a', { className: 'djinn-action-link', href: l.edit, target: '_blank', rel: 'noopener noreferrer' }, 'Edit ✎' ) : null
-				) )
-			) : null,
-			downloads.length ? el( 'div', { className: 'djinn-action-links' },
-				...downloads.map( ( d, idx ) => el( 'a', {
-					key: idx,
-					className: 'djinn-action-link djinn-download',
-					href: Djinn.restUrl + '/download?token=' + encodeURIComponent( d.token ) + '&_wpnonce=' + encodeURIComponent( Djinn.nonce ),
-				}, '⤓ ' + d.filename + ( d.bytes ? ' (' + formatBytes( d.bytes ) + ')' : '' ) ) )
-			) : null,
-			el( 'details', { className: 'djinn-pending-details' },
-				el( 'summary', null, 'Show the incantation' ),
+			open ? el( 'div', { className: 'djinn-act-detail' },
+				action.message ? el( 'p', { className: 'djinn-action-msg' }, action.message ) : null,
+				links.length ? el( 'div', { className: 'djinn-action-links' },
+					...links.slice( 0, 8 ).map( ( l, idx ) => el( 'span', { key: idx, className: 'djinn-action-link-chip' },
+						l.label ? el( 'span', { className: 'djinn-action-link-label' }, l.label ) : null,
+						l.view ? el( 'a', { className: 'djinn-action-link', href: l.view, target: '_blank', rel: 'noopener noreferrer' }, 'View ↗' ) : null,
+						l.edit ? el( 'a', { className: 'djinn-action-link', href: l.edit, target: '_blank', rel: 'noopener noreferrer' }, 'Edit ✎' ) : null
+					) )
+				) : null,
+				downloads.length ? el( 'div', { className: 'djinn-action-links' },
+					...downloads.map( ( d, idx ) => el( 'a', {
+						key: idx,
+						className: 'djinn-action-link djinn-download',
+						href: Djinn.restUrl + '/download?token=' + encodeURIComponent( d.token ) + '&_wpnonce=' + encodeURIComponent( Djinn.nonce ),
+					}, '⤓ ' + d.filename + ( d.bytes ? ' (' + formatBytes( d.bytes ) + ')' : '' ) ) )
+				) : null,
+				el( 'div', { className: 'djinn-code-label' }, 'Operation' ),
 				el( 'pre', { className: 'djinn-code' }, action.operation ),
 				hasVars ? el( 'div', { className: 'djinn-code-label' }, 'Variables' ) : null,
 				hasVars ? el( 'pre', { className: 'djinn-code djinn-code-vars' }, JSON.stringify( action.variables, null, 2 ) ) : null,
 				action.result ? el( 'div', { className: 'djinn-code-label' }, 'Response' ) : null,
 				action.result ? el( 'pre', { className: 'djinn-code djinn-code-result' }, JSON.stringify( action.result, null, 2 ) ) : null
-			)
+			) : null
 		);
 	}
 
@@ -433,6 +451,15 @@
 		);
 	}
 
+	// Grow a textarea to fit its content, up to a cap (then it scrolls).
+	function autosize( node ) {
+		if ( ! node ) {
+			return;
+		}
+		node.style.height = 'auto';
+		node.style.height = Math.min( node.scrollHeight, 220 ) + 'px';
+	}
+
 	// Parse one SSE block ("event: x\ndata: {...}") into { event, data } or null.
 	function parseSSE( block ) {
 		let event = 'message';
@@ -467,12 +494,20 @@
 		const [ step, setStep ] = useState( '' ); // current streaming step label
 		const scroller = useRef( null );
 		const fileInput = useRef( null );
+		const inputRef = useRef( null );
 		const loadSeq = useRef( 0 ); // guards against a stale transcript load clobbering newer state
 
 		useEffect( () => {
-			if ( scroller.current ) {
-				scroller.current.scrollTop = scroller.current.scrollHeight;
+			const node = scroller.current;
+			if ( ! node ) {
+				return;
 			}
+			// Defer to after layout/paint so scrollHeight reflects the new content (streamed text,
+			// tables, late-rendered blocks) and we land at the true bottom.
+			const id = requestAnimationFrame( () => {
+				node.scrollTop = node.scrollHeight;
+			} );
+			return () => cancelAnimationFrame( id );
 		}, [ messages, busy ] );
 
 		// On mount: load the conversation list, and reopen the chat we were last in so a page
@@ -494,6 +529,11 @@
 				writeActiveChat( chatId );
 			}
 		}, [ chatId ] );
+
+		// Keep the composer elastic: grow/shrink to fit as the text (or a cleared send) changes.
+		useEffect( () => {
+			autosize( inputRef.current );
+		}, [ input ] );
 
 		async function refreshChats() {
 			try {
@@ -776,8 +816,9 @@
 					el( 'textarea', {
 						className: 'djinn-input',
 						value: input,
+						ref: inputRef,
 						placeholder: 'Whisper your wish…  (Enter to send · Shift+Enter for newline)',
-						rows: 2,
+						rows: 1,
 						disabled: busy,
 						onChange: ( e ) => setInput( e.target.value ),
 						onKeyDown: ( e ) => {

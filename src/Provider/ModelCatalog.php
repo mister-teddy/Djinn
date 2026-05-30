@@ -32,9 +32,13 @@ class ModelCatalog {
 			return $cached;
 		}
 
-		$result = $provider === 'gemini'
-			? self::discoverGemini( $apiKey )
-			: self::discoverOpenAI( $apiKey );
+		if ( $provider === 'gemini' ) {
+			$result = self::discoverGemini( $apiKey );
+		} elseif ( $provider === 'anthropic' || $provider === 'claude-max' ) {
+			$result = self::discoverAnthropic( $apiKey, $provider === 'claude-max' );
+		} else {
+			$result = self::discoverOpenAI( $apiKey );
+		}
 
 		set_transient( $cacheKey, $result, self::TTL );
 		return $result;
@@ -44,6 +48,34 @@ class ModelCatalog {
 	public static function flush(): void {
 		global $wpdb;
 		$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '_transient_djinn_models_%' OR option_name LIKE '_transient_timeout_djinn_models_%'" );
+	}
+
+	/**
+	 * Anthropic models via GET /v1/models. All are chat models; there are no embeddings.
+	 * For claude-max the key is an OAuth token (Bearer); for anthropic it's an x-api-key.
+	 *
+	 * @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool}
+	 */
+	private static function discoverAnthropic( string $apiKey, bool $oauth ): array {
+		$headers = $oauth
+			? [ 'Authorization' => 'Bearer ' . $apiKey, 'anthropic-version' => '2023-06-01', 'anthropic-beta' => 'oauth-2025-04-20' ]
+			: [ 'x-api-key' => $apiKey, 'anthropic-version' => '2023-06-01' ];
+		$response = wp_remote_get( 'https://api.anthropic.com/v1/models?limit=100', [ 'timeout' => 20, 'headers' => $headers ] );
+		if ( is_wp_error( $response ) ) {
+			return self::fallback( 'anthropic', 'Could not reach Anthropic: ' . $response->get_error_message() );
+		}
+		$json = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+		if ( isset( $json['error'] ) ) {
+			return self::fallback( 'anthropic', 'Anthropic rejected the key/token: ' . ( $json['error']['message'] ?? 'unknown error' ) );
+		}
+		$chat = [];
+		foreach ( $json['data'] ?? [] as $model ) {
+			$id = (string) ( $model['id'] ?? '' );
+			if ( $id !== '' ) {
+				$chat[] = $id;
+			}
+		}
+		return self::finish( $chat, [] );
 	}
 
 	/** @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool} */
@@ -167,7 +199,13 @@ class ModelCatalog {
 	 * @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool}
 	 */
 	private static function fallback( string $provider, string $error ): array {
-		$prefix = $provider === 'gemini' ? [ 'gemini', 'gemma' ] : [ 'gpt', 'o1', 'o3', 'o4', 'chatgpt', 'text-embedding' ];
+		if ( $provider === 'gemini' ) {
+			$prefix = [ 'gemini', 'gemma' ];
+		} elseif ( $provider === 'anthropic' || $provider === 'claude-max' ) {
+			$prefix = [ 'claude' ];
+		} else {
+			$prefix = [ 'gpt', 'o1', 'o3', 'o4', 'chatgpt', 'text-embedding' ];
+		}
 		$chat   = [];
 		$embed  = [];
 		foreach ( Pricing::table() as $model => $rates ) {

@@ -32,6 +32,13 @@ class Pricing {
 			'gemini-1.5-pro'         => [ 'input' => 1.25, 'output' => 5.00 ],
 			// Gemini — embeddings
 			'gemini-embedding-001'   => [ 'input' => 0.15, 'output' => 0.0 ],
+			// Anthropic Claude (chat; no embeddings). `-latest` aliases share their family's price.
+			'claude-opus-4-1'            => [ 'input' => 15.00, 'output' => 75.00 ],
+			'claude-sonnet-4-5'          => [ 'input' => 3.00, 'output' => 15.00 ],
+			'claude-3-7-sonnet-latest'   => [ 'input' => 3.00, 'output' => 15.00 ],
+			'claude-3-5-sonnet-latest'   => [ 'input' => 3.00, 'output' => 15.00 ],
+			'claude-3-5-haiku-latest'    => [ 'input' => 0.80, 'output' => 4.00 ],
+			'claude-3-haiku-20240307'    => [ 'input' => 0.25, 'output' => 1.25 ],
 		];
 
 		/** @var array<string,array{input:float,output:float}> $filtered */

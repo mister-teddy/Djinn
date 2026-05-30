@@ -27,6 +27,10 @@ class ProviderFactory {
 				return new ProxyProvider( Settings::siteToken(), Settings::proxyUrl() );
 			case 'gemini':
 				return new GeminiProvider( Settings::apiKey(), Settings::chatModel(), Settings::embeddingModel() );
+			case 'anthropic':
+				return new AnthropicProvider( Settings::apiKey(), Settings::chatModel(), Settings::embeddingModel() );
+			case 'claude-max':
+				return new ClaudeMaxProvider( Settings::apiKey(), Settings::chatModel(), Settings::embeddingModel() );
 			case 'openai':
 			default:
 				return new OpenAIProvider( Settings::apiKey(), Settings::chatModel(), Settings::embeddingModel() );
