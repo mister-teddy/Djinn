@@ -197,6 +197,7 @@ class SchemaFactory {
 			new Features\WidgetsFeature(),
 			new Features\CustomizerFeature(),
 			new Features\SiteEditorFeature(),
+			new Features\PageStructureFeature(),
 			new Features\TaxonomyFeature(),
 			new Features\CommentsFeature(),
 			new Features\UsersFeature(),

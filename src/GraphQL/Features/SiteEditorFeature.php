@@ -4,6 +4,7 @@ declare( strict_types=1 );
 
 namespace Djinn\GraphQL\Features;
 
+use Djinn\GraphQL\BlockMarkup;
 use Djinn\GraphQL\Feature;
 use Djinn\GraphQL\Registry;
 use GraphQL\Error\UserError;
@@ -35,7 +36,7 @@ class SiteEditorFeature implements Feature {
 					'resolvedContent' => [
 						'type'        => Type::string(),
 						'description' => 'Block markup with every `wp:pattern` reference expanded inline — the real contents (links, text, images). Read this to answer "what is in" a part, or edit it and pass the result back to updateSiteTemplatePart.',
-						'resolve'     => fn( array $parent ): string => $this->expandPatterns( (string) ( $parent['content'] ?? '' ) ),
+						'resolve'     => fn( array $parent ): string => BlockMarkup::expandPatterns( (string) ( $parent['content'] ?? '' ) ),
 					],
 				],
 			]
@@ -106,32 +107,6 @@ class SiteEditorFeature implements Feature {
 			];
 		}
 		return $out;
-	}
-
-	/**
-	 * Replace every `<!-- wp:pattern {"slug":"…"} /-->` reference with the registered pattern's own
-	 * block markup, recursively (a pattern may embed patterns). Theme patterns live in PHP, not the
-	 * database, so this is the only way to read or edit what a part actually renders. Unknown slugs
-	 * and the depth limit leave the reference untouched rather than dropping content.
-	 */
-	private function expandPatterns( string $content, int $depth = 0 ): string {
-		if ( $depth >= 5 || ! class_exists( '\WP_Block_Patterns_Registry' ) || strpos( $content, 'wp:pattern' ) === false ) {
-			return $content;
-		}
-		$registry = \WP_Block_Patterns_Registry::get_instance();
-		return (string) preg_replace_callback(
-			'#<!--\s*wp:pattern\s*(\{.*?\})\s*/-->#s',
-			function ( array $m ) use ( $registry, $depth ): string {
-				$attrs = json_decode( $m[1], true );
-				$slug  = is_array( $attrs ) ? (string) ( $attrs['slug'] ?? '' ) : '';
-				$pat   = $slug !== '' ? $registry->get_registered( $slug ) : null;
-				if ( ! $pat || empty( $pat['content'] ) ) {
-					return $m[0];
-				}
-				return $this->expandPatterns( (string) $pat['content'], $depth + 1 );
-			},
-			$content
-		);
 	}
 
 	public function globalStylesCss(): ?string {

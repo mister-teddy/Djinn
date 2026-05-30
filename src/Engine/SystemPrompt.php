@@ -14,10 +14,13 @@ class SystemPrompt {
 		$isBlock   = function_exists( 'wp_is_block_theme' ) && wp_is_block_theme();
 		$themeName = wp_get_theme()->get( 'Name' );
 		$shape     = $isBlock
-			? "{$themeName}, a block (FSE) theme. Header, footer, and other regions live in the Site "
-				. "Editor as template parts (`siteTemplateParts`); their navigation is a Navigation block "
-				. "backed by a `wp_navigation` post (read via `posts` with that postType). Classic "
-				. "`navMenus` and widget `sidebars` are empty on this site — read appearance from the block side."
+			? "{$themeName}, a block (FSE) theme. To find or change anything a visitor sees on a page, "
+				. "call `renderedPage` (by view/pageId/postId/url): it composes the page's whole block "
+				. "tree and names the editable source — a template, a template part, or a post — for each "
+				. "region, so you edit the right one. Header, footer, and other regions are template parts "
+				. "(`siteTemplateParts`); their navigation is a Navigation block backed by a `wp_navigation` "
+				. "post (read via `posts` with that postType). Classic `navMenus` and widget `sidebars` are "
+				. "empty on this site — read appearance from the block side."
 			: "{$themeName}, a classic theme. Navigation lives in `navMenus` and menu locations; footer and "
 				. "sidebar content lives in widget `sidebars`. The block Site Editor is unavailable here.";
 
