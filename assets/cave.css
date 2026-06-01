@@ -1,0 +1,107 @@
+/*
+ * Cave of Wonders — the single dashboard. Account + Memory stack in the left column; Spend is the
+ * whole right column. Seamless full-bleed panels (like the Lamp screen): no gaps, thin gold
+ * dividers, dark header bars. The page never scrolls; each tile body scrolls on its own.
+ */
+
+/* Strip the WP admin chrome so the cave meets the edges (same as the Lamp screen). */
+body.djinn_page_djinn-cave #wpcontent { padding-left: 0; }
+body.djinn_page_djinn-cave #wpbody-content { padding-bottom: 0; }
+body.djinn_page_djinn-cave #wpfooter { display: none; }
+body.djinn_page_djinn-cave #wpbody-content > .notice,
+body.djinn_page_djinn-cave #wpbody-content > .updated { margin: 0; }
+
+.djinn-cave {
+	box-sizing: border-box;
+	height: calc( 100vh - 32px );
+	display: grid;
+	gap: 0;
+	grid-template-columns: minmax( 340px, 0.9fr ) 1.1fr;
+	grid-template-rows: 1fr 1fr;
+	grid-template-areas:
+		"account spend"
+		"memory  spend";
+	background: #fff;
+}
+
+.djinn-tile {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	background: #fff;
+	overflow: hidden;
+}
+.djinn-tile--account {
+	grid-area: account;
+	border-right: 1px solid rgba( 251, 191, 36, 0.18 );
+	border-bottom: 1px solid rgba( 251, 191, 36, 0.18 );
+}
+.djinn-tile--memory {
+	grid-area: memory;
+	border-right: 1px solid rgba( 251, 191, 36, 0.18 );
+}
+.djinn-tile--spend {
+	grid-area: spend;
+}
+
+.djinn-tile-head {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	margin: 0;
+	padding: 13px 20px;
+	background: linear-gradient( 135deg, #0f0a1e, #2d1f4a );
+	border-bottom: 1px solid rgba( 251, 191, 36, 0.28 );
+}
+.djinn-tile-head h2 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: #f5e9d0;
+}
+.djinn-tile-mark {
+	color: #fbbf24;
+	font-size: 13px;
+	line-height: 1;
+}
+
+.djinn-tile-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	padding: 18px 20px;
+}
+.djinn-tile-body > :first-child {
+	margin-top: 0;
+}
+.djinn-tile-body .notice {
+	margin: 10px 0;
+}
+.djinn-tile--spend .djinn-usage .djinn-cards {
+	margin-top: 4px;
+}
+
+/* On narrower screens the tiles stack and the page is allowed to scroll. */
+@media screen and ( max-width: 1100px ) {
+	.djinn-cave {
+		height: auto;
+		grid-template-columns: 1fr;
+		grid-template-rows: none;
+		grid-template-areas:
+			"account"
+			"memory"
+			"spend";
+	}
+	.djinn-tile {
+		max-height: 80vh;
+	}
+	.djinn-tile--account,
+	.djinn-tile--memory {
+		border-right: 0;
+	}
+	.djinn-tile--memory {
+		border-bottom: 1px solid rgba( 251, 191, 36, 0.18 );
+	}
+}

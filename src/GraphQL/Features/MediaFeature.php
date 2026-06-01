@@ -4,6 +4,7 @@ declare( strict_types=1 );
 
 namespace Djinn\GraphQL\Features;
 
+use Djinn\Files\Downloads;
 use Djinn\GraphQL\Feature;
 use Djinn\GraphQL\Registry;
 use GraphQL\Error\UserError;
@@ -11,8 +12,8 @@ use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
 
 /**
- * Media library: list items, add one from a URL (sideload), set a post's featured image, delete.
- * (Binary uploads can't come through chat, but importing from a URL covers most wishes.)
+ * Media library: list items, add one from a URL (sideload) or from a file the user attached to their
+ * wish (importMedia), set a post's featured image, update fields, delete.
  */
 class MediaFeature implements Feature {
 
@@ -50,6 +51,17 @@ class MediaFeature implements Feature {
 				'title' => [ 'type' => Type::string() ],
 			],
 			'resolve'     => [ $this, 'sideloadMedia' ],
+		] );
+
+		$r->addMutation( 'importMedia', [
+			'type'        => $media,
+			'description' => 'Import a file the user ATTACHED to their wish (identified by its "import token") into the media library. Use this — NOT sideloadMedia — for attached/uploaded files: it takes the token, not a URL. Pass postId to also set it as that post\'s featured image.',
+			'args'        => [
+				'token'  => [ 'type' => Type::nonNull( Type::string() ), 'description' => 'The import token shown for the attached file.' ],
+				'title'  => [ 'type' => Type::string() ],
+				'postId' => [ 'type' => Type::id(), 'description' => 'If set, also make the imported image this post\'s featured image.' ],
+			],
+			'resolve'     => [ $this, 'importMedia' ],
 		] );
 
 		$r->addMutation( 'updateMedia', [
@@ -125,6 +137,46 @@ class MediaFeature implements Feature {
 			throw new UserError( $id->get_error_message() );
 		}
 		return $this->shape( get_post( (int) $id ) );
+	}
+
+	/**
+	 * Import a file the user attached to their wish (by its import token) into the media library.
+	 * The file already lives in our private dir; we hand it to media_handle_sideload as the tmp
+	 * file, which copies it into the uploads library and builds the attachment + metadata.
+	 *
+	 * @param array<string,mixed> $args
+	 */
+	public function importMedia( $root, array $args ): array {
+		if ( ! current_user_can( 'upload_files' ) ) {
+			throw new UserError( 'You do not have permission to upload files.' );
+		}
+		$file = Downloads::resolve( (string) $args['token'] );
+		if ( ! $file ) {
+			throw new UserError( 'That attachment was not found or has expired — ask the user to attach the file again.' );
+		}
+		$postId = isset( $args['postId'] ) ? (int) $args['postId'] : 0;
+		if ( $postId > 0 && ! current_user_can( 'edit_post', $postId ) ) {
+			throw new UserError( 'You do not have permission to edit that post.' );
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+
+		$id = media_handle_sideload(
+			[ 'name' => $file['filename'], 'tmp_name' => $file['path'] ],
+			$postId,
+			$args['title'] ?? null,
+			[ 'test_form' => false ]
+		);
+		if ( is_wp_error( $id ) ) {
+			throw new UserError( $id->get_error_message() );
+		}
+		$id = (int) $id;
+		if ( $postId > 0 ) {
+			set_post_thumbnail( $postId, $id );
+		}
+		return $this->shape( get_post( $id ) );
 	}
 
 	/** @param array<string,mixed> $args */

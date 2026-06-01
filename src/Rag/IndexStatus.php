@@ -38,14 +38,14 @@ class IndexStatus {
 
 	/**
 	 * WordPress's native red update badge for the admin menu, or '' when the index is current.
-	 * Appended (unescaped, like core's own update counts) to the Memory + top-level menu titles.
+	 * Appended (unescaped, like core's own update counts) to the top-level Djinn menu title.
 	 */
 	public static function menuBubble(): string {
 		if ( ! self::needsReindex() ) {
 			return '';
 		}
 		return ' <span class="update-plugins djinn-reindex" title="' .
-			esc_attr__( 'The schema changed — rebuild the index under Djinn → Memory.', 'djinn' ) .
+			esc_attr__( 'The schema changed — rebuild the index in the Memory tile of Djinn → Cave of Wonders.', 'djinn' ) .
 			'"><span class="update-count">!</span></span>';
 	}
 

@@ -238,6 +238,11 @@
 			{ re: /__([^_]+)__/, make: ( m ) => el( 'strong', null, ...mdInline( m[ 1 ] ) ) },
 			{ re: /\*([^*]+)\*/, make: ( m ) => el( 'em', null, ...mdInline( m[ 1 ] ) ) },
 			{ re: /_([^_]+)_/, make: ( m ) => el( 'em', null, ...mdInline( m[ 1 ] ) ) },
+			// Autolink bare http(s) URLs; markdown links still win (they match at an earlier index).
+			{ re: /https?:\/\/[^\s<>()[\]'"]*[^\s<>()[\]'".,;:!?]/, make: ( m ) => {
+				const u = safeUrl( m[ 0 ] );
+				return u ? el( 'a', { href: u, target: '_blank', rel: 'noopener noreferrer' }, m[ 0 ] ) : m[ 0 ];
+			} },
 		];
 		const out = [];
 		let rest = String( text );
@@ -373,14 +378,22 @@
 		if ( msg.role === 'action' ) {
 			return el( IncantationCard, { action: msg } );
 		}
+		const hasText = ( msg.content || '' ) !== '';
 		const bubble = msg.role === 'assistant'
 			? el( 'div', { className: 'djinn-bubble djinn-md' }, ...renderMarkdown( msg.content || '' ) )
-			: el( 'div', { className: 'djinn-bubble' }, msg.content );
+			: hasText ? el( 'div', { className: 'djinn-bubble' }, msg.content ) : null;
+		const chips = ( msg.attachments && msg.attachments.length )
+			? msg.attachments.map( ( a, i ) =>
+					el( 'span', { key: 'att' + i, className: 'djinn-attach-chip' },
+						'📎 ' + a.filename + ( a.size ? ' (' + formatBytes( a.size ) + ')' : '' )
+					)
+			  )
+			: [];
 		return el(
 			'div',
 			{ className: 'djinn-msg djinn-msg-' + msg.role },
 			msg.role === 'assistant' ? el( 'div', { className: 'djinn-msg-avatar' }, el( Lamp, { size: 20 } ) ) : null,
-			bubble
+			el( 'div', { className: 'djinn-msg-stack' }, bubble, ...chips )
 		);
 	}
 
@@ -393,10 +406,10 @@
 		return isNaN( d ) ? '' : d.toLocaleDateString( undefined, { month: 'short', day: 'numeric' } );
 	}
 
-	function Sidebar( { chats, activeId, busy, onNew, onOpen } ) {
+	function Sidebar( { chats, activeId, busy, onNew, onOpen, onDelete, width } ) {
 		return el(
 			'aside',
-			{ className: 'djinn-sidebar' },
+			{ className: 'djinn-sidebar', style: { width: width + 'px' } },
 			el( Button, { className: 'djinn-newchat', variant: 'primary', disabled: busy, onClick: onNew }, el( Sparkle ), 'New wish' ),
 			el( 'div', { className: 'djinn-history-label' }, 'Past wishes' ),
 			el(
@@ -406,17 +419,26 @@
 					? el( 'p', { className: 'djinn-history-empty' }, 'Nothing yet.' )
 					: chats.map( ( c ) =>
 							el(
-								'button',
-								{
-									key: c.id,
+								'div',
+								{ key: c.id, className: 'djinn-history-item' + ( c.id === activeId ? ' is-active' : '' ) },
+								el( 'button', {
 									type: 'button',
-									className: 'djinn-history-item' + ( c.id === activeId ? ' is-active' : '' ),
+									className: 'djinn-history-open',
 									disabled: busy,
 									onClick: () => onOpen( c.id ),
 									title: c.title,
 								},
-								el( 'span', { className: 'djinn-history-title' }, c.title || 'Untitled wish' ),
-								el( 'span', { className: 'djinn-history-date' }, formatDate( c.created_at ) )
+									el( 'span', { className: 'djinn-history-title' }, c.title || 'Untitled wish' ),
+									el( 'span', { className: 'djinn-history-date' }, formatDate( c.created_at ) )
+								),
+								el( 'button', {
+									type: 'button',
+									className: 'djinn-history-del',
+									disabled: busy,
+									title: 'Delete this wish',
+									'aria-label': 'Delete this wish',
+									onClick: () => onDelete( c.id ),
+								}, '×' )
 							)
 					  )
 			)
@@ -441,13 +463,14 @@
 			return null;
 		}
 		const tokens = ( usage.tokens || 0 ).toLocaleString();
+		const showCost = ! Djinn.isOrg;
 		return el(
 			'div',
 			{ className: 'djinn-meter', title: usage.prompt.toLocaleString() + ' in · ' + usage.completion.toLocaleString() + ' out · ' + usage.calls + ' calls' },
 			el( Sparkle ),
 			el( 'span', { className: 'djinn-meter-tokens' }, tokens, ' tokens' ),
-			el( 'span', { className: 'djinn-meter-sep' }, '·' ),
-			el( 'span', { className: 'djinn-meter-cost' }, formatCost( usage.cost ) )
+			showCost ? el( 'span', { className: 'djinn-meter-sep' }, '·' ) : null,
+			showCost ? el( 'span', { className: 'djinn-meter-cost' }, formatCost( usage.cost ) ) : null
 		);
 	}
 
@@ -492,10 +515,25 @@
 		const [ error, setError ] = useState( '' );
 		const [ attachment, setAttachment ] = useState( null ); // { token, filename, size } once uploaded
 		const [ step, setStep ] = useState( '' ); // current streaming step label
+		const [ dragOver, setDragOver ] = useState( false ); // a file is being dragged over the page
+		const [ collapsed, setCollapsed ] = useState( () => {
+			try {
+				const s = localStorage.getItem( 'djinn_sidebar_collapsed' );
+				return s === null ? window.matchMedia( '(max-width: 782px)' ).matches : s === '1';
+			} catch ( e ) { return false; }
+		} );
+		const [ sidebarWidth, setSidebarWidth ] = useState( () => {
+			try {
+				const w = parseInt( localStorage.getItem( 'djinn_sidebar_width' ), 10 );
+				return ( w >= 150 && w <= 400 ) ? w : 200;
+			} catch ( e ) { return 200; }
+		} );
+		const [ resizing, setResizing ] = useState( false );
 		const scroller = useRef( null );
 		const fileInput = useRef( null );
 		const inputRef = useRef( null );
 		const loadSeq = useRef( 0 ); // guards against a stale transcript load clobbering newer state
+		const dragDepth = useRef( 0 ); // dragenter/leave fire per child; count to know when we truly left
 
 		useEffect( () => {
 			const node = scroller.current;
@@ -578,6 +616,33 @@
 			}
 		}
 
+		// Drop a file anywhere on the page → upload it. Depth-count enter/leave (they fire per child).
+		function dragHasFile( e ) {
+			return !! ( e.dataTransfer && Array.prototype.indexOf.call( e.dataTransfer.types || [], 'Files' ) !== -1 );
+		}
+		function onDragEnter( e ) {
+			if ( ! dragHasFile( e ) ) return;
+			e.preventDefault();
+			dragDepth.current++;
+			setDragOver( true );
+		}
+		function onDragOver( e ) {
+			if ( dragHasFile( e ) ) e.preventDefault(); // permit the drop
+		}
+		function onDragLeave( e ) {
+			if ( ! dragHasFile( e ) ) return;
+			dragDepth.current = Math.max( 0, dragDepth.current - 1 );
+			if ( dragDepth.current === 0 ) setDragOver( false );
+		}
+		function onDrop( e ) {
+			if ( ! dragHasFile( e ) ) return;
+			e.preventDefault();
+			dragDepth.current = 0;
+			setDragOver( false );
+			const f = e.dataTransfer.files && e.dataTransfer.files[ 0 ];
+			if ( f && ! busy ) uploadFile( f );
+		}
+
 		// Live-update the trailing streaming assistant bubble as deltas arrive.
 		function setStreamingContent( content ) {
 			setMessages( ( m ) => {
@@ -593,8 +658,8 @@
 		}
 
 		// Non-streaming fallback (older browser / curl-less host / stream error).
-		async function sendBlocking( startChatId, text ) {
-			const r = await api( '/wish', { chat_id: startChatId, message: text } );
+		async function sendBlocking( startChatId, text, attachments ) {
+			const r = await api( '/wish', { chat_id: startChatId, message: text, attachments: attachments || [] } );
 			setError( r.status === 'error' ? ( r.message || 'The lamp dimmed.' ) : '' );
 			const id = r.chat_id || startChatId;
 			if ( id ) {
@@ -603,19 +668,20 @@
 		}
 
 		async function send() {
-			let text = input.trim();
+			const text = input.trim();
 			if ( ( ! text && ! attachment ) || busy ) {
 				return;
 			}
-			// Fold the attachment into the message so the model sees its import token.
-			if ( attachment ) {
-				text = ( text ? text + '\n\n' : '' ) + '📎 Attached file: ' + attachment.filename + ' (import token: ' + attachment.token + ')';
-			}
+			// Attachments ride alongside the message, not spliced into the text: the user's words stay
+			// clean in the bubble and transcript, and the engine hands the import token to the model.
+			const attachments = attachment
+				? [ { filename: attachment.filename, token: attachment.token, size: attachment.size } ]
+				: [];
 			const startChatId = chatId;
 			loadSeq.current++; // supersede any in-flight restore so it can't wipe this turn
 			setInput( '' );
 			setAttachment( null );
-			setMessages( ( m ) => [ ...m, { role: 'user', content: text } ] ); // optimistic echo
+			setMessages( ( m ) => [ ...m, { role: 'user', content: text, attachments: attachment ? attachments : undefined } ] ); // optimistic echo
 			setBusy( true );
 			setStep( '' );
 
@@ -624,7 +690,7 @@
 					method: 'POST',
 					credentials: 'same-origin',
 					headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': Djinn.nonce },
-					body: JSON.stringify( { chat_id: startChatId, message: text } ),
+					body: JSON.stringify( { chat_id: startChatId, message: text, attachments } ),
 				} );
 				if ( ! res.ok || ! res.body ) {
 					throw new Error( 'stream unavailable' );
@@ -676,7 +742,7 @@
 				}
 			} catch ( e ) {
 				try {
-					await sendBlocking( startChatId, text );
+					await sendBlocking( startChatId, text, attachments );
 				} catch ( e2 ) {
 					setError( String( e2 ) );
 				}
@@ -706,6 +772,9 @@
 			}
 			setBusy( true );
 			setError( '' );
+			if ( window.matchMedia( '(max-width: 782px)' ).matches ) {
+				setCollapsed( true ); // on narrow screens the sidebar overlays — close it on open
+			}
 			try {
 				await loadTranscript( id );
 			} catch ( e ) {
@@ -713,6 +782,59 @@
 			} finally {
 				setBusy( false );
 			}
+		}
+
+		function toggleSidebar() {
+			setCollapsed( ( v ) => {
+				const next = ! v;
+				try { localStorage.setItem( 'djinn_sidebar_collapsed', next ? '1' : '0' ); } catch ( e ) {}
+				return next;
+			} );
+		}
+
+		// Drag the handle to resize the sidebar; width persists. Disabled while collapsed or on narrow
+		// screens (where the sidebar overlays at a fixed width).
+		function startResize( e ) {
+			if ( collapsed || window.matchMedia( '(max-width: 782px)' ).matches ) {
+				return;
+			}
+			e.preventDefault();
+			const startX = e.clientX;
+			const startW = sidebarWidth;
+			let lastW = startW;
+			setResizing( true );
+			function onMove( ev ) {
+				lastW = Math.min( 400, Math.max( 150, startW + ( ev.clientX - startX ) ) );
+				setSidebarWidth( lastW );
+			}
+			function onUp() {
+				document.removeEventListener( 'mousemove', onMove );
+				document.removeEventListener( 'mouseup', onUp );
+				setResizing( false );
+				try { localStorage.setItem( 'djinn_sidebar_width', String( lastW ) ); } catch ( e2 ) {}
+			}
+			document.addEventListener( 'mousemove', onMove );
+			document.addEventListener( 'mouseup', onUp );
+		}
+
+		async function deleteChat( id ) {
+			if ( busy || ! window.confirm( 'Delete this wish and its history? This cannot be undone.' ) ) {
+				return;
+			}
+			try {
+				await fetch( Djinn.restUrl + '/chats/' + id, {
+					method: 'DELETE',
+					credentials: 'same-origin',
+					headers: { 'X-WP-Nonce': Djinn.nonce },
+				} );
+			} catch ( e ) {
+				setError( 'Could not delete that wish.' );
+				return;
+			}
+			if ( id === chatId ) {
+				newChat();
+			}
+			refreshChats();
 		}
 
 		async function resolvePending( pending, confirmed ) {
@@ -736,7 +858,7 @@
 					el( Lamp, { size: 96, glow: false } ),
 					el( 'h1', null, 'The lamp is empty.' ),
 					el( 'p', null, 'Place an offering — an API key — to summon the Djinn.' ),
-					el( 'a', { className: 'components-button is-primary djinn-cta', href: Djinn.settingsUrl }, 'Open Settings →' )
+					el( 'a', { className: 'components-button is-primary djinn-cta', href: Djinn.settingsUrl }, 'Open the Cave of Wonders →' )
 				)
 			);
 		}
@@ -745,8 +867,27 @@
 
 		return el(
 			'div',
-			{ className: 'djinn-layout' },
-			el( Sidebar, { chats, activeId: chatId, busy, onNew: newChat, onOpen: openChat } ),
+			{
+				className: 'djinn-layout' + ( collapsed ? ' is-collapsed' : '' ) + ( resizing ? ' is-resizing' : '' ) + ( dragOver ? ' djinn-dragging' : '' ),
+				onDragEnter,
+				onDragOver,
+				onDragLeave,
+				onDrop,
+			},
+			dragOver ? el( 'div', { className: 'djinn-drop-overlay' },
+				el( 'div', { className: 'djinn-drop-card' }, '📎 Drop a file to attach it to your wish' )
+			) : null,
+			el( Sidebar, { chats, activeId: chatId, busy, onNew: newChat, onOpen: openChat, onDelete: deleteChat, width: collapsed ? 0 : sidebarWidth } ),
+			el( 'div', { className: 'djinn-resizer', onMouseDown: startResize },
+				el( 'button', {
+					type: 'button',
+					className: 'djinn-resizer-btn',
+					onMouseDown: ( e ) => e.stopPropagation(),
+					onClick: toggleSidebar,
+					title: collapsed ? 'Show past wishes' : 'Hide past wishes',
+					'aria-label': 'Toggle past wishes',
+				}, collapsed ? '›' : '‹' )
+			),
 			el(
 			'div',
 			{ className: 'djinn-app' },
@@ -757,7 +898,12 @@
 					el( Lamp, { size: 32, glow: ! empty || busy } ),
 					el( 'div', null,
 						el( 'h1', null, 'Djinn' ),
-						el( 'p', { className: 'djinn-tag' }, 'Whisper a wish. The Djinn of ', el( 'em', null, Djinn.siteName ), ' will grant it.' )
+						el( 'p', { className: 'djinn-disclosure' },
+							Djinn.isOrg
+								? 'Wishes and the relevant site content travel through Djinn’s gateway to Google Gemini. '
+								: 'Wishes and the relevant site content are sent to your AI provider. ',
+							Djinn.isOrg ? el( 'a', { href: Djinn.privacyUrl, target: '_blank', rel: 'noopener' }, 'Privacy' ) : null
+						)
 					)
 				),
 				el( 'div', { className: 'djinn-header-right' },

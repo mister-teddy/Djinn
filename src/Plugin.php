@@ -5,7 +5,6 @@ declare( strict_types=1 );
 namespace Djinn;
 
 use Djinn\Admin\AdminPage;
-use Djinn\Admin\Disclosure;
 use Djinn\Admin\IndexPage;
 use Djinn\Admin\UsagePage;
 use Djinn\Rest\Controller;
@@ -26,10 +25,9 @@ class Plugin {
 		( new Controller() )->register();
 
 		// ORG edition: auto-bind this site to a proxy trial on first admin load (no-op for BYO or
-		// once a token exists), and show the data-use disclosure.
+		// once a token exists). The data-use disclosure lives inline in the app header.
 		if ( Settings::isOrg() ) {
 			( new Onboarding() )->register();
-			( new Disclosure() )->register();
 		}
 	}
 }

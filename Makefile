@@ -27,12 +27,14 @@ up: start activate seed
 	@echo "Djinn is awake → http://localhost:8888/wp-admin (admin / password)"
 	@echo "Next: 'make lamp' to build the schema index, then visit Djinn → Lamp and make a wish."
 
-# One command to run after a coding session: validate code, then bounce the server so the
-# freshly-edited PHP/JS is live and ready to test. Checks run first, so a broken build leaves
-# the current server untouched instead of tearing it down.
-restart: check down start
-	@echo ""
-	@echo "✔  Restarted → http://localhost:8888/wp-admin (admin / password)"
+# Factory reset: wipe the local WordPress (database + uploads + volumes) and rebuild from scratch —
+# fresh core, composer install, re-activate, re-seed, and re-apply .wp-env config (incl. the ORG
+# override). Use when the dev site is in a bad state or to start clean. You DON'T need this for code
+# changes: the plugin is bind-mounted, so edited PHP/JS is live on a browser refresh.
+restart:
+	@echo "⚠  Factory reset — destroying the local WordPress (all data) and rebuilding."
+	$(WPENV) destroy
+	@$(MAKE) up
 
 # Static checks: lint every PHP file, syntax-check the front-end, refresh the autoloader.
 check:

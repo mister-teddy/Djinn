@@ -59,8 +59,8 @@ add_action( 'djinn_register_schema', function ( $registry ) {
 } );
 ```
 
-After any schema change, rebuild the index from **Djinn → Memory** (it shows a diff of what
-changed and the estimated embedding cost first).
+After any schema change, rebuild the index from the **Memory** tile of **Djinn → Cave of Wonders**
+(it shows a diff of what changed and the estimated embedding cost first).
 
 ## Install (development)
 
@@ -71,7 +71,7 @@ Requires Docker and Node (for [`wp-env`](https://developer.wordpress.org/block-e
 ```bash
 cp .env.example .env        # then paste your provider API key into .env
 make up                     # composer install + wp-env start + activate + seed settings
-make lamp                   # build the schema index (same as Djinn → Memory → Rebuild)
+make lamp                   # build the schema index (same as the Memory tile's Rebuild)
 make open                   # open wp-admin (admin / password)
 ```
 
@@ -83,9 +83,9 @@ after editing), `make cli "<wp-cli args>"`, `make logs`, `make down` (stop), `ma
 
 1. `composer install` in the plugin directory.
 2. Activate **Djinn** in wp-admin (creates the custom tables).
-3. **Djinn → Settings**: choose a provider, paste an API key (or define `DJINN_API_KEY` in
-   `wp-config.php`); models are picked from dropdowns discovered from your key. Save.
-4. **Djinn → Memory**: **Awaken the lamp** to build the schema index, then open **Djinn → Lamp**
+3. **Djinn → Cave of Wonders**, Account tile: choose a provider, paste an API key (or define
+   `DJINN_API_KEY` in `wp-config.php`); models are picked from dropdowns discovered from your key. Save.
+4. Same page, Memory tile: **Awaken the lamp** to build the schema index, then open **Djinn → Lamp**
    and make a wish.
 
 ## Try it
@@ -97,7 +97,8 @@ after editing), `make cli "<wp-cli args>"`, `make logs`, `make down` (stop), `ma
 - *"Are any updates available?"* → query → answer.
 
 The chat keeps a history sidebar (reopened across reloads), shows the exact GraphQL it ran (with
-the response), and meters tokens + cost per conversation. **Djinn → Spend** has the running total.
+the response), and meters tokens + cost per conversation. The **Spend** tile of **Djinn → Cave of
+Wonders** has the running total.
 
 Replies are **rich**: Markdown (headings, lists, tables, code, images), **View/Edit links** to
 whatever a wish touched, and **token streaming** (live typing, with step progress). You can
@@ -107,7 +108,7 @@ on direct OpenAI/Gemini; the hosted proxy edition replies in one shot (no SSE pa
 
 ## What it costs
 
-Every provider call is metered (**Djinn → Spend**). Measured from real local usage on
+Every provider call is metered (**Djinn → Cave of Wonders**, Spend tile). Measured from real local usage on
 `gemini-2.5-flash-lite` (14 wishes):
 
 | Per wish (average) | Value |
@@ -127,7 +128,7 @@ Djinn builds in two editions — **same capabilities**, differing only in how LL
 | | **BYO** (default) | **ORG** (free, for WordPress.org) |
 |---|---|---|
 | LLM access | Your own OpenAI/Gemini key (or our proxy) | Always our hosted proxy |
-| Settings page | Provider + key + model dropdowns | Account token only (no keys/models) |
+| Account tile | Provider + key + model dropdowns | Account token only (no keys/models) |
 | Cost | You pay your provider directly | 3 free wishes, then prepaid auto-recharge |
 
 The edition is the `DJINN_EDITION` constant (default `byo`). Build installable ZIPs:
@@ -137,7 +138,7 @@ make dist                                    # byo → dist/djinn-byo-<ver>.zip
 make dist org PROXY_URL=https://your-proxy   # org → dist/djinn-org-<ver>.zip (URL baked in)
 ```
 
-To test ORG locally, set in `wp-config.php`, then paste your account token under Djinn → Settings:
+To test ORG locally, set in `wp-config.php`, then paste your account token in the Account tile of Djinn → Cave of Wonders:
 
 ```php
 define( 'DJINN_EDITION', 'org' );

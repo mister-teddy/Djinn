@@ -95,7 +95,7 @@ trait Http {
 	 */
 	private static function modelHint( int $code ): string {
 		return ( $code === 404 || $code === 400 )
-			? ' The selected model looks unavailable or retired — choose a current one under Djinn → Settings.'
+			? ' The selected model looks unavailable or retired — choose a current one in the Account tile of Djinn → Cave of Wonders.'
 			: '';
 	}
 }

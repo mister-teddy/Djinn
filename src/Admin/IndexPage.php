@@ -10,23 +10,18 @@ use Djinn\Settings;
 use Throwable;
 
 /**
- * "The Lamp's Memory" — the one place to (re)build the RAG schema index. It shows whether the
+ * The "Memory" tile of the Cave of Wonders — (re)builds the RAG schema index. It shows whether the
  * index is current, what a rebuild would cost, and a diff of what it would gain, and disables the
- * button when nothing has changed. Reindexing no longer lives on the chat screen.
+ * button when nothing has changed. Rendered as a tile body by AdminPage; this class owns only the
+ * reindex handler.
  */
 class IndexPage {
 
-	private const PARENT = 'djinn';
-	private const SLUG   = 'djinn-index';
+	private const CAVE   = 'djinn-cave';
 	private const ACTION = 'djinn_reindex_now';
 
 	public function register(): void {
-		add_action( 'admin_menu', [ $this, 'menu' ], 11 );
 		add_action( 'admin_post_' . self::ACTION, [ $this, 'handleReindex' ] );
-	}
-
-	public function menu(): void {
-		add_submenu_page( self::PARENT, 'Djinn — Memory', 'Memory' . IndexStatus::menuBubble(), 'manage_options', self::SLUG, [ $this, 'render' ] );
 	}
 
 	public function handleReindex(): void {
@@ -35,7 +30,7 @@ class IndexPage {
 		}
 		check_admin_referer( self::ACTION );
 
-		$args = [ 'page' => self::SLUG ];
+		$args = [ 'page' => self::CAVE ];
 		try {
 			$count        = Indexer::reindex();
 			$args['done'] = $count;
@@ -46,68 +41,71 @@ class IndexPage {
 		exit;
 	}
 
-	public function render(): void {
+	public function renderBody(): void {
 		if ( ! Settings::isConfigured() ) {
-			echo '<div class="wrap"><h1>Djinn — Memory</h1><div class="notice notice-info"><p>Add an API key under <strong>Djinn → Settings</strong> first — the index is built with embeddings.</p></div></div>';
+			echo '<div class="notice notice-info inline"><p>Connect an account in the <strong>Account</strong> tile first — the index is built with embeddings.</p></div>';
 			return;
 		}
 
 		$s = IndexStatus::summary();
-		echo '<div class="wrap djinn-index">';
-		echo '<h1>Djinn — The Lamp\'s Memory</h1>';
-		echo '<p class="description">The Djinn searches this index to find the right GraphQL for a wish. Rebuild it whenever the schema changes (new capabilities, plugins). It re-embeds the whole schema each time.</p>';
 
 		if ( isset( $_GET['done'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			printf( '<div class="notice notice-success is-dismissible"><p>The lamp is awake — indexed %d schema types.</p></div>', (int) $_GET['done'] );
+			printf( '<div class="notice notice-success inline is-dismissible"><p>Index updated — %d schema types indexed.</p></div>', (int) $_GET['done'] );
 		}
 		if ( isset( $_GET['error'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			printf( '<div class="notice notice-error"><p>Reindex failed: %s</p></div>', esc_html( rawurldecode( (string) wp_unslash( $_GET['error'] ) ) ) );
+			printf( '<div class="notice notice-error inline"><p>Reindex failed: %s</p></div>', esc_html( rawurldecode( (string) wp_unslash( $_GET['error'] ) ) ) );
 		}
 
 		// Status line.
 		if ( ! $s['indexed'] ) {
-			echo '<div class="notice notice-warning"><p><strong>The lamp slumbers.</strong> Build the index to sharpen the Djinn\'s memory of your site.</p></div>';
+			echo '<div class="notice notice-warning inline"><p><strong>No index yet.</strong> Build it so the Djinn knows your site\'s schema.</p></div>';
 		} elseif ( $s['up_to_date'] ) {
 			printf(
-				'<div class="notice notice-success"><p><strong>Up to date.</strong> %d types indexed with <code>%s</code>%s.</p></div>',
+				'<div class="notice notice-success inline"><p><strong>Up to date.</strong> %d types indexed with <code>%s</code>%s.</p></div>',
 				(int) $s['count_stored'],
 				esc_html( (string) $s['stored_model'] ),
 				$s['indexed_at'] ? ' on ' . esc_html( (string) $s['indexed_at'] ) . ' UTC' : ''
 			);
 		} else {
-			echo '<div class="notice notice-warning"><p><strong>Out of date.</strong> The schema or embedding model has changed since the last build — rebuild to apply.</p></div>';
+			echo '<div class="notice notice-warning inline"><p><strong>Out of date.</strong> The schema or embedding model changed since the last build — update to apply.</p></div>';
 		}
 
+		// Action first. A flex row so the "nothing to update" note sits beside the button; on submit
+		// we disable it so a slow (synchronous) rebuild can't be fired twice.
+		$disabled = $s['up_to_date'] ? 'disabled' : '';
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" '
+			. 'style="display:flex;align-items:center;gap:10px;margin:4px 0 20px" '
+			. 'onsubmit="var b=this.querySelector(\'button\');b.disabled=true;b.textContent=\'Working…\';">';
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '" />';
+		wp_nonce_field( self::ACTION );
 		$est = $s['estimate'];
+		$tip = $s['indexed']
+			? sprintf( "Re-reads your site's GraphQL schema — post types, fields, taxonomies, and the capabilities your plugins add — into the searchable index the Djinn uses to pick tools. Rebuild ≈ %s tokens (%s).", number_format_i18n( (int) $est['tokens'] ), self::money( $est ) )
+			: sprintf( "Reads your site's GraphQL schema — post types, fields, taxonomies, and the capabilities your plugins add — into a searchable index the Djinn uses to pick tools. Build ≈ %s tokens (%s).", number_format_i18n( (int) $est['tokens'] ), self::money( $est ) );
+		printf(
+			'<button type="submit" class="button button-primary" title="%s" %s>%s</button>',
+			esc_attr( $tip ),
+			esc_attr( $disabled ),
+			$s['indexed'] ? 'Update RAG' : 'Build RAG'
+		);
+		if ( $s['up_to_date'] ) {
+			echo '<span class="description" style="margin:0">Nothing to update — the index matches your current schema.</span>';
+		}
+		echo '</form>';
+
 		echo '<table class="form-table" role="presentation"><tbody>';
 		printf( '<tr><th scope="row">Embedding model</th><td><code>%s</code></td></tr>', esc_html( (string) $s['model'] ) );
 		printf( '<tr><th scope="row">Schema types (live)</th><td>%d</td></tr>', (int) $s['count_live'] );
 		printf(
-			'<tr><th scope="row">Estimated rebuild cost</th><td>%s <span class="description">(~%s tokens across %d chunks)</span></td></tr>',
+			'<tr><th scope="row">Estimated cost</th><td>%s <span class="description">(~%s tokens across %d chunks)</span></td></tr>',
 			esc_html( self::money( $est ) ),
 			esc_html( number_format_i18n( (int) $est['tokens'] ) ),
 			(int) $est['chunks']
 		);
 		echo '</tbody></table>';
 
-		// Diff of what a rebuild would change.
+		// Diff of what a rekindle would change.
 		$this->renderDiff( $s['diff'], (bool) $s['indexed'] );
-
-		// Action.
-		$disabled = $s['up_to_date'] ? 'disabled' : '';
-		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin-top:18px">';
-		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '" />';
-		wp_nonce_field( self::ACTION );
-		printf(
-			'<button type="submit" class="button button-primary" %s>%s</button>',
-			esc_attr( $disabled ),
-			$s['indexed'] ? 'Rebuild the index' : 'Awaken the lamp'
-		);
-		if ( $s['up_to_date'] ) {
-			echo ' <span class="description">Nothing to rebuild — the index matches the current schema.</span>';
-		}
-		echo '</form>';
-		echo '</div>';
 	}
 
 	/**

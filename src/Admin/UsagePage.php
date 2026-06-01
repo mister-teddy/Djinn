@@ -10,30 +10,17 @@ use Djinn\Store\Repository;
 use Djinn\Usage\Pricing;
 
 /**
- * "The Lamp's Tally" — a server-rendered dashboard of token usage and estimated spend. No build
- * step, no JS: it reads aggregates straight from the usage table and draws plain HTML/CSS.
+ * The "Spend" tile of the Cave of Wonders — token usage and estimated spend, read straight from the
+ * usage table and drawn as plain HTML/CSS. Rendered as a tile body by AdminPage; this class owns
+ * only the reset handler.
  */
 class UsagePage {
 
-	private const PARENT = 'djinn';
-	private const SLUG   = 'djinn-usage';
+	private const CAVE   = 'djinn-cave';
 	private const ACTION = 'djinn_reset_usage';
 
 	public function register(): void {
-		// Priority 11 so the parent menu (registered by AdminPage at 10) already exists.
-		add_action( 'admin_menu', [ $this, 'menu' ], 11 );
 		add_action( 'admin_post_' . self::ACTION, [ $this, 'handleReset' ] );
-	}
-
-	public function menu(): void {
-		add_submenu_page(
-			self::PARENT,
-			'Djinn — Spend',
-			'Spend',
-			'manage_options',
-			self::SLUG,
-			[ $this, 'render' ]
-		);
 	}
 
 	public function handleReset(): void {
@@ -42,19 +29,18 @@ class UsagePage {
 		}
 		check_admin_referer( self::ACTION );
 		Repository::clearUsage();
-		wp_safe_redirect( add_query_arg( [ 'page' => self::SLUG, 'reset' => '1' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => self::CAVE, 'reset' => '1' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
-	public function render(): void {
+	public function renderBody(): void {
 		$summary = Repository::usageSummary();
 		$totals  = $summary['totals'];
 		$byModel = $summary['by_model'];
 		$byDay   = $summary['by_day'];
 		$recent  = $summary['recent'];
 
-		echo '<div class="wrap djinn-usage">';
-		echo '<h1>Djinn — The Lamp\'s Tally</h1>';
+		echo '<div class="djinn-usage">';
 		echo '<p class="description">Every wish spends a little of the lamp\'s oil. Costs are estimates from public list prices (USD); edit them with the <code>djinn_model_pricing</code> filter.</p>';
 
 		if ( isset( $_GET['reset'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -65,7 +51,7 @@ class UsagePage {
 		if ( Settings::usesProxy() ) {
 			$account = ProxyAccount::fetch();
 			if ( $account === null ) {
-				echo '<div class="notice notice-warning"><p>Couldn\'t reach your Djinn account. Check your token under <strong>Djinn → Settings</strong>.</p></div>';
+				echo '<div class="notice notice-warning inline"><p>Couldn\'t reach your Djinn account. Check your token in the <strong>Account</strong> tile.</p></div>';
 			} else {
 				echo '<div class="djinn-cards">';
 				printf(
@@ -78,7 +64,6 @@ class UsagePage {
 					! empty( $account['payg'] ) ? 'pay-as-you-go active' : 'top up to continue'
 				);
 				echo '</div>';
-				printf( '<p><a class="button" href="%s" target="_blank">Manage account / top up →</a></p>', esc_url( Settings::proxyUrl() ) );
 			}
 			echo '<h2>Local token tally</h2>';
 		}

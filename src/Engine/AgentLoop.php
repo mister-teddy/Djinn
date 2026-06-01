@@ -36,11 +36,8 @@ class AgentLoop {
 	 *
 	 * @return array<string,mixed>
 	 */
-	public function run( int $chatId, string $userText ): array {
-		Repository::addMessage(
-			$chatId,
-			[ 'role' => 'user', 'content' => Guard::sanitize( $userText ) ]
-		);
+	public function run( int $chatId, string $userText, array $attachments = [] ): array {
+		Repository::addMessage( $chatId, $this->userEntry( $userText, $attachments ) );
 		// A fresh user wish — count it against the proxy's free-wish allowance (no-op off-proxy).
 		ProxyProvider::markNewWish();
 		return $this->attachUsage( $chatId, $this->loop( $chatId ) );
@@ -53,8 +50,8 @@ class AgentLoop {
 	 *
 	 * @param callable(string,array):void $emit
 	 */
-	public function streamRun( int $chatId, string $userText, callable $emit ): void {
-		Repository::addMessage( $chatId, [ 'role' => 'user', 'content' => Guard::sanitize( $userText ) ] );
+	public function streamRun( int $chatId, string $userText, callable $emit, array $attachments = [] ): void {
+		Repository::addMessage( $chatId, $this->userEntry( $userText, $attachments ) );
 		ProxyProvider::markNewWish();
 
 		try {
@@ -153,6 +150,50 @@ class AgentLoop {
 	 *        sent as 'delta' events and each tool step as a 'step' event.
 	 * @return array<string,mixed>
 	 */
+	/**
+	 * The stored user turn. Attachments ride as metadata so the chat UI can show a chip and the
+	 * typed text stays verbatim; expandAttachments() folds the import token into the content only
+	 * when the turn is replayed to the provider.
+	 *
+	 * @param array<int,array{filename:string,token:string,size:int}> $attachments
+	 * @return array<string,mixed>
+	 */
+	private function userEntry( string $userText, array $attachments ): array {
+		$entry = [ 'role' => 'user', 'content' => Guard::sanitize( $userText ) ];
+		if ( $attachments ) {
+			$entry['attachments'] = $attachments;
+		}
+		return $entry;
+	}
+
+	/**
+	 * Fold attachment metadata into the user content sent to the provider. The model needs the
+	 * import token; the system prompt already explains importMedia/importWxr, so a terse note is
+	 * enough. The persisted transcript is left untouched (the UI renders chips from the metadata).
+	 *
+	 * @param array<int,array<string,mixed>> $history
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function expandAttachments( array $history ): array {
+		foreach ( $history as &$entry ) {
+			if ( ( $entry['role'] ?? '' ) !== 'user' || empty( $entry['attachments'] ) ) {
+				continue;
+			}
+			$notes = [];
+			foreach ( $entry['attachments'] as $a ) {
+				$token = (string) ( $a['token'] ?? '' );
+				if ( $token !== '' ) {
+					$notes[] = sprintf( 'Attached file: %s (import token: %s)', (string) ( $a['filename'] ?? 'file' ), $token );
+				}
+			}
+			if ( $notes ) {
+				$entry['content'] = trim( (string) ( $entry['content'] ?? '' ) . "\n\n" . implode( "\n", $notes ) );
+			}
+		}
+		unset( $entry );
+		return $history;
+	}
+
 	private function loop( int $chatId, ?callable $emit = null ): array {
 		// Attribute every provider call in this run (chat + schema-search embeddings) to the chat.
 		UsageRecorder::forChat( $chatId );
@@ -165,7 +206,7 @@ class AgentLoop {
 		$stalls   = 0;
 
 		for ( $round = 0; $round < self::MAX_ROUNDS; $round++ ) {
-			$history = Repository::getMessages( $chatId );
+			$history = $this->expandAttachments( Repository::getMessages( $chatId ) );
 
 			try {
 				$turn = $emit

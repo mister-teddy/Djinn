@@ -17,8 +17,8 @@ use Djinn\Usage\Pricing;
  */
 class AdminPage {
 
-	private const SLUG          = 'djinn';
-	private const SETTINGS_SLUG = 'djinn-settings';
+	private const SLUG      = 'djinn';
+	private const CAVE_SLUG = 'djinn-cave';
 
 	public function register(): void {
 		add_action( 'admin_menu', [ $this, 'menu' ] );
@@ -37,7 +37,7 @@ class AdminPage {
 			58
 		);
 		add_submenu_page( self::SLUG, 'Djinn', 'Lamp', 'manage_options', self::SLUG, [ $this, 'renderApp' ] );
-		add_submenu_page( self::SLUG, 'Djinn Settings', 'Settings', 'manage_options', self::SETTINGS_SLUG, [ $this, 'renderSettings' ] );
+		add_submenu_page( self::SLUG, 'Cave of Wonders', 'Cave of Wonders', 'manage_options', self::CAVE_SLUG, [ $this, 'renderCave' ] );
 	}
 
 	public function renderApp(): void {
@@ -61,7 +61,16 @@ class AdminPage {
 	public function enqueue( string $hook ): void {
 		if ( $hook === 'toplevel_page_' . self::SLUG ) {
 			$this->enqueueApp();
-		} elseif ( $hook === 'djinn_page_' . self::SETTINGS_SLUG && Settings::isOrg() ) {
+		} elseif ( $hook === 'djinn_page_' . self::CAVE_SLUG ) {
+			$this->enqueueCave();
+		}
+	}
+
+	/** The Cave of Wonders dashboard: its tile stylesheet, plus Stripe billing for the ORG account tile. */
+	private function enqueueCave(): void {
+		wp_enqueue_style( 'wp-components' );
+		wp_enqueue_style( 'djinn-cave', DJINN_URL . 'assets/cave.css', [ 'wp-components' ], DJINN_VERSION );
+		if ( Settings::isOrg() ) {
 			$this->enqueueBilling();
 		}
 	}
@@ -96,11 +105,13 @@ class AdminPage {
 			[
 				'restUrl'     => esc_url_raw( rest_url( 'djinn/v1' ) ),
 				'nonce'       => wp_create_nonce( 'wp_rest' ),
+				'isOrg'       => Settings::isOrg(),
 				'configured'  => Settings::isConfigured(),
 				'indexed'     => Repository::chunkCount() > 0,
-				'settingsUrl' => admin_url( 'admin.php?page=' . self::SETTINGS_SLUG ),
-				'indexUrl'    => admin_url( 'admin.php?page=djinn-index' ),
+				'settingsUrl' => admin_url( 'admin.php?page=' . self::CAVE_SLUG ),
+				'indexUrl'    => admin_url( 'admin.php?page=' . self::CAVE_SLUG ),
 				'siteName'    => get_option( 'blogname' ),
+				'privacyUrl'  => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
 			]
 		);
 	}
@@ -175,39 +186,54 @@ class AdminPage {
 JS;
 	}
 
-	public function renderSettings(): void {
-		if ( Settings::isOrg() ) {
-			$this->renderOrgSettings();
-			return;
-		}
-		$this->renderByoSettings();
+	/**
+	 * The Cave of Wonders — one tiled dashboard. Account + Memory share the top row; Spend spans the
+	 * bottom. The page itself doesn't scroll; each tile body scrolls on its own (see cave.css).
+	 */
+	public function renderCave(): void {
+		echo '<div class="djinn-cave">';
+		$this->tileOpen( 'account', 'Account' );
+		$this->settingsBody();
+		echo '</div></section>';
+
+		$this->tileOpen( 'memory', 'Memory' );
+		( new IndexPage() )->renderBody();
+		echo '</div></section>';
+
+		$this->tileOpen( 'spend', 'Spend' );
+		( new UsagePage() )->renderBody();
+		echo '</div></section>';
+		echo '</div>';
 	}
 
-	/** ORG edition: no keys or models — just connect a Djinn account and show credit. */
-	private function renderOrgSettings(): void {
-		$s       = Settings::all();
-		$account = ProxyAccount::fetch();
+	/** Opens a tile: <section> + dark header + the scrollable body wrapper. */
+	private function tileOpen( string $key, string $title ): void {
+		printf(
+			'<section class="djinn-tile djinn-tile--%1$s"><header class="djinn-tile-head"><span class="djinn-tile-mark">✦</span><h2>%2$s</h2></header><div class="djinn-tile-body">',
+			esc_attr( $key ),
+			esc_html( $title )
+		);
+	}
+
+	private function settingsBody(): void {
+		if ( Settings::isOrg() ) {
+			$this->orgSettingsBody();
+			return;
+		}
+		$this->byoSettingsBody();
+	}
+
+	/**
+	 * ORG edition: no keys, no token field. The site binds to the hosted service automatically
+	 * (see Onboarding); a dev box that can't be reached back defines DJINN_SITE_TOKEN in wp-config.
+	 * This tile just reports the connection + credit and offers a card.
+	 */
+	private function orgSettingsBody(): void {
+		$account   = ProxyAccount::fetch();
+		$connected = Settings::siteToken() !== '';
 		?>
-		<div class="wrap">
-			<h1>Djinn — Settings</h1>
-			<p>Connect your Djinn account to start granting wishes. No API keys needed — wishes run
-				through Djinn's hosted service.</p>
-			<form method="post" action="options.php">
-				<?php settings_fields( 'djinn' ); ?>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><label for="djinn-token">Account token</label></th>
-						<td>
-							<input type="password" id="djinn-token" name="djinn_settings[site_token]" class="regular-text"
-								placeholder="<?php echo $s['site_token'] ? '•••••••• (saved — leave blank to keep)' : 'Paste your Djinn token'; ?>" autocomplete="off" />
-							<p class="description">Get your token at <a href="<?php echo esc_url( Settings::proxyUrl() ); ?>" target="_blank">your Djinn account</a>. Your first three wishes are free.</p>
-						</td>
-					</tr>
-				</table>
-				<?php submit_button( 'Save settings' ); ?>
-			</form>
+		<div>
 			<?php if ( $account !== null ) : ?>
-				<h2>Your account</h2>
 				<table class="form-table" role="presentation">
 					<tr><th scope="row">Free wishes left</th><td><?php echo (int) ( $account['wishesLeft'] ?? 0 ); ?></td></tr>
 					<tr><th scope="row">Credit</th><td>$<?php echo esc_html( number_format( (float) ( $account['balanceUsd'] ?? 0 ), 4 ) ); ?></td></tr>
@@ -221,14 +247,17 @@ JS;
 					<button type="button" class="button button-primary" id="djinn-add-card">Add a card</button>
 					<span id="djinn-billing-msg" style="margin-left:.6em"></span>
 				<?php endif; ?>
+			<?php elseif ( $connected ) : ?>
+				<div class="notice notice-warning inline"><p>Connected, but your Djinn account is unreachable right now. Reload in a moment.</p></div>
+			<?php else : ?>
+				<div class="notice notice-info inline"><p>Linking this site to Djinn's hosted service — reload in a moment, and your first three wishes are free. If the site isn't publicly reachable (e.g. localhost), it can't be verified automatically: define <code>DJINN_SITE_TOKEN</code> in <code>wp-config.php</code> with a token minted from the proxy admin.</p></div>
 			<?php endif; ?>
-			<p>Then open <strong>Djinn → Memory</strong> to build the schema index, and <strong>Djinn → Lamp</strong> to make a wish.</p>
 		</div>
 		<?php
 	}
 
 	/** BYO edition: provider + key (or our proxy via a token) + model dropdowns. */
-	private function renderByoSettings(): void {
+	private function byoSettingsBody(): void {
 		// Allow a manual refresh of the discovered model list.
 		if ( isset( $_GET['djinn_refresh'] ) && check_admin_referer( 'djinn_refresh_models' ) ) {
 			ModelCatalog::flush();
@@ -238,8 +267,7 @@ JS;
 		$s       = Settings::all();
 		$catalog = ModelCatalog::forProvider( $s['provider'], Settings::apiKey() );
 		?>
-		<div class="wrap">
-			<h1>Djinn — Settings</h1>
+		<div>
 			<p>Place your offering in the lamp.</p>
 			<form method="post" action="options.php">
 				<?php settings_fields( 'djinn' ); ?>
@@ -296,12 +324,11 @@ JS;
 						Models discovered from your key.
 					<?php endif; ?>
 					Prices are <strong>estimates</strong> from public list prices (USD) — providers don't expose pricing via their API — and are editable with the <code>djinn_model_pricing</code> filter.
-					<a href="<?php echo esc_url( wp_nonce_url( add_query_arg( [ 'page' => self::SETTINGS_SLUG, 'djinn_refresh' => '1' ], admin_url( 'admin.php' ) ), 'djinn_refresh_models' ) ); ?>">Refresh model list</a>
+					<a href="<?php echo esc_url( wp_nonce_url( add_query_arg( [ 'page' => self::CAVE_SLUG, 'djinn_refresh' => '1' ], admin_url( 'admin.php' ) ), 'djinn_refresh_models' ) ); ?>">Refresh model list</a>
 				</p>
 
 				<?php submit_button( 'Save settings' ); ?>
 			</form>
-			<p>Once the offering is placed, open <strong>Djinn → Memory</strong> to build the schema index, then <strong>Djinn → Lamp</strong> and make a wish.</p>
 		</div>
 		<?php
 	}

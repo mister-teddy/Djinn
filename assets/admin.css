@@ -40,7 +40,7 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 #djinn-root {
 	color: var( --djinn-ivory );
 	height: 100%;
-	font-family: 'Cardo', Georgia, 'Times New Roman', serif;
+	font-family: inherit;
 	font-size: 16px;
 }
 
@@ -72,16 +72,6 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 	font-size: 22px;
 	font-weight: 600;
 	letter-spacing: 0.5px;
-}
-.djinn-tag {
-	margin: 2px 0 0;
-	color: var( --djinn-ivory-muted );
-	font-size: 13px;
-}
-.djinn-tag em {
-	color: var( --djinn-gold );
-	font-style: normal;
-	font-weight: 500;
 }
 
 /* ----------- Lamp icon ----------------------------------------------------- */
@@ -218,6 +208,19 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 	backdrop-filter: blur( 4px );
 }
 
+/* Stack a message's bubble above any attachment chips, aligned to that speaker's side. */
+.djinn-msg-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-width: 76%;
+	min-width: 0;
+}
+.djinn-msg-user .djinn-msg-stack { align-items: flex-end; }
+.djinn-msg-assistant .djinn-msg-stack { align-items: flex-start; }
+.djinn-msg-stack .djinn-bubble { max-width: 100%; }
+.djinn-msg-stack .djinn-attach-chip { align-self: auto; padding: 4px 12px; }
+
 /* ----------- Pending wish card -------------------------------------------- */
 .djinn-pending {
 	margin: 14px 0;
@@ -329,7 +332,8 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 	overflow-y: auto;
 	max-height: 220px;
 	font: inherit;
-	font-size: 14px;
+	font-family: 'Cardo', Georgia, 'Times New Roman', serif;
+	font-size: 17px;
 	line-height: 1.5;
 	transition: border-color 200ms, box-shadow 200ms;
 }
@@ -394,6 +398,7 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 	gap: 0;
 	align-items: stretch;
 	height: 100%;
+	position: relative;
 }
 .djinn-app {
 	flex: 1 1 auto;
@@ -404,17 +409,79 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 }
 
 .djinn-sidebar {
-	flex: 0 0 240px;
+	flex: 0 0 auto;
+	box-sizing: border-box;
+	width: 200px; /* width is driven inline; this is the no-JS fallback */
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 	padding: 16px 14px;
+	overflow: hidden;
 	background: linear-gradient( 160deg, var( --djinn-midnight ), var( --djinn-violet ) );
 	border: 0;
-	border-right: 1px solid rgba( 251, 191, 36, 0.16 );
 	border-radius: 0;
 	box-shadow: none;
 	min-height: 0;
+	transition: width 220ms ease, padding 220ms ease;
+}
+/* Collapse animates width → 0; zero the padding so nothing peeks through (border-box). */
+.djinn-layout.is-collapsed .djinn-sidebar {
+	padding-left: 0;
+	padding-right: 0;
+}
+/* No transition while dragging — the width must track the cursor exactly. */
+.djinn-layout.is-resizing .djinn-sidebar {
+	transition: none;
+}
+.djinn-layout.is-resizing {
+	cursor: col-resize;
+	user-select: none;
+}
+
+/* Drag handle between the sidebar and the thread; carries the collapse/expand arrow. */
+.djinn-resizer {
+	flex: 0 0 auto;
+	position: relative;
+	width: 7px;
+	cursor: col-resize;
+	background: linear-gradient( 160deg, var( --djinn-midnight ), var( --djinn-violet ) );
+	border-right: 1px solid rgba( 251, 191, 36, 0.16 );
+	transition: background 140ms ease;
+}
+/* Hover/drag: light the seam with the lamp's amber glow rather than a pale wash. */
+.djinn-resizer:hover,
+.djinn-layout.is-resizing .djinn-resizer {
+	border-right-color: rgba( 251, 191, 36, 0.55 );
+	box-shadow: 0 0 12px rgba( 251, 191, 36, 0.5 );
+}
+.djinn-layout.is-collapsed .djinn-resizer {
+	cursor: default;
+}
+.djinn-resizer-btn {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate( -50%, -50% );
+	width: 22px;
+	height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	background: linear-gradient( 135deg, var( --djinn-midnight-2 ), var( --djinn-violet ) );
+	color: var( --djinn-gold );
+	border: 1px solid rgba( 251, 191, 36, 0.30 );
+	border-radius: 7px;
+	font-size: 15px;
+	line-height: 1;
+	cursor: pointer;
+	z-index: 70;
+	box-shadow: 0 2px 8px rgba( 0, 0, 0, 0.35 );
+	transition: color 140ms ease, background 140ms ease;
+}
+.djinn-resizer-btn:hover {
+	color: #fff;
+	background: linear-gradient( 135deg, var( --djinn-violet ), var( --djinn-gold-ember ) );
 }
 .djinn-newchat.components-button.is-primary {
 	justify-content: center;
@@ -447,28 +514,55 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 }
 .djinn-history-item {
 	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	text-align: left;
-	width: 100%;
-	padding: 8px 10px;
-	background: transparent;
+	align-items: stretch;
 	border: 1px solid transparent;
 	border-radius: 9px;
-	color: var( --djinn-ivory );
-	cursor: pointer;
 	transition: background 160ms ease, border-color 160ms ease;
 }
-.djinn-history-item:hover:not( :disabled ) {
+.djinn-history-item:hover {
 	background: var( --djinn-violet-soft );
 }
 .djinn-history-item.is-active {
 	background: rgba( 251, 191, 36, 0.12 );
 	border-color: rgba( 251, 191, 36, 0.35 );
 }
-.djinn-history-item:disabled {
+.djinn-history-open {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	text-align: left;
+	padding: 8px 10px;
+	background: transparent;
+	border: 0;
+	color: var( --djinn-ivory );
+	cursor: pointer;
+}
+.djinn-history-open:disabled {
 	opacity: 0.6;
 	cursor: default;
+}
+.djinn-history-del {
+	flex: 0 0 auto;
+	width: 28px;
+	border: 0;
+	background: transparent;
+	color: var( --djinn-ivory-muted );
+	font-size: 18px;
+	line-height: 1;
+	cursor: pointer;
+	opacity: 0;
+	border-radius: 0 9px 9px 0;
+	transition: opacity 140ms ease, color 140ms ease, background 140ms ease;
+}
+.djinn-history-item:hover .djinn-history-del {
+	opacity: 0.7;
+}
+.djinn-history-del:hover {
+	opacity: 1;
+	color: #fca5a5;
+	background: rgba( 248, 113, 113, 0.15 );
 }
 .djinn-history-title {
 	font-size: 13px;
@@ -487,6 +581,20 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 	display: flex;
 	align-items: center;
 	gap: 12px;
+}
+.djinn-disclosure {
+	margin: 3px 0 0;
+	max-width: 520px;
+	color: var( --djinn-ivory-muted );
+	font-size: 11.5px;
+	line-height: 1.4;
+}
+.djinn-disclosure a {
+	color: var( --djinn-gold );
+	text-decoration: none;
+}
+.djinn-disclosure a:hover {
+	text-decoration: underline;
 }
 .djinn-meter {
 	display: inline-flex;
@@ -513,15 +621,17 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 }
 
 @media ( max-width: 782px ) {
-	.djinn-layout {
-		flex-direction: column;
-	}
+	/* The sidebar overlays the thread; its inline width still applies (0 when collapsed). */
 	.djinn-sidebar {
-		flex: 0 0 auto;
-		width: 100%;
-		max-height: 30vh;
-		border-right: 0;
-		border-bottom: 1px solid rgba( 251, 191, 36, 0.16 );
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		z-index: 60;
+		box-shadow: 12px 0 48px rgba( 0, 0, 0, 0.5 );
+	}
+	.djinn-resizer {
+		cursor: default;
 	}
 }
 
@@ -564,6 +674,7 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 
 /* Dim text with a bright band sweeping left → right. */
 .djinn-act-purpose {
+	font-family: 'Cardo', Georgia, 'Times New Roman', serif;
 	flex: 1 1 auto;
 	min-width: 0;
 	overflow: hidden;
@@ -803,3 +914,26 @@ h4.djinn-md-h, h5.djinn-md-h, h6.djinn-md-h { font-size: 14px; }
 /* Elastic textarea grows to fit, so no visible scrollbar — it scrolls silently past the cap. */
 .djinn-input { scrollbar-width: none; }
 .djinn-input::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+/* Whole-page drop cue; pointer-events:none so drops reach the layout's handlers. */
+.djinn-drop-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba( 15, 23, 42, 0.5 );
+	backdrop-filter: blur( 2px );
+	pointer-events: none;
+}
+.djinn-drop-card {
+	padding: 1.1rem 1.7rem;
+	border: 2px dashed rgba( 255, 255, 255, 0.85 );
+	border-radius: 14px;
+	background: rgba( 79, 70, 229, 0.95 );
+	color: #fff;
+	font-size: 1.05rem;
+	font-weight: 600;
+	box-shadow: 0 10px 40px rgba( 0, 0, 0, 0.35 );
+}

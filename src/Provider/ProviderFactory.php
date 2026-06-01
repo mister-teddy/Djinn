@@ -12,14 +12,14 @@ class ProviderFactory {
 	public static function make(): Provider {
 		if ( ! Settings::isConfigured() ) {
 			$msg = Settings::usesProxy()
-				? 'Connect your Djinn account under Djinn → Settings to start wishing.'
-				: 'The lamp is empty — add an API key under Djinn → Settings.';
+				? 'Connect your Djinn account in the Account tile of Djinn → Cave of Wonders to start wishing.'
+				: 'The lamp is empty — add an API key in the Account tile of Djinn → Cave of Wonders.';
 			throw new RuntimeException( $msg );
 		}
 
 		// The proxy picks the model server-side; a bring-your-own-key provider needs one chosen.
 		if ( ! Settings::usesProxy() && Settings::chatModel() === '' ) {
-			throw new RuntimeException( 'Choose a chat model under Djinn → Settings before making a wish.' );
+			throw new RuntimeException( 'Choose a chat model in the Account tile of Djinn → Cave of Wonders before making a wish.' );
 		}
 
 		switch ( Settings::provider() ) {

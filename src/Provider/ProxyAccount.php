@@ -8,7 +8,7 @@ use Djinn\Settings;
 
 /**
  * Reads the site's account state (credit balance, free wishes left) from the hosted proxy, for
- * the Settings and Spend pages in proxy mode.
+ * the Account and Spend tiles of the Cave of Wonders in proxy mode.
  */
 class ProxyAccount {
 

@@ -149,6 +149,14 @@ class Repository {
 		return $id === null ? null : (int) $id;
 	}
 
+	public static function deleteChat( int $chatId ): void {
+		global $wpdb;
+		foreach ( [ 'djinn_messages', 'djinn_pending', 'djinn_usage' ] as $t ) {
+			$wpdb->delete( $wpdb->prefix . $t, [ 'chat_id' => $chatId ] );
+		}
+		$wpdb->delete( $wpdb->prefix . 'djinn_chats', [ 'id' => $chatId ] );
+	}
+
 	// ---- Messages ----------------------------------------------------------
 
 	/** @param array<string,mixed> $entry A normalized message: role + content + optional tool fields. */

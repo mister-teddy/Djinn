@@ -53,9 +53,16 @@ class Controller {
 		] );
 
 		register_rest_route( self::NS, '/chats/(?P<id>\d+)', [
-			'methods'             => 'GET',
-			'permission_callback' => $auth,
-			'callback'            => [ $this, 'chat' ],
+			[
+				'methods'             => 'GET',
+				'permission_callback' => $auth,
+				'callback'            => [ $this, 'chat' ],
+			],
+			[
+				'methods'             => 'DELETE',
+				'permission_callback' => $auth,
+				'callback'            => [ $this, 'deleteChat' ],
+			],
 		] );
 
 		register_rest_route( self::NS, '/reindex', [
@@ -195,20 +202,55 @@ class Controller {
 		return current_user_can( 'manage_options' );
 	}
 
+	/**
+	 * Parsed, sanitized chat attachments from the request body: an array of {filename, token, size}.
+	 * The token came from /upload; entries without one are dropped.
+	 *
+	 * @return array<int,array{filename:string,token:string,size:int}>
+	 */
+	private function attachmentsParam( WP_REST_Request $req ): array {
+		$raw = $req->get_param( 'attachments' );
+		if ( ! is_array( $raw ) ) {
+			return [];
+		}
+		$out = [];
+		foreach ( $raw as $a ) {
+			$token = is_array( $a ) ? sanitize_text_field( (string) ( $a['token'] ?? '' ) ) : '';
+			if ( $token === '' ) {
+				continue;
+			}
+			$out[] = [
+				'filename' => sanitize_file_name( (string) ( $a['filename'] ?? 'file' ) ),
+				'token'    => $token,
+				'size'     => isset( $a['size'] ) ? max( 0, (int) $a['size'] ) : 0,
+			];
+		}
+		return $out;
+	}
+
+	/** A new chat's title: the typed text, or the first attachment's name when the wish is file-only. */
+	private function chatTitle( string $text, array $attachments ): string {
+		if ( $text !== '' ) {
+			return $text;
+		}
+		return $attachments ? (string) $attachments[0]['filename'] : '';
+	}
+
 	public function wish( WP_REST_Request $req ): WP_REST_Response {
-		$text = trim( (string) $req->get_param( 'message' ) );
-		if ( $text === '' ) {
+		$text        = trim( (string) $req->get_param( 'message' ) );
+		$attachments = $this->attachmentsParam( $req );
+		if ( $text === '' && ! $attachments ) {
 			return new WP_REST_Response( [ 'status' => 'error', 'message' => 'Whisper something.' ], 400 );
 		}
 
 		$chatId = (int) $req->get_param( 'chat_id' );
 		if ( $chatId <= 0 ) {
-			$chatId = Repository::createChat( get_current_user_id(), $text );
+			$chatId = Repository::createChat( get_current_user_id(), $this->chatTitle( $text, $attachments ) );
 		} elseif ( ! $this->ownsChat( $chatId ) ) {
 			return new WP_REST_Response( [ 'status' => 'error', 'message' => 'Not your lamp.' ], 403 );
 		}
 
-		return new WP_REST_Response( ( new AgentLoop() )->run( $chatId, $text ) );
+		return new WP_REST_Response( ( new AgentLoop() )->run( $chatId, $text, $attachments ) );
 	}
 
 	/**
@@ -217,13 +259,14 @@ class Controller {
 	 * WP_REST_Response (we own the headers) and exits.
 	 */
 	public function wishStream( WP_REST_Request $req ) {
-		$text = trim( (string) $req->get_param( 'message' ) );
-		if ( $text === '' ) {
+		$text        = trim( (string) $req->get_param( 'message' ) );
+		$attachments = $this->attachmentsParam( $req );
+		if ( $text === '' && ! $attachments ) {
 			return new WP_REST_Response( [ 'status' => 'error', 'message' => 'Whisper something.' ], 400 );
 		}
 		$chatId = (int) $req->get_param( 'chat_id' );
 		if ( $chatId <= 0 ) {
-			$chatId = Repository::createChat( get_current_user_id(), $text );
+			$chatId = Repository::createChat( get_current_user_id(), $this->chatTitle( $text, $attachments ) );
 		} elseif ( ! $this->ownsChat( $chatId ) ) {
 			return new WP_REST_Response( [ 'status' => 'error', 'message' => 'Not your lamp.' ], 403 );
 		}
@@ -236,7 +279,7 @@ class Controller {
 			@flush();
 		};
 		$emit( 'open', [ 'chat_id' => $chatId ] );
-		( new AgentLoop() )->streamRun( $chatId, $text, $emit );
+		( new AgentLoop() )->streamRun( $chatId, $text, $emit, $attachments );
 		exit;
 	}
 
@@ -271,6 +314,15 @@ class Controller {
 		return new WP_REST_Response( Repository::listChats( get_current_user_id() ) );
 	}
 
+	public function deleteChat( WP_REST_Request $req ): WP_REST_Response {
+		$chatId = (int) $req['id'];
+		if ( ! $this->ownsChat( $chatId ) ) {
+			return new WP_REST_Response( [ 'message' => 'Not your lamp.' ], 403 );
+		}
+		Repository::deleteChat( $chatId );
+		return new WP_REST_Response( [ 'deleted' => $chatId ] );
+	}
+
 	public function chat( WP_REST_Request $req ): WP_REST_Response {
 		$chatId = (int) $req['id'];
 		if ( ! $this->ownsChat( $chatId ) ) {
@@ -302,8 +354,14 @@ class Controller {
 			$role = $entry['role'] ?? '';
 
 			if ( $role === 'user' ) {
-				if ( ! empty( $entry['content'] ) ) {
-					$out[] = [ 'role' => 'user', 'content' => (string) $entry['content'] ];
+				$content     = (string) ( $entry['content'] ?? '' );
+				$attachments = $entry['attachments'] ?? [];
+				if ( $content !== '' || $attachments ) {
+					$msg = [ 'role' => 'user', 'content' => $content ];
+					if ( $attachments ) {
+						$msg['attachments'] = $attachments;
+					}
+					$out[] = $msg;
 				}
 				continue;
 			}

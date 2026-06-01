@@ -4,6 +4,8 @@ composer.lock
 .DS_Store
 .env
 .djinn-seed.json
+.wp-env.override.json
+.wp-env.override.json.pause
 
 # Proxy service local files
 /proxy/target/
