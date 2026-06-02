@@ -14,6 +14,7 @@ use Djinn\Provider\ProxyAccount;
 use Djinn\Rag\Indexer;
 use Djinn\Rag\IndexStatus;
 use Djinn\Settings;
+use Djinn\Usage\Pricing;
 use Djinn\Store\Repository;
 use Throwable;
 use WP_REST_Request;
@@ -609,8 +610,8 @@ class Controller {
 		}
 		$catalog = ModelCatalog::forProvider( $provider, Settings::apiKey() );
 		return new WP_REST_Response( [
-			'chat'  => array_map( static fn( $m ) => [ 'id' => $m, 'tier' => ModelCatalog::chatTier( $m ) ], $catalog['chat'] ),
-			'embed' => array_map( static fn( $m ) => [ 'id' => $m ], $catalog['embed'] ),
+			'chat'  => array_map( static fn( $m ) => [ 'id' => $m, 'tier' => ModelCatalog::chatTier( $m ), 'price' => Pricing::describe( $m ) ], $catalog['chat'] ),
+			'embed' => array_map( static fn( $m ) => [ 'id' => $m, 'price' => Pricing::describe( $m ) ], $catalog['embed'] ),
 			'live'  => $catalog['live'],
 			'error' => $catalog['error'],
 		] );

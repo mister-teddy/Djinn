@@ -139,14 +139,16 @@ body.toplevel_page_djinn .update-nag { display: none; }
 	color: var( --djinn-gold );
 	font-style: normal;
 }
-.djinn-app-empty .djinn-hero {
-	padding: 60px 24px;
+.djinn-app-empty {
+	align-items: center;
+	justify-content: center;
 	background:
 		radial-gradient( circle at 50% 30%, rgba( 251, 191, 36, 0.16 ), transparent 50% ),
 		linear-gradient( 135deg, var( --djinn-midnight ), var( --djinn-violet ) );
-	border-radius: var( --djinn-radius );
+}
+.djinn-app-empty .djinn-hero {
+	padding: 24px;
 	color: var( --djinn-ivory );
-	border: 1px solid rgba( 251, 191, 36, 0.18 );
 }
 .djinn-hero h1 {
 	color: var( --djinn-ivory );

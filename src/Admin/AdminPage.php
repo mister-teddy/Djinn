@@ -95,12 +95,12 @@ class AdminPage {
 				'edition'       => Settings::edition(),
 				'isOrg'         => Settings::isOrg(),
 				'configured'    => Settings::isConfigured(),
-				'stripeEnabled' => Settings::isOrg(),
+				'stripeEnabled' => Settings::usesProxy(),
 				'providers'     => Providers::forClient(),
 				'privacyUrl'    => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
 			]
 		);
-		if ( Settings::isOrg() ) {
+		if ( Settings::usesProxy() ) {
 			$this->enqueueBilling();
 		}
 	}

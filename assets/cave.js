@@ -12,13 +12,17 @@
 	} = DjinnUI;
 	const api = makeApi( DjinnCave );
 
-	// Provider list, key-backed subset, and embeddings flags all come from the PHP provider registry
-	// (Providers::forClient(), localized as DjinnCave.providers).
 	const REGISTRY = DjinnCave.providers || [];
 	const PROVIDERS = REGISTRY.map( ( p ) => ( { value: p.value, label: p.label } ) );
 	const KEY_PROVIDERS = REGISTRY.filter( ( p ) => p.needsKey ).map( ( p ) => p.value );
 	const PROVIDER_EMBEDS = {};
-	REGISTRY.forEach( ( p ) => { PROVIDER_EMBEDS[ p.value ] = p.embeddings !== false; } );
+	const PROVIDER_DESC = {};
+	const PROVIDER_KEYHINT = {};
+	REGISTRY.forEach( ( p ) => {
+		PROVIDER_EMBEDS[ p.value ] = p.embeddings !== false;
+		PROVIDER_DESC[ p.value ] = p.description || '';
+		PROVIDER_KEYHINT[ p.value ] = p.keyHint || '';
+	} );
 	const TIER_LABELS = { recommended: 'Recommended', standard: 'Other models', limited: 'Not recommended — too small for multi-step wishes' };
 
 	const cap = ( s ) => ( s ? String( s ).charAt( 0 ).toUpperCase() + String( s ).slice( 1 ) : s );
@@ -30,7 +34,6 @@
 		const [ models, setModels ] = useState( null );   // GET /models
 		const [ provider, setProvider ] = useState( '' );
 		const [ apiKey, setApiKey ] = useState( '' );
-		const [ siteToken, setSiteToken ] = useState( '' );
 		const [ chatModel, setChatModel ] = useState( '' );
 		const [ embedModel, setEmbedModel ] = useState( '' );
 		const [ saving, setSaving ] = useState( false );
@@ -72,10 +75,7 @@
 			setSaving( true );
 			const body = { provider, chat_model: chatModel, embedding_model: embedModel };
 			if ( apiKey ) {
-				body.api_key = apiKey; // blank → keep the saved one (Settings::sanitize)
-			}
-			if ( siteToken ) {
-				body.site_token = siteToken;
+				body.api_key = apiKey;
 			}
 			try {
 				const r = await api( '/settings', body );
@@ -85,7 +85,6 @@
 					setS( r );
 					setProvider( r.provider );
 					setApiKey( '' );
-					setSiteToken( '' );
 					toast( 'Settings saved.' );
 					loadAccount();
 				}
@@ -96,17 +95,16 @@
 			}
 		}
 
-		// ORG always routes through the managed proxy — there's nothing to choose, so show no selector.
 		const selector = isOrg
 			? null
 			: el( Field, {
 				label: 'Provider',
 				htmlFor: 'djinn-provider',
-				description: 'OpenAI/Gemini/Anthropic use your API key; Djinn proxy uses your account token.',
+				description: PROVIDER_DESC[ provider ] || '',
 			}, el( Select, { id: 'djinn-provider', value: provider, onChange: setProvider, options: PROVIDERS } ) );
 
 		const body = provider === 'proxy'
-			? el( ProxyView, { account, isOrg, siteToken, setSiteToken } )
+			? el( ProxyView, { account, isOrg } )
 			: el( KeyView, {
 				provider, apiKey, setApiKey, chatModel, setChatModel, embedModel, setEmbedModel,
 				models, hasApiKey: s.hasApiKey,
@@ -119,40 +117,26 @@
 		);
 	}
 
-	function ProxyView( { account, isOrg, siteToken, setSiteToken } ) {
-		const kids = [];
-		if ( ! isOrg ) {
-			kids.push( el( Field, {
-				key: 'tok',
-				label: 'Djinn account token',
-				htmlFor: 'djinn-token',
-				description: 'Paste the token from your Djinn proxy account.',
-			}, el( PasswordField, {
-				id: 'djinn-token',
-				value: siteToken,
-				onChange: setSiteToken,
-				placeholder: ( account && account.connected ) ? '•••••••• (saved — leave blank to keep)' : 'Account token',
-			} ) ) );
-		}
+	function ProxyView( { account, isOrg } ) {
 		if ( account === null ) {
-			kids.push( el( Spinner, { key: 'l' } ) );
-		} else if ( ! account.usesProxy ) {
-			kids.push( el( 'p', { key: 'n', className: 'description' }, 'Save a token to connect this site to your Djinn account.' ) );
-		} else if ( ! account.connected ) {
-			kids.push( el( Notice, { key: 'w', status: 'warning', isDismissible: false },
-				isOrg ? 'Linking this site to Djinn — reload in a moment.' : 'Not connected — check your account token.' ) );
-		} else {
-			kids.push( el( 'div', { key: 'cards', className: 'djinn-cards' },
-				el( StatCard, { value: account.wishesLeft != null ? String( account.wishesLeft ) : '—', label: 'Free wishes left' } ),
-				el( StatCard, {
-					value: formatCost( account.balanceUsd || 0 ),
-					label: 'Account credit',
-					sub: account.payg ? 'auto top-up on' : 'top up to continue',
-				} )
-			) );
-			if ( DjinnCave.stripeEnabled ) {
-				kids.push( el( PaymentBlock, { key: 'pay', account } ) );
-			}
+			return el( 'div', null, el( Spinner ) );
+		}
+		if ( ! account.connected ) {
+			return el( 'div', null, el( Notice, { status: 'info', isDismissible: false }, 'Linking this site to Djinn — reload in a moment.' ) );
+		}
+		const cards = [];
+		if ( isOrg ) {
+			cards.push( el( StatCard, { key: 'wishes', value: account.wishesLeft != null ? String( account.wishesLeft ) : '—', label: 'Free wishes left' } ) );
+		}
+		cards.push( el( StatCard, {
+			key: 'credit',
+			value: formatCost( account.balanceUsd || 0 ),
+			label: 'Account credit',
+			sub: account.payg ? 'auto top-up on' : 'top up to continue',
+		} ) );
+		const kids = [ el( 'div', { key: 'cards', className: 'djinn-cards' }, cards ) ];
+		if ( DjinnCave.stripeEnabled ) {
+			kids.push( el( PaymentBlock, { key: 'pay', account } ) );
 		}
 		return el( 'div', null, kids );
 	}
@@ -162,7 +146,7 @@
 			return el( 'p', { className: 'description' }, '✓ A card is on file — automatic top-up is on.' );
 		}
 		return el( 'div', { className: 'djinn-payment' },
-			el( 'p', { className: 'description' }, 'Add a card to keep wishing after your free wishes — prepaid with automatic top-up, no charge now.' ),
+			el( 'p', { className: 'description' }, 'Add a card to keep wishing — prepaid with automatic top-up, no charge now.' ),
 			el( 'button', { type: 'button', className: 'button button-primary', id: 'djinn-add-card' }, 'Add a card' ),
 			el( 'div', { id: 'djinn-billing-modal', className: 'djinn-modal', hidden: true },
 				el( 'div', { className: 'djinn-modal-backdrop', 'data-djinn-close': 'true' } ),
@@ -182,17 +166,18 @@
 
 	function KeyView( { provider, apiKey, setApiKey, chatModel, setChatModel, embedModel, setEmbedModel, models, hasApiKey } ) {
 		const chatList = ( models && models.chat ) || [];
+		const withPrice = ( m ) => ( { value: m.id, label: m.price ? m.id + ' — ' + m.price : m.id } );
 		const chatGroups = [ 'recommended', 'standard', 'limited' ].map( ( t ) => ( {
 			label: TIER_LABELS[ t ],
-			options: chatList.filter( ( m ) => m.tier === t ).map( ( m ) => ( { value: m.id, label: m.id } ) ),
+			options: chatList.filter( ( m ) => m.tier === t ).map( withPrice ),
 		} ) );
-		const embedOptions = ( ( models && models.embed ) || [] ).map( ( m ) => ( { value: m.id, label: m.id } ) );
+		const embedOptions = ( ( models && models.embed ) || [] ).map( withPrice );
 		const hasEmbeddings = PROVIDER_EMBEDS[ provider ] !== false;
 		return el( 'div', null,
 			el( Field, {
 				label: 'API key',
 				htmlFor: 'djinn-key',
-				description: 'For OpenAI/Gemini/Anthropic. Or define DJINN_API_KEY in wp-config.php.',
+				description: PROVIDER_KEYHINT[ provider ] || '',
 			}, el( PasswordField, {
 				id: 'djinn-key',
 				value: apiKey,

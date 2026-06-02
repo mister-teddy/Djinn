@@ -808,12 +808,16 @@
 		if ( ! Djinn.configured ) {
 			return el(
 				'div',
-				{ className: 'djinn-app djinn-app-empty' },
-				el( 'div', { className: 'djinn-hero' },
-					el( Lamp, { size: 96, glow: false } ),
-					el( 'h1', null, 'The lamp is empty.' ),
-					el( 'p', null, 'Place an offering — an API key — to summon the Djinn.' ),
-					el( 'a', { className: 'components-button is-primary djinn-cta', href: Djinn.settingsUrl }, 'Open the Cave of Wonders →' )
+				{ className: 'djinn-layout' },
+				el(
+					'div',
+					{ className: 'djinn-app djinn-app-empty' },
+					el( 'div', { className: 'djinn-hero' },
+						el( Lamp, { size: 96, glow: false } ),
+						el( 'h1', null, 'The lamp is empty.' ),
+						el( 'p', null, 'Place an offering — an API key — to summon the Djinn.' ),
+						el( 'a', { className: 'components-button is-primary djinn-cta', href: Djinn.settingsUrl }, 'Open the Cave of Wonders →' )
+					)
 				)
 			);
 		}
