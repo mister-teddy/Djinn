@@ -32,8 +32,7 @@ class IndexStatus {
 			return self::$needsReindex = true; // never built
 		}
 		$meta = Indexer::meta();
-		return self::$needsReindex = ( $meta['fingerprint'] ?? '' ) !== Indexer::fingerprint()
-			|| ( $meta['model'] ?? '' ) !== Settings::embeddingModel();
+		return self::$needsReindex = ( $meta['fingerprint'] ?? '' ) !== Indexer::fingerprint();
 	}
 
 	/**
@@ -45,7 +44,7 @@ class IndexStatus {
 			return '';
 		}
 		return ' <span class="update-plugins djinn-reindex" title="' .
-			esc_attr__( 'The schema changed — rebuild the index in the Memory tile of Djinn → Cave of Wonders.', 'djinn' ) .
+			esc_attr__( 'The schema changed — update the index in the Capabilities tile of Djinn → Cave of Wonders.', 'djinn' ) .
 			'"><span class="update-count">!</span></span>';
 	}
 
@@ -57,9 +56,7 @@ class IndexStatus {
 		$model   = Settings::embeddingModel();
 
 		$indexed   = Repository::chunkCount() > 0;
-		$upToDate  = $indexed
-			&& ( $meta['fingerprint'] ?? '' ) === Indexer::fingerprint()
-			&& ( $meta['model'] ?? '' ) === $model;
+		$upToDate  = $indexed && ( $meta['fingerprint'] ?? '' ) === Indexer::fingerprint();
 
 		return [
 			'indexed'      => $indexed,

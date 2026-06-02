@@ -4,27 +4,25 @@
  * white WP-admin chrome. The aesthetic does the metaphor's work; copy stays understated.
  */
 
-:root {
-	--djinn-midnight: #0f0a1e;
-	--djinn-midnight-2: #1a1230;
-	--djinn-violet: #2d1f4a;
-	--djinn-violet-soft: rgba( 139, 92, 246, 0.18 );
-	--djinn-ivory: #f5e9d0;
-	--djinn-ivory-muted: #c4b89f;
-	--djinn-gold: #fbbf24;
-	--djinn-gold-deep: #f59e0b;
-	--djinn-gold-ember: #b45309;
-	--djinn-glow: 0 0 24px rgba( 251, 191, 36, 0.45 );
-	--djinn-radius: 14px;
-}
+/* Palette tokens (--djinn-*) live in components.css, loaded first via the shared `djinn-ui` style. */
 
 /* ----------- App shell: full-bleed, no page scroll (Lamp page only) -------- */
 /* Strip the WP admin chrome's padding/footer so the app meets every edge. */
 body.toplevel_page_djinn #wpcontent { padding-left: 0; }
 body.toplevel_page_djinn #wpbody-content { padding-bottom: 0; }
 body.toplevel_page_djinn #wpfooter { display: none; }
+/* Dark page background + no rubber-band, so overscroll never flashes the white WP-admin canvas. */
+body.toplevel_page_djinn { background: var( --djinn-midnight ); overscroll-behavior: none; }
+/* The lamp is a full-height app with no notices of its own, so hide every admin notice core or other
+   plugins inject above .djinn-wrap (update/PHP/maintenance nags, "settings saved", plugin promos,
+   error notices) — they'd otherwise push the app down and break the layout. These render as direct
+   children of #wpbody-content (the nags carry .inline, so WP never relocates them into .wrap, which
+   is why a .djinn-wrap descendant selector can't reach them). They still show on every other screen. */
 body.toplevel_page_djinn #wpbody-content > .notice,
-body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
+body.toplevel_page_djinn #wpbody-content > .updated,
+body.toplevel_page_djinn #wpbody-content > .error,
+body.toplevel_page_djinn #wpbody-content > .update-nag,
+body.toplevel_page_djinn .update-nag { display: none; }
 
 .djinn-wrap {
 	margin: 0;
@@ -57,7 +55,7 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 		radial-gradient( circle at 8% 50%, rgba( 251, 191, 36, 0.18 ), transparent 38% ),
 		linear-gradient( 135deg, var( --djinn-midnight ), var( --djinn-violet ) );
 	border: 0;
-	border-bottom: 1px solid rgba( 251, 191, 36, 0.18 );
+	border-bottom: 1px solid var( --djinn-divider );
 	border-radius: 0;
 	box-shadow: none;
 }
@@ -103,6 +101,7 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 	flex: 1 1 auto;
 	min-height: 0; /* allow the thread to shrink in the column and scroll internally */
 	overflow-y: auto;
+	overscroll-behavior: contain;
 	padding: 22px;
 	background:
 		radial-gradient( circle at 80% 8%, rgba( 251, 191, 36, 0.08 ), transparent 42% ),
@@ -163,6 +162,7 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 	background: linear-gradient( 180deg, var( --djinn-gold ), var( --djinn-gold-deep ) ) !important;
 	color: var( --djinn-midnight ) !important;
 	border: 0 !important;
+	border-radius: var( --djinn-control-radius ) !important;
 	box-shadow: var( --djinn-glow ) !important;
 }
 
@@ -287,8 +287,10 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 	background: linear-gradient( 180deg, var( --djinn-gold ), var( --djinn-gold-deep ) ) !important;
 	color: var( --djinn-midnight ) !important;
 	border: 0 !important;
+	border-radius: var( --djinn-control-radius ) !important;
 	font-weight: 600 !important;
 	box-shadow: 0 6px 16px -6px rgba( 251, 191, 36, 0.55 ) !important;
+	transition: transform 120ms ease, box-shadow 120ms ease;
 }
 .djinn-grant.components-button:hover:not(:disabled) {
 	box-shadow: 0 8px 22px -6px rgba( 251, 191, 36, 0.75 ) !important;
@@ -318,7 +320,7 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 	padding: 14px 16px;
 	background: linear-gradient( 135deg, var( --djinn-midnight ), var( --djinn-violet ) );
 	border: 0;
-	border-top: 1px solid rgba( 251, 191, 36, 0.2 );
+	border-top: 1px solid var( --djinn-divider );
 	border-radius: 0;
 }
 .djinn-input {
@@ -355,9 +357,11 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 	background: linear-gradient( 180deg, var( --djinn-gold ), var( --djinn-gold-deep ) ) !important;
 	color: var( --djinn-midnight ) !important;
 	border: 0 !important;
+	border-radius: var( --djinn-control-radius ) !important;
 	font-weight: 600 !important;
 	letter-spacing: 0.3px;
 	box-shadow: 0 8px 20px -8px rgba( 251, 191, 36, 0.55 ) !important;
+	transition: transform 120ms ease, box-shadow 120ms ease;
 }
 .djinn-send.components-button:disabled {
 	opacity: 0.45 !important;
@@ -365,6 +369,28 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 }
 .djinn-send.components-button:hover:not(:disabled) {
 	box-shadow: 0 10px 26px -8px rgba( 251, 191, 36, 0.8 ) !important;
+	transform: translateY( -1px );
+}
+/* Rebuild-index action beside "Make wish" when the index is stale. Same shape and hover-lift as the
+   gold send button (so they read as one family); an outline fill keeps gold as the primary action. */
+.djinn-build.components-button {
+	display: inline-flex !important;
+	align-items: center;
+	gap: 6px;
+	height: 44px;
+	padding: 0 18px !important;
+	background: rgba( 255, 255, 255, 0.06 ) !important;
+	color: var( --djinn-ivory ) !important;
+	border: 1px solid rgba( 251, 191, 36, 0.3 ) !important;
+	border-radius: var( --djinn-control-radius ) !important;
+	font-weight: 600 !important;
+	letter-spacing: 0.3px;
+	white-space: nowrap;
+	transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+.djinn-build.components-button:hover:not(:disabled) {
+	border-color: var( --djinn-gold ) !important;
+	box-shadow: 0 8px 20px -8px rgba( 251, 191, 36, 0.3 ) !important;
 	transform: translateY( -1px );
 }
 
@@ -438,24 +464,13 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 	user-select: none;
 }
 
-/* Drag handle between the sidebar and the thread; carries the collapse/expand arrow. */
-.djinn-resizer {
-	flex: 0 0 auto;
-	position: relative;
-	width: 7px;
-	cursor: col-resize;
-	background: linear-gradient( 160deg, var( --djinn-midnight ), var( --djinn-violet ) );
-	border-right: 1px solid rgba( 251, 191, 36, 0.16 );
-	transition: background 140ms ease;
-}
-/* Hover/drag: light the seam with the lamp's amber glow rather than a pale wash. */
-.djinn-resizer:hover,
-.djinn-layout.is-resizing .djinn-resizer {
-	border-right-color: rgba( 251, 191, 36, 0.55 );
-	box-shadow: 0 0 12px rgba( 251, 191, 36, 0.5 );
-}
-.djinn-layout.is-collapsed .djinn-resizer {
-	cursor: default;
+/* The drag handle between the sidebar and the thread is DjinnUI.ResizeHandle (styled by
+   .djinn-resize-handle--x in components.css). It carries the collapse/expand arrow button below.
+   When collapsed, resizing is disabled, so neutralize the handle's cursor + hover glow. */
+.djinn-layout.is-collapsed .djinn-resize-handle { cursor: default; }
+.djinn-layout.is-collapsed .djinn-resize-handle:hover {
+	background: var( --djinn-divider );
+	box-shadow: none;
 }
 .djinn-resizer-btn {
 	position: absolute;
@@ -486,10 +501,17 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 .djinn-newchat.components-button.is-primary {
 	justify-content: center;
 	gap: 6px;
-	background: linear-gradient( 135deg, var( --djinn-gold ), var( --djinn-gold-deep ) ) !important;
+	background: linear-gradient( 180deg, var( --djinn-gold ), var( --djinn-gold-deep ) ) !important;
 	color: var( --djinn-midnight ) !important;
-	border: none !important;
+	border: 0 !important;
+	border-radius: var( --djinn-control-radius ) !important;
 	font-weight: 600;
+	box-shadow: 0 8px 20px -8px rgba( 251, 191, 36, 0.55 ) !important;
+	transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.djinn-newchat.components-button.is-primary:hover:not( :disabled ) {
+	box-shadow: 0 10px 26px -8px rgba( 251, 191, 36, 0.8 ) !important;
+	transform: translateY( -1px );
 }
 .djinn-history-label {
 	color: var( --djinn-ivory-muted );
@@ -630,7 +652,7 @@ body.toplevel_page_djinn #wpbody-content > .updated { margin: 0; }
 		z-index: 60;
 		box-shadow: 12px 0 48px rgba( 0, 0, 0, 0.5 );
 	}
-	.djinn-resizer {
+	.djinn-resize-handle {
 		cursor: default;
 	}
 }
@@ -835,7 +857,7 @@ h4.djinn-md-h, h5.djinn-md-h, h6.djinn-md-h { font-size: 14px; }
 	background: rgba( 255, 255, 255, 0.06 ) !important;
 	color: var( --djinn-ivory ) !important;
 	border: 1px solid rgba( 251, 191, 36, 0.3 ) !important;
-	border-radius: 10px !important;
+	border-radius: var( --djinn-control-radius ) !important;
 }
 .djinn-attach.components-button:hover:not(:disabled) { border-color: var( --djinn-gold ) !important; }
 .djinn-attach-chip {

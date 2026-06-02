@@ -7,7 +7,12 @@ namespace Djinn\Rest;
 use Djinn\Engine\AgentLoop;
 use Djinn\Files\Downloads;
 use Djinn\GraphQL\Runner;
+use Djinn\GraphQL\SchemaFactory;
+use Djinn\Provider\ModelCatalog;
+use Djinn\Provider\Providers;
+use Djinn\Provider\ProxyAccount;
 use Djinn\Rag\Indexer;
+use Djinn\Rag\IndexStatus;
 use Djinn\Settings;
 use Djinn\Store\Repository;
 use Throwable;
@@ -104,6 +109,50 @@ class Controller {
 			'methods'             => 'POST',
 			'permission_callback' => $auth,
 			'callback'            => [ $this, 'billingIntent' ],
+		] );
+
+		// --- Cave dashboard data (read by cave.js) ---------------------------------------------
+		register_rest_route( self::NS, '/index-status', [
+			'methods'             => 'GET',
+			'permission_callback' => $auth,
+			'callback'            => [ $this, 'indexStatus' ],
+		] );
+
+		register_rest_route( self::NS, '/operations', [
+			'methods'             => 'GET',
+			'permission_callback' => $auth,
+			'callback'            => [ $this, 'operations' ],
+		] );
+
+		register_rest_route( self::NS, '/account', [
+			'methods'             => 'GET',
+			'permission_callback' => $auth,
+			'callback'            => [ $this, 'account' ],
+		] );
+
+		register_rest_route( self::NS, '/settings', [
+			[
+				'methods'             => 'GET',
+				'permission_callback' => $auth,
+				'callback'            => [ $this, 'getSettings' ],
+			],
+			[
+				'methods'             => 'POST',
+				'permission_callback' => $auth,
+				'callback'            => [ $this, 'saveSettings' ],
+			],
+		] );
+
+		register_rest_route( self::NS, '/models', [
+			'methods'             => 'GET',
+			'permission_callback' => $auth,
+			'callback'            => [ $this, 'models' ],
+		] );
+
+		register_rest_route( self::NS, '/reset-usage', [
+			'methods'             => 'POST',
+			'permission_callback' => $auth,
+			'callback'            => [ $this, 'resetUsage' ],
 		] );
 	}
 
@@ -473,7 +522,103 @@ class Controller {
 	}
 
 	public function usage(): WP_REST_Response {
-		return new WP_REST_Response( Repository::usageSummary() );
+		$out = Repository::usageSummary();
+		// Fold in the proxy balance so the Spend tile can show it without a second request.
+		$out['account'] = Settings::usesProxy() ? ProxyAccount::fetch() : null;
+		return new WP_REST_Response( $out );
+	}
+
+	/** Index health for the Capabilities tile + the Lamp's Build/Update popover. */
+	public function indexStatus(): WP_REST_Response {
+		// Providers without an embeddings API search the full schema — no index.
+		$embeds = Providers::hasEmbeddings( Settings::provider() );
+		if ( ! Settings::isConfigured() || ! $embeds ) {
+			return new WP_REST_Response( [ 'configured' => Settings::isConfigured(), 'embeds' => $embeds ] );
+		}
+		$s               = IndexStatus::summary();
+		$s['configured'] = true;
+		$s['embeds']     = true;
+		return new WP_REST_Response( $s );
+	}
+
+	/** Every supported operation (queries + mutations) by capability domain, + schema types not yet indexed. */
+	public function operations(): WP_REST_Response {
+		$diff = [ 'added' => [], 'changed' => [] ];
+		if ( Settings::isConfigured() ) {
+			$summary = IndexStatus::summary();
+			$diff    = $summary['diff'];
+		}
+		return new WP_REST_Response( [
+			'operations' => SchemaFactory::operations(),
+			'unindexed'  => $diff['added'],   // live but never embedded
+			'outdated'   => $diff['changed'], // embedded but the schema changed
+		] );
+	}
+
+	/** The hosted-proxy account (credit, free wishes, payment status), or its connection state. */
+	public function account(): WP_REST_Response {
+		if ( ! Settings::usesProxy() ) {
+			return new WP_REST_Response( [ 'usesProxy' => false ] );
+		}
+		$acct = ProxyAccount::fetch();
+		if ( $acct === null ) {
+			return new WP_REST_Response( [ 'usesProxy' => true, 'connected' => $this->siteHasToken() ] );
+		}
+		$acct['usesProxy'] = true;
+		$acct['connected'] = true;
+		return new WP_REST_Response( $acct );
+	}
+
+	private function siteHasToken(): bool {
+		return Settings::siteToken() !== '';
+	}
+
+	/** Non-secret settings for the Account form. Secrets are surfaced only as "saved" booleans. */
+	public function getSettings(): WP_REST_Response {
+		$s = Settings::all();
+		return new WP_REST_Response( [
+			'edition'         => Settings::edition(),
+			'isOrg'           => Settings::isOrg(),
+			'provider'        => Settings::provider(),
+			'chat_model'      => $s['chat_model'],
+			'embedding_model' => $s['embedding_model'],
+			'hasApiKey'       => Settings::apiKey() !== '',
+			'hasSiteToken'    => Settings::siteToken() !== '',
+			'usesProxy'       => Settings::usesProxy(),
+			'configured'      => Settings::isConfigured(),
+		] );
+	}
+
+	/** Save settings via the same sanitizer the options.php form uses (blank secret = keep existing). */
+	public function saveSettings( WP_REST_Request $req ): WP_REST_Response {
+		if ( Settings::isOrg() ) {
+			return new WP_REST_Response( [ 'message' => 'This edition is managed — settings are fixed.' ], 403 );
+		}
+		Settings::update( (array) $req->get_json_params() );
+		return $this->getSettings();
+	}
+
+	/** Available chat/embedding models for a provider (tiered), discovered live from the key. */
+	public function models( WP_REST_Request $req ): WP_REST_Response {
+		$provider = (string) $req->get_param( 'provider' );
+		if ( $provider === '' ) {
+			$provider = Settings::provider();
+		}
+		if ( $req->get_param( 'refresh' ) ) {
+			ModelCatalog::flush();
+		}
+		$catalog = ModelCatalog::forProvider( $provider, Settings::apiKey() );
+		return new WP_REST_Response( [
+			'chat'  => array_map( static fn( $m ) => [ 'id' => $m, 'tier' => ModelCatalog::chatTier( $m ) ], $catalog['chat'] ),
+			'embed' => array_map( static fn( $m ) => [ 'id' => $m ], $catalog['embed'] ),
+			'live'  => $catalog['live'],
+			'error' => $catalog['error'],
+		] );
+	}
+
+	public function resetUsage(): WP_REST_Response {
+		Repository::clearUsage();
+		return new WP_REST_Response( [ 'status' => 'ok' ] );
 	}
 
 	private function ownsChat( int $chatId ): bool {

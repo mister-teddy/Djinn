@@ -20,6 +20,7 @@ use GraphQL\Type\Schema;
 class SchemaFactory {
 
 	private static ?Schema $schema = null;
+	private static ?Registry $registry = null;
 
 	public static function build(): Schema {
 		if ( self::$schema instanceof Schema ) {
@@ -95,6 +96,7 @@ class SchemaFactory {
 		$reg->setType( 'PostInput', $postInput );
 
 		// --- Core content/site fields -------------------------------------
+		$reg->setCurrentDomain( 'Core' );
 		$reg->addQuery( 'siteInfo', [ 'type' => $siteInfo, 'resolve' => [ $res, 'siteInfo' ] ] );
 		$reg->addQuery( 'posts', [
 			'type'    => Type::listOf( $post ),
@@ -167,21 +169,37 @@ class SchemaFactory {
 
 		// --- Built-in feature domains -------------------------------------
 		foreach ( self::features() as $feature ) {
+			$reg->setCurrentDomain( self::domainLabel( $feature ) );
 			$feature->register( $reg );
 		}
 
 		// --- Third-party extensions ---------------------------------------
 		// Plugins can add their own types/resolvers without touching core:
 		//   add_action( 'djinn_register_schema', fn( $reg ) => $reg->addQuery( ... ) );
+		$reg->setCurrentDomain( 'Extensions' );
 		do_action( 'djinn_register_schema', $reg );
 
-		self::$schema = new Schema(
+		self::$registry = $reg;
+		self::$schema   = new Schema(
 			[
 				'query'    => new ObjectType( [ 'name' => 'Query', 'fields' => $reg->queries() ] ),
 				'mutation' => new ObjectType( [ 'name' => 'Mutation', 'fields' => $reg->mutations() ] ),
 			]
 		);
 		return self::$schema;
+	}
+
+	/** Every supported operation, grouped by capability domain — for the admin Capabilities view. */
+	public static function operations(): array {
+		self::build(); // populates the registry
+		return self::$registry ? self::$registry->operations() : [];
+	}
+
+	/** Human domain label from a Feature class, e.g. SiteEditorFeature → "Site Editor". */
+	private static function domainLabel( Feature $feature ): string {
+		$short = ( new \ReflectionClass( $feature ) )->getShortName();
+		$short = (string) preg_replace( '/Feature$/', '', $short );
+		return trim( (string) preg_replace( '/(?<=[a-z])(?=[A-Z])/', ' ', $short ) );
 	}
 
 	/**

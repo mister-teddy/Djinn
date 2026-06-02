@@ -22,18 +22,13 @@ class ProviderFactory {
 			throw new RuntimeException( 'Choose a chat model in the Account tile of Djinn → Cave of Wonders before making a wish.' );
 		}
 
-		switch ( Settings::provider() ) {
-			case 'proxy':
-				return new ProxyProvider( Settings::siteToken(), Settings::proxyUrl() );
-			case 'gemini':
-				return new GeminiProvider( Settings::apiKey(), Settings::chatModel(), Settings::embeddingModel() );
-			case 'anthropic':
-				return new AnthropicProvider( Settings::apiKey(), Settings::chatModel(), Settings::embeddingModel() );
-			case 'claude-max':
-				return new ClaudeMaxProvider( Settings::apiKey(), Settings::chatModel(), Settings::embeddingModel() );
-			case 'openai':
-			default:
-				return new OpenAIProvider( Settings::apiKey(), Settings::chatModel(), Settings::embeddingModel() );
+		// The proxy takes a site token + URL; every key-backed adapter takes (key, chat, embed) and is
+		// resolved from the provider registry.
+		$provider = Settings::provider();
+		if ( $provider === 'proxy' ) {
+			return new ProxyProvider( Settings::siteToken(), Settings::proxyUrl() );
 		}
+		$class = Providers::adapterClass( $provider );
+		return new $class( Settings::apiKey(), Settings::chatModel(), Settings::embeddingModel() );
 	}
 }

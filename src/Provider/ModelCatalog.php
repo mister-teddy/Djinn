@@ -32,12 +32,16 @@ class ModelCatalog {
 			return $cached;
 		}
 
-		if ( $provider === 'gemini' ) {
-			$result = self::discoverGemini( $apiKey );
-		} elseif ( $provider === 'anthropic' || $provider === 'claude-max' ) {
-			$result = self::discoverAnthropic( $apiKey, $provider === 'claude-max' );
-		} else {
-			$result = self::discoverOpenAI( $apiKey );
+		switch ( Providers::family( $provider ) ) {
+			case 'gemini':
+				$result = self::discoverGemini( $apiKey );
+				break;
+			case 'anthropic':
+				$result = self::discoverAnthropic( $apiKey, $provider === 'claude-max' );
+				break;
+			default:
+				$result = self::discoverOpenAI( $apiKey );
+				break;
 		}
 
 		set_transient( $cacheKey, $result, self::TTL );
@@ -199,13 +203,12 @@ class ModelCatalog {
 	 * @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool}
 	 */
 	private static function fallback( string $provider, string $error ): array {
-		if ( $provider === 'gemini' ) {
-			$prefix = [ 'gemini', 'gemma' ];
-		} elseif ( $provider === 'anthropic' || $provider === 'claude-max' ) {
-			$prefix = [ 'claude' ];
-		} else {
-			$prefix = [ 'gpt', 'o1', 'o3', 'o4', 'chatgpt', 'text-embedding' ];
-		}
+		$prefixes = [
+			'gemini'    => [ 'gemini', 'gemma' ],
+			'anthropic' => [ 'claude' ],
+			'openai'    => [ 'gpt', 'o1', 'o3', 'o4', 'chatgpt', 'text-embedding' ],
+		];
+		$prefix = $prefixes[ Providers::family( $provider ) ] ?? $prefixes['openai'];
 		$chat   = [];
 		$embed  = [];
 		foreach ( Pricing::table() as $model => $rates ) {

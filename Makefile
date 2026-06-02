@@ -100,20 +100,38 @@ docs:
 dist:
 	bash bin/build-dist.sh "$(or $(EDITION),$(filter-out dist,$(MAKECMDGOALS)))"
 
-# Cut a release: verify the version is identical in all three spots, then tag it and push the tag,
-# which fires the GitHub "Release" workflow (builds the BYO + ORG zips + docs, publishes a Release).
-# Bump DJINN_VERSION + the plugin header + readme.txt's Stable tag together, commit, then `make release`.
+# Cut a release. This plugin lives as a subtree inside the private djinn-proxy monorepo; the public
+# repo (remote `djinn`) is what the GitHub "Release" workflow runs on. So a release publishes this
+# subtree to the public repo and tags it there, which fires the workflow (BYO + ORG zips + docs +
+# GitHub Release). Run this FROM the plugin subtree dir, with the version already bumped & committed:
+#   bump DJINN_VERSION + the plugin header + readme.txt's Stable tag together → commit → `make release`.
+#
+# We publish by grafting the committed subtree tree straight onto djinn/main with `git commit-tree`
+# (NOT `git subtree push`): the monorepo holds the plugin as one squashed commit, so a subtree split
+# can't share ancestry with the public history and would never fast-forward. A graft parents the new
+# snapshot on the current public tip, so the push is always a clean fast-forward. Public history is
+# therefore one snapshot commit per release; the full dev history stays in the private monorepo.
 release:
-	@VER=$$(grep -oE "DJINN_VERSION', '[^']+" djinn.php | cut -d"'" -f3); \
+	@set -e; \
+		VER=$$(grep -oE "DJINN_VERSION', '[^']+" djinn.php | cut -d"'" -f3); \
 		HDR=$$(grep -oE "Version:[[:space:]]+[^[:space:]]+" djinn.php | head -1 | awk '{print $$2}'); \
 		TAG=$$(grep -i "Stable tag:" readme.txt | head -1 | awk '{print $$NF}'); \
 		test -n "$$VER" || { echo "✗ Could not read DJINN_VERSION from djinn.php."; exit 1; }; \
 		{ [ "$$VER" = "$$HDR" ] && [ "$$VER" = "$$TAG" ]; } || { echo "✗ Version drift — DJINN_VERSION=$$VER · plugin header=$$HDR · readme.txt Stable tag=$$TAG. Make all three match first."; exit 1; }; \
-		test -z "$$(git status --porcelain)" || { echo "✗ Working tree not clean — commit first; the release builds the tagged commit."; exit 1; }; \
-		if git rev-parse "v$$VER" >/dev/null 2>&1; then echo "✗ Tag v$$VER already exists — bump the version first."; exit 1; fi; \
-		echo "→ Releasing v$$VER (header, DJINN_VERSION, Stable tag all match)…"; \
-		git push origin HEAD && git tag "v$$VER" && git push origin "v$$VER" && \
-		echo "✔  Pushed tag v$$VER — the Release workflow is now building it on GitHub."
+		PREFIX=$$(git rev-parse --show-prefix | sed 's:/*$$::'); \
+		test -n "$$PREFIX" || { echo "✗ Run 'make release' from the plugin subtree dir, not the repo root."; exit 1; }; \
+		git remote get-url djinn >/dev/null 2>&1 || { echo "✗ No 'djinn' remote — add the public repo: git remote add djinn git@github.com:mister-teddy/Djinn.git"; exit 1; }; \
+		test -z "$$(git status --porcelain)" || { echo "✗ Working tree not clean — commit first; the release publishes the committed tree."; exit 1; }; \
+		echo "→ Fetching public Djinn ($$PREFIX → djinn/main)…"; \
+		git fetch -q djinn main; \
+		if git ls-remote --exit-code --tags djinn "v$$VER" >/dev/null 2>&1; then echo "✗ Tag v$$VER already exists on the public repo — bump the version first."; exit 1; fi; \
+		TREE=$$(git rev-parse "HEAD:$$PREFIX"); \
+		NEW=$$(git commit-tree "$$TREE" -p djinn/main -m "Release v$$VER"); \
+		echo "→ Publishing v$$VER (header, DJINN_VERSION, Stable tag all match) → djinn main + tag…"; \
+		git push --atomic djinn "$$NEW:refs/heads/main" "$$NEW:refs/tags/v$$VER"; \
+		git fetch -q djinn; \
+		git push -q origin HEAD 2>/dev/null || echo "⚠  Couldn't back up the monorepo to origin — push it yourself when convenient."; \
+		echo "✔  Published v$$VER to public Djinn (main + tag v$$VER). The Release workflow is now building it on GitHub."
 
 # Swallow extra goals so `make cli "plugin list"` doesn't error on the trailing words.
 %:

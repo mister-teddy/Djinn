@@ -66,7 +66,9 @@ class OpenAIProvider implements Provider {
 			$this->chatModel,
 			'chat',
 			(int) ( $usage['prompt_tokens'] ?? 0 ),
-			(int) ( $usage['completion_tokens'] ?? 0 )
+			(int) ( $usage['completion_tokens'] ?? 0 ),
+			false,
+			$this->reportedCost( $usage )
 		);
 
 		$toolCalls = [];
@@ -148,7 +150,9 @@ class OpenAIProvider implements Provider {
 			$this->chatModel,
 			'chat',
 			(int) ( $usage['prompt_tokens'] ?? 0 ),
-			(int) ( $usage['completion_tokens'] ?? 0 )
+			(int) ( $usage['completion_tokens'] ?? 0 ),
+			false,
+			$this->reportedCost( $usage )
 		);
 
 		ksort( $calls );
@@ -171,9 +175,21 @@ class OpenAIProvider implements Provider {
 		);
 
 		$usage = $json['usage'] ?? [];
-		UsageRecorder::record( $this->providerLabel(), $this->embeddingModel, 'embed', (int) ( $usage['prompt_tokens'] ?? 0 ), 0 );
+		UsageRecorder::record( $this->providerLabel(), $this->embeddingModel, 'embed', (int) ( $usage['prompt_tokens'] ?? 0 ), 0, false, $this->reportedCost( $usage ) );
 
 		return array_map( static fn( $row ) => $row['embedding'], $json['data'] ?? [] );
+	}
+
+	/**
+	 * The authoritative charge the source reported for a call, if any. The hosted proxy meters and
+	 * debits the real (post-markup) charge and echoes it as `usage.djinn_cost_usd`; storing that
+	 * verbatim freezes the row at the rate charged. Direct providers omit it ⇒ null ⇒ the recorder
+	 * falls back to a local list-price estimate.
+	 *
+	 * @param array<string,mixed> $usage
+	 */
+	private function reportedCost( array $usage ): ?float {
+		return isset( $usage['djinn_cost_usd'] ) ? (float) $usage['djinn_cost_usd'] : null;
 	}
 
 	/** @param array<string,mixed> $entry */

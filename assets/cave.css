@@ -4,25 +4,43 @@
  * dividers, dark header bars. The page never scrolls; each tile body scrolls on its own.
  */
 
+/* Palette tokens (--djinn-*) live in components.css, loaded first via the shared `djinn-ui` style. */
+
 /* Strip the WP admin chrome so the cave meets the edges (same as the Lamp screen). */
 body.djinn_page_djinn-cave #wpcontent { padding-left: 0; }
 body.djinn_page_djinn-cave #wpbody-content { padding-bottom: 0; }
 body.djinn_page_djinn-cave #wpfooter { display: none; }
+/* Full-height tiled dashboard: its own feedback renders inside the tiles, so hide every top-level
+   admin notice (nags, promos, errors) core or other plugins inject above it. They show elsewhere. */
 body.djinn_page_djinn-cave #wpbody-content > .notice,
-body.djinn_page_djinn-cave #wpbody-content > .updated { margin: 0; }
+body.djinn_page_djinn-cave #wpbody-content > .updated,
+body.djinn_page_djinn-cave #wpbody-content > .error,
+body.djinn_page_djinn-cave #wpbody-content > .update-nag,
+body.djinn_page_djinn-cave .update-nag { display: none; }
 
+/* Full-bleed: drop the .wrap margins so the cave meets every edge (it carries its own height). And
+   stop the white rubber-band overscroll — match the page background and don't bounce the window. */
+.djinn-cave-wrap { margin: 0; padding: 0; max-width: none; }
+body.djinn_page_djinn-cave { background: #fff; overscroll-behavior: none; }
+
+/* Two resizable columns: Account + Capabilities stack on the left, Spend fills the right. The page
+   never scrolls; each tile body scrolls on its own. The drag seam is .djinn-cave-resizer (components.css). */
 .djinn-cave {
 	box-sizing: border-box;
 	height: calc( 100vh - 32px );
-	display: grid;
-	gap: 0;
-	grid-template-columns: minmax( 340px, 0.9fr ) 1.1fr;
-	grid-template-rows: 1fr 1fr;
-	grid-template-areas:
-		"account spend"
-		"memory  spend";
+	display: flex;
+	align-items: stretch;
 	background: #fff;
 }
+.djinn-cave-col {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+}
+.djinn-cave-col--left { flex: 0 0 auto; } /* width set inline by usePanelResize; the x-handle is the divider */
+.djinn-cave-col--right { flex: 1 1 auto; }
 
 .djinn-tile {
 	display: flex;
@@ -32,18 +50,14 @@ body.djinn_page_djinn-cave #wpbody-content > .updated { margin: 0; }
 	background: #fff;
 	overflow: hidden;
 }
-.djinn-tile--account {
-	grid-area: account;
-	border-right: 1px solid rgba( 251, 191, 36, 0.18 );
-	border-bottom: 1px solid rgba( 251, 191, 36, 0.18 );
-}
-.djinn-tile--memory {
-	grid-area: memory;
-	border-right: 1px solid rgba( 251, 191, 36, 0.18 );
-}
-.djinn-tile--spend {
-	grid-area: spend;
-}
+/* Left column = two panes split by a vertical ResizeHandle; right column = one tile. Each tile fills
+   its pane and scrolls internally, so neither can collapse to its header. */
+/* Account pane keeps its exact dragged height (flex:0 0 auto, no shrink); the grow pane (basis 0)
+   takes whatever's left and scrolls inside — so a tall Capabilities list can't squeeze Account. */
+.djinn-cave-pane { display: flex; flex: 0 0 auto; min-width: 0; min-height: 0; overflow: hidden; }
+.djinn-cave-pane--grow { flex: 1 1 0; }
+.djinn-cave-pane > .djinn-tile { flex: 1 1 auto; width: 100%; }
+.djinn-cave-col--right > .djinn-tile { flex: 1 1 auto; }
 
 .djinn-tile-head {
 	flex: 0 0 auto;
@@ -53,7 +67,7 @@ body.djinn_page_djinn-cave #wpbody-content > .updated { margin: 0; }
 	margin: 0;
 	padding: 13px 20px;
 	background: linear-gradient( 135deg, #0f0a1e, #2d1f4a );
-	border-bottom: 1px solid rgba( 251, 191, 36, 0.28 );
+	border-bottom: 1px solid var( --djinn-divider );
 }
 .djinn-tile-head h2 {
 	margin: 0;
@@ -71,6 +85,7 @@ body.djinn_page_djinn-cave #wpbody-content > .updated { margin: 0; }
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow: auto;
+	overscroll-behavior: contain;
 	padding: 18px 20px;
 }
 .djinn-tile-body > :first-child {
@@ -79,29 +94,141 @@ body.djinn_page_djinn-cave #wpbody-content > .updated { margin: 0; }
 .djinn-tile-body .notice {
 	margin: 10px 0;
 }
-.djinn-tile--spend .djinn-usage .djinn-cards {
-	margin-top: 4px;
+.djinn-tile-body h3 {
+	margin: 20px 0 8px;
+	font-size: 13px;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+	color: #50575e;
 }
 
-/* On narrower screens the tiles stack and the page is allowed to scroll. */
-@media screen and ( max-width: 1100px ) {
-	.djinn-cave {
-		height: auto;
-		grid-template-columns: 1fr;
-		grid-template-rows: none;
-		grid-template-areas:
-			"account"
-			"memory"
-			"spend";
-	}
-	.djinn-tile {
-		max-height: 80vh;
-	}
-	.djinn-tile--account,
-	.djinn-tile--memory {
-		border-right: 0;
-	}
-	.djinn-tile--memory {
-		border-bottom: 1px solid rgba( 251, 191, 36, 0.18 );
-	}
+/* One radius + one 1px border for every surface here — cards, the chart, tables, and buttons all
+   read from the shared --djinn-control-radius / --djinn-line tokens (components.css). */
+.djinn-cave .components-button { border-radius: var( --djinn-control-radius ); }
+.djinn-cave .djinn-table {
+	border: 1px solid var( --djinn-line );
+	border-radius: var( --djinn-control-radius );
+	overflow: hidden; /* clip the rounded corners over the collapsed cell borders */
+	box-shadow: none;
 }
+
+/* Cards (stat tiles), shared by Account + Spend. */
+.djinn-cards { display: flex; gap: 16px; flex-wrap: wrap; margin: 16px 0 10px; }
+.djinn-card { flex: 1 1 160px; background: #fff; border: 1px solid var( --djinn-line ); border-radius: var( --djinn-control-radius ); padding: 16px 18px; }
+.djinn-card-value { font-size: 26px; font-weight: 600; line-height: 1.1; }
+.djinn-card-label { margin-top: 6px; font-weight: 600; color: #1d2327; }
+.djinn-card-sub { color: #787c82; font-size: 12px; margin-top: 2px; }
+
+/* Daily spend bars. */
+.djinn-bars { display: flex; align-items: flex-end; gap: 8px; height: 160px; background: #fff; border: 1px solid var( --djinn-line ); border-radius: var( --djinn-control-radius ); padding: 16px; }
+.djinn-bar-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; }
+.djinn-bar { width: 60%; min-height: 3px; background: linear-gradient( 180deg, var( --djinn-gold ), var( --djinn-gold-ember ) ); border-radius: 4px 4px 0 0; }
+.djinn-bar-x { font-size: 10px; color: #787c82; margin-top: 6px; white-space: nowrap; }
+
+/* Capabilities: operations grouped by collapsible domain. */
+.djinn-build-row { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; flex-wrap: wrap; }
+.djinn-ops-domain { border-top: 1px solid #f0f0f1; }
+.djinn-ops-head {
+	display: flex; align-items: center; gap: 8px; width: 100%;
+	margin: 0; padding: 9px 2px; background: none; border: 0; cursor: pointer;
+	font: inherit; text-align: left; color: #1d2327;
+}
+.djinn-ops-head:hover { color: #000; }
+.djinn-ops-head h3 { margin: 0; }
+.djinn-ops-caret { color: #787c82; font-size: 10px; line-height: 1; transition: transform 120ms ease; }
+.djinn-ops-domain.is-open .djinn-ops-caret { transform: rotate( 90deg ); }
+.djinn-ops-count { margin-left: auto; font-size: 11px; color: #787c82; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.djinn-ops-list { margin: 0 0 8px; padding: 0; list-style: none; }
+
+/* One operation = one line; the full params + return type live in the shared hover popover. */
+.djinn-op {
+	display: flex; align-items: center; gap: 8px; width: 100%;
+	padding: 5px 2px 5px 14px; border-top: 1px solid #f6f7f7; cursor: default;
+}
+.djinn-op-name { font-weight: 600; flex: 0 0 auto; }
+.djinn-op-desc {
+	color: #787c82; font-size: 12px; min-width: 0;
+	overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Operation popover body: description, a params grid (reusing .djinn-pop dl), then the return type. */
+.djinn-pop-desc { margin: 0 0 8px; }
+.djinn-pop-none { margin: 0; color: var( --djinn-ivory-muted ); }
+.djinn-pop-req { color: var( --djinn-gold ); }
+.djinn-pop-returns { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba( 251, 191, 36, 0.2 ); }
+.djinn-pop-returns code { color: var( --djinn-ivory ); }
+
+/* Capabilities: schema types not yet (or no longer) in the index. Amber is the one "needs attention"
+   hue here. */
+.djinn-unindexed { margin-top: 18px; }
+.djinn-tag-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.djinn-tag { font-size: 12px; border-radius: 6px; padding: 2px 8px; }
+.djinn-tag--new { background: rgba( 251, 191, 36, 0.18 ); color: #7a5c12; }
+.djinn-tag--stale { background: rgba( 245, 158, 11, 0.22 ); color: #92400e; }
+
+/* Account form bits. */
+.djinn-payment { margin-top: 14px; }
+.djinn-save { margin-top: 8px; }
+.djinn-reset { margin-top: 24px; }
+
+/* On narrower screens the columns + panes stack and the page is allowed to scroll. */
+@media screen and ( max-width: 1100px ) {
+	.djinn-cave { height: auto; flex-direction: column; }
+	.djinn-cave-col--left { width: auto !important; }
+	.djinn-resize-handle { display: none; }
+	.djinn-cave-pane { height: auto !important; display: block; }
+	.djinn-tile { max-height: 80vh; }
+}
+
+/* "Add a card" modal — the Stripe Payment Element lives here instead of expanding inside the tile,
+   which would burst the tile's own scroll. Above the admin bar (z-index 99999). */
+body.djinn-modal-open { overflow: hidden; }
+.djinn-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.djinn-modal[hidden] { display: none; }
+.djinn-modal-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba( 15, 10, 30, 0.6 );
+	backdrop-filter: blur( 2px );
+}
+.djinn-modal-dialog {
+	position: relative;
+	width: min( 480px, calc( 100vw - 40px ) );
+	max-height: calc( 100vh - 80px );
+	overflow: auto;
+	background: #fff;
+	border: 1px solid var( --djinn-divider );
+	border-radius: 14px;
+	box-shadow: 0 24px 64px -16px rgba( 0, 0, 0, 0.5 );
+	padding: 24px;
+}
+.djinn-modal-dialog h2 { margin: 0 0 4px; font-size: 18px; }
+.djinn-modal-dialog .description { margin: 0 0 16px; }
+.djinn-modal-x {
+	position: absolute;
+	top: 10px;
+	right: 12px;
+	padding: 0;
+	background: none;
+	border: 0;
+	font-size: 24px;
+	line-height: 1;
+	color: #777;
+	cursor: pointer;
+}
+.djinn-modal-x:hover { color: #000; }
+#djinn-payment-element { min-height: 40px; }
+.djinn-modal-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-top: 18px;
+}
+.djinn-modal-actions #djinn-billing-msg { font-size: 13px; color: #555; }

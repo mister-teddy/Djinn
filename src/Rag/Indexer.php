@@ -6,6 +6,7 @@ namespace Djinn\Rag;
 
 use Djinn\GraphQL\SchemaFactory;
 use Djinn\Provider\ProviderFactory;
+use Djinn\Settings;
 use Djinn\Store\Repository;
 use GraphQL\Type\Definition\EnumType;
 use GraphQL\Type\Definition\InputObjectType;
@@ -102,9 +103,12 @@ class Indexer {
 		return $out;
 	}
 
-	/** A stable hash of the current schema, so we can tell when the index is out of date. */
+	/**
+	 * The one signature that invalidates the index: the schema plus the embedding model (vectors are
+	 * model-specific). reindex() stores it; needsReindex()/summary() compare against it.
+	 */
 	public static function fingerprint(): string {
-		$parts = [];
+		$parts = [ 'embed:' . Settings::embeddingModel() ];
 		foreach ( self::chunks() as $name => $fragment ) {
 			$parts[] = $name . ':' . $fragment;
 		}
@@ -136,11 +140,12 @@ class Indexer {
 
 		Repository::replaceChunks( $rows, $provider->embeddingModel() );
 
+		// `model` is stored for display only; staleness is judged by `fingerprint` (see fingerprint()).
 		update_option(
 			self::META_OPTION,
 			[
 				'fingerprint' => self::fingerprint(),
-				'model'       => $provider->embeddingModel(),
+				'model'       => Settings::embeddingModel(),
 				'count'       => count( $rows ),
 				'indexed_at'  => current_time( 'mysql', true ),
 			]

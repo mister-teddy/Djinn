@@ -4,12 +4,10 @@ declare( strict_types=1 );
 
 namespace Djinn\Admin;
 
-use Djinn\Provider\ModelCatalog;
-use Djinn\Provider\ProxyAccount;
+use Djinn\Provider\Providers;
 use Djinn\Rag\IndexStatus;
 use Djinn\Settings;
 use Djinn\Store\Repository;
-use Djinn\Usage\Pricing;
 
 /**
  * Registers the admin menu (the lamp + a settings sub-page) and enqueues the no-build
@@ -66,10 +64,42 @@ class AdminPage {
 		}
 	}
 
-	/** The Cave of Wonders dashboard: its tile stylesheet, plus Stripe billing for the ORG account tile. */
-	private function enqueueCave(): void {
+	/**
+	 * Register the shared component library (DjinnUI) + palette, depended on by both apps. Registering
+	 * (not enqueuing) is enough — WordPress pulls a dependency in when a dependent script/style loads.
+	 */
+	private function enqueueUi(): void {
 		wp_enqueue_style( 'wp-components' );
-		wp_enqueue_style( 'djinn-cave', DJINN_URL . 'assets/cave.css', [ 'wp-components' ], DJINN_VERSION );
+		// Cardo — the app's serif, shared by both screens.
+		wp_register_style(
+			'djinn-cardo',
+			'https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&display=swap',
+			[],
+			null
+		);
+		wp_register_script( 'djinn-ui', DJINN_URL . 'assets/components.js', [ 'wp-element', 'wp-components', 'wp-api-fetch' ], DJINN_VERSION, true );
+		wp_register_style( 'djinn-ui', DJINN_URL . 'assets/components.css', [ 'wp-components', 'djinn-cardo' ], DJINN_VERSION );
+	}
+
+	/** The Cave of Wonders — a React dashboard (Account · Capabilities · Spend) on shared components. */
+	private function enqueueCave(): void {
+		$this->enqueueUi();
+		wp_enqueue_script( 'djinn-cave-app', DJINN_URL . 'assets/cave.js', [ 'djinn-ui' ], DJINN_VERSION, true );
+		wp_enqueue_style( 'djinn-cave', DJINN_URL . 'assets/cave.css', [ 'djinn-ui' ], DJINN_VERSION );
+		wp_localize_script(
+			'djinn-cave-app',
+			'DjinnCave',
+			[
+				'restUrl'       => esc_url_raw( rest_url( 'djinn/v1' ) ),
+				'nonce'         => wp_create_nonce( 'wp_rest' ),
+				'edition'       => Settings::edition(),
+				'isOrg'         => Settings::isOrg(),
+				'configured'    => Settings::isConfigured(),
+				'stripeEnabled' => Settings::isOrg(),
+				'providers'     => Providers::forClient(),
+				'privacyUrl'    => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
+			]
+		);
 		if ( Settings::isOrg() ) {
 			$this->enqueueBilling();
 		}
@@ -77,27 +107,9 @@ class AdminPage {
 
 	/** The no-build React app for the Lamp screen. */
 	private function enqueueApp(): void {
-		wp_enqueue_style( 'wp-components' );
-		// Cardo — the app's serif. Loaded from Google Fonts for the Lamp screen only.
-		wp_enqueue_style(
-			'djinn-cardo',
-			'https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&display=swap',
-			[],
-			null
-		);
-		wp_enqueue_script(
-			'djinn-app',
-			DJINN_URL . 'assets/admin.js',
-			[ 'wp-element', 'wp-components', 'wp-api-fetch' ],
-			DJINN_VERSION,
-			true
-		);
-		wp_enqueue_style(
-			'djinn-app',
-			DJINN_URL . 'assets/admin.css',
-			[ 'wp-components', 'djinn-cardo' ],
-			DJINN_VERSION
-		);
+		$this->enqueueUi();
+		wp_enqueue_script( 'djinn-app', DJINN_URL . 'assets/admin.js', [ 'djinn-ui' ], DJINN_VERSION, true );
+		wp_enqueue_style( 'djinn-app', DJINN_URL . 'assets/admin.css', [ 'djinn-ui' ], DJINN_VERSION );
 
 		wp_localize_script(
 			'djinn-app',
@@ -108,6 +120,7 @@ class AdminPage {
 				'isOrg'       => Settings::isOrg(),
 				'configured'  => Settings::isConfigured(),
 				'indexed'     => Repository::chunkCount() > 0,
+				'indexStale'  => IndexStatus::needsReindex(),
 				'settingsUrl' => admin_url( 'admin.php?page=' . self::CAVE_SLUG ),
 				'indexUrl'    => admin_url( 'admin.php?page=' . self::CAVE_SLUG ),
 				'siteName'    => get_option( 'blogname' ),
@@ -136,255 +149,96 @@ class AdminPage {
 		wp_add_inline_script( 'djinn-billing', self::billingScript() );
 	}
 
-	/** Vanilla-JS card form: fetch a SetupIntent via our REST relay, mount Stripe's Payment Element, confirm. */
+	/**
+	 * Vanilla-JS Stripe card form in a modal. The Cave is React now, so this exposes
+	 * `window.DjinnBilling.mount()` for cave.js to call (in a useEffect) after it renders the modal
+	 * markup — binding by id before React mounts would find nothing. Idempotent per button instance.
+	 */
 	private static function billingScript(): string {
 		return <<<'JS'
-(function () {
-	var btn = document.getElementById('djinn-add-card');
-	if (!btn) { return; }
+window.DjinnBilling = window.DjinnBilling || {};
+window.DjinnBilling.mount = function () {
+	var openBtn = document.getElementById('djinn-add-card');
+	var modal = document.getElementById('djinn-billing-modal');
+	if (!openBtn || !modal || openBtn.dataset.djinnBound) { return; }
+	openBtn.dataset.djinnBound = '1';
+	var saveBtn = document.getElementById('djinn-billing-save');
 	var msg = document.getElementById('djinn-billing-msg');
 	var mount = document.getElementById('djinn-payment-element');
-	var stripe, elements, ready = false;
-	btn.addEventListener('click', async function () {
-		if (!ready) {
-			btn.disabled = true;
-			msg.textContent = 'Loading the secure payment form…';
-			try {
-				var r = await fetch(DjinnBilling.restUrl + '/billing-intent', {
-					method: 'POST',
-					headers: { 'X-WP-Nonce': DjinnBilling.nonce }
-				});
-				var d = await r.json();
-				if (!r.ok || !d.clientSecret) {
-					throw new Error((d && d.message) || 'Billing is not available yet.');
-				}
-				stripe = Stripe(d.publishableKey);
-				elements = stripe.elements({ clientSecret: d.clientSecret });
-				elements.create('payment').mount(mount);
-				mount.style.display = 'block';
-				btn.textContent = 'Save card';
-				msg.textContent = '';
-				ready = true;
-			} catch (e) {
-				msg.textContent = e.message || 'Could not start billing.';
-			} finally {
-				btn.disabled = false;
+	var stripe, elements, ready = false, loading = false, saved = false;
+
+	function openModal() {
+		modal.hidden = false;
+		document.body.classList.add('djinn-modal-open');
+	}
+	function closeModal() {
+		modal.hidden = true;
+		document.body.classList.remove('djinn-modal-open');
+		// Reflect the new card-on-file state in the tile once the user dismisses a successful save.
+		if (saved) { window.location.reload(); }
+	}
+
+	// Mount the Payment Element on first open; subsequent opens reuse it.
+	async function loadForm() {
+		if (ready || loading) { return; }
+		loading = true;
+		msg.textContent = 'Loading the secure payment form…';
+		try {
+			var r = await fetch(DjinnBilling.restUrl + '/billing-intent', {
+				method: 'POST',
+				headers: { 'X-WP-Nonce': DjinnBilling.nonce }
+			});
+			var d = await r.json();
+			if (!r.ok || !d.clientSecret) {
+				throw new Error((d && d.message) || 'Billing is not available yet.');
 			}
-			return;
+			stripe = Stripe(d.publishableKey);
+			elements = stripe.elements({ clientSecret: d.clientSecret });
+			elements.create('payment').mount(mount);
+			msg.textContent = '';
+			saveBtn.disabled = false;
+			ready = true;
+		} catch (e) {
+			msg.textContent = e.message || 'Could not start billing.';
+		} finally {
+			loading = false;
 		}
-		btn.disabled = true;
+	}
+
+	openBtn.addEventListener('click', function () {
+		openModal();
+		loadForm();
+	});
+
+	saveBtn.addEventListener('click', async function () {
+		if (saved) { closeModal(); return; }
+		if (!ready) { return; }
+		saveBtn.disabled = true;
 		msg.textContent = 'Saving…';
 		var result = await stripe.confirmSetup({ elements: elements, redirect: 'if_required' });
 		if (result.error) {
 			msg.textContent = 'Error: ' + result.error.message;
-			btn.disabled = false;
+			saveBtn.disabled = false;
 		} else {
+			saved = true;
+			saveBtn.textContent = 'Done';
 			msg.textContent = 'Card saved — automatic top-up is on. You can keep wishing past the free trial.';
 		}
 	});
-})();
+
+	modal.querySelectorAll('[data-djinn-close]').forEach(function (node) {
+		node.addEventListener('click', closeModal);
+	});
+	document.addEventListener('keydown', function (e) {
+		if (e.key === 'Escape' && !modal.hidden) { closeModal(); }
+	});
+};
 JS;
 	}
 
-	/**
-	 * The Cave of Wonders — one tiled dashboard. Account + Memory share the top row; Spend spans the
-	 * bottom. The page itself doesn't scroll; each tile body scrolls on its own (see cave.css).
-	 */
+	/** The Cave of Wonders — a React dashboard (Account · Capabilities · Spend) mounted by cave.js. */
 	public function renderCave(): void {
-		echo '<div class="djinn-cave">';
-		$this->tileOpen( 'account', 'Account' );
-		$this->settingsBody();
-		echo '</div></section>';
-
-		$this->tileOpen( 'memory', 'Memory' );
-		( new IndexPage() )->renderBody();
-		echo '</div></section>';
-
-		$this->tileOpen( 'spend', 'Spend' );
-		( new UsagePage() )->renderBody();
-		echo '</div></section>';
-		echo '</div>';
+		echo '<div class="wrap djinn-wrap djinn-cave-wrap"><div id="djinn-cave-root"></div></div>';
 	}
 
-	/** Opens a tile: <section> + dark header + the scrollable body wrapper. */
-	private function tileOpen( string $key, string $title ): void {
-		printf(
-			'<section class="djinn-tile djinn-tile--%1$s"><header class="djinn-tile-head"><span class="djinn-tile-mark">✦</span><h2>%2$s</h2></header><div class="djinn-tile-body">',
-			esc_attr( $key ),
-			esc_html( $title )
-		);
-	}
-
-	private function settingsBody(): void {
-		if ( Settings::isOrg() ) {
-			$this->orgSettingsBody();
-			return;
-		}
-		$this->byoSettingsBody();
-	}
-
-	/**
-	 * ORG edition: no keys, no token field. The site binds to the hosted service automatically
-	 * (see Onboarding); a dev box that can't be reached back defines DJINN_SITE_TOKEN in wp-config.
-	 * This tile just reports the connection + credit and offers a card.
-	 */
-	private function orgSettingsBody(): void {
-		$account   = ProxyAccount::fetch();
-		$connected = Settings::siteToken() !== '';
-		?>
-		<div>
-			<?php if ( $account !== null ) : ?>
-				<table class="form-table" role="presentation">
-					<tr><th scope="row">Free wishes left</th><td><?php echo (int) ( $account['wishesLeft'] ?? 0 ); ?></td></tr>
-					<tr><th scope="row">Credit</th><td>$<?php echo esc_html( number_format( (float) ( $account['balanceUsd'] ?? 0 ), 4 ) ); ?></td></tr>
-				</table>
-				<h2>Payment method</h2>
-				<?php if ( ! empty( $account['payg'] ) ) : ?>
-					<p>✓ A card is on file — automatic top-up is enabled, so wishes keep working past the free trial.</p>
-				<?php else : ?>
-					<p>Add a card to keep wishing after your free wishes — prepaid with automatic top-up, no charge now.</p>
-					<div id="djinn-payment-element" style="max-width:480px;margin:.6em 0;display:none"></div>
-					<button type="button" class="button button-primary" id="djinn-add-card">Add a card</button>
-					<span id="djinn-billing-msg" style="margin-left:.6em"></span>
-				<?php endif; ?>
-			<?php elseif ( $connected ) : ?>
-				<div class="notice notice-warning inline"><p>Connected, but your Djinn account is unreachable right now. Reload in a moment.</p></div>
-			<?php else : ?>
-				<div class="notice notice-info inline"><p>Linking this site to Djinn's hosted service — reload in a moment, and your first three wishes are free. If the site isn't publicly reachable (e.g. localhost), it can't be verified automatically: define <code>DJINN_SITE_TOKEN</code> in <code>wp-config.php</code> with a token minted from the proxy admin.</p></div>
-			<?php endif; ?>
-		</div>
-		<?php
-	}
-
-	/** BYO edition: provider + key (or our proxy via a token) + model dropdowns. */
-	private function byoSettingsBody(): void {
-		// Allow a manual refresh of the discovered model list.
-		if ( isset( $_GET['djinn_refresh'] ) && check_admin_referer( 'djinn_refresh_models' ) ) {
-			ModelCatalog::flush();
-			echo '<div class="notice notice-success is-dismissible"><p>Model list refreshed.</p></div>';
-		}
-
-		$s       = Settings::all();
-		$catalog = ModelCatalog::forProvider( $s['provider'], Settings::apiKey() );
-		?>
-		<div>
-			<p>Place your offering in the lamp.</p>
-			<form method="post" action="options.php">
-				<?php settings_fields( 'djinn' ); ?>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><label for="djinn-provider">LLM provider</label></th>
-						<td>
-							<select id="djinn-provider" name="djinn_settings[provider]">
-								<option value="openai" <?php selected( $s['provider'], 'openai' ); ?>>OpenAI (your key)</option>
-								<option value="gemini" <?php selected( $s['provider'], 'gemini' ); ?>>Google Gemini (your key)</option>
-								<option value="anthropic" <?php selected( $s['provider'], 'anthropic' ); ?>>Anthropic Claude (your key)</option>
-								<option value="claude-max" <?php selected( $s['provider'], 'claude-max' ); ?>>Claude Max subscription — experimental</option>
-								<option value="proxy" <?php selected( $s['provider'], 'proxy' ); ?>>Djinn proxy (your account)</option>
-							</select>
-							<p class="description">Switch provider and <strong>Save</strong>. OpenAI/Gemini/Anthropic use your API key; Djinn proxy uses your account token.</p>
-							<?php if ( $s['provider'] === 'claude-max' ) : ?>
-								<p class="description" style="color:#b35900">⚠ <strong>Experimental.</strong> Paste a <code>claude setup-token</code> from your Claude Max subscription into the API key field. This uses your subscription's Claude Code quota — it may breach Anthropic's terms (subscriptions are sold for use <em>within</em> Claude Code), can be rate-limited or revoked, and the OAuth handshake may change. Anthropic has no embeddings, so search runs on the full schema.</p>
-							<?php elseif ( $s['provider'] === 'anthropic' ) : ?>
-								<p class="description">Anthropic has no embeddings API — schema search runs on the full schema (no index needed).</p>
-							<?php endif; ?>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="djinn-key">API key</label></th>
-						<td>
-							<input type="password" id="djinn-key" name="djinn_settings[api_key]" class="regular-text"
-								placeholder="<?php echo $s['api_key'] ? '•••••••• (saved — leave blank to keep)' : 'Paste your key'; ?>" autocomplete="off" />
-							<p class="description">For OpenAI/Gemini. Or define <code>DJINN_API_KEY</code> in <code>wp-config.php</code>.</p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="djinn-token">Djinn account token</label></th>
-						<td>
-							<input type="password" id="djinn-token" name="djinn_settings[site_token]" class="regular-text"
-								placeholder="<?php echo $s['site_token'] ? '•••••••• (saved — leave blank to keep)' : 'For the Djinn proxy provider'; ?>" autocomplete="off" />
-							<p class="description">Only needed if you pick the <strong>Djinn proxy</strong> provider.</p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="djinn-chat">Chat model</label></th>
-						<td><?php $this->modelSelect( 'chat_model', 'djinn-chat', $catalog['chat'], (string) $s['chat_model'], true ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="djinn-embed">Embedding model</label></th>
-						<td><?php $this->modelSelect( 'embedding_model', 'djinn-embed', $catalog['embed'], (string) $s['embedding_model'] ); ?></td>
-					</tr>
-				</table>
-
-				<p class="description">
-					<?php if ( $catalog['error'] ) : ?>
-						<span style="color:#b32d2e">⚠ <?php echo esc_html( $catalog['error'] ); ?></span>
-						Showing known models as a fallback.
-					<?php elseif ( $catalog['live'] ) : ?>
-						Models discovered from your key.
-					<?php endif; ?>
-					Prices are <strong>estimates</strong> from public list prices (USD) — providers don't expose pricing via their API — and are editable with the <code>djinn_model_pricing</code> filter.
-					<a href="<?php echo esc_url( wp_nonce_url( add_query_arg( [ 'page' => self::CAVE_SLUG, 'djinn_refresh' => '1' ], admin_url( 'admin.php' ) ), 'djinn_refresh_models' ) ); ?>">Refresh model list</a>
-				</p>
-
-				<?php submit_button( 'Save settings' ); ?>
-			</form>
-		</div>
-		<?php
-	}
-
-	/**
-	 * A model <select> annotated with estimated prices. An empty first option keeps Djinn's
-	 * per-provider default. The saved value is always present, even if discovery didn't list it
-	 * (e.g. a now-retired model), so saving never silently changes the selection. When $tiered,
-	 * chat models are grouped by capability so weak ones are clearly set apart.
-	 *
-	 * @param array<int,string> $models
-	 */
-	private function modelSelect( string $field, string $id, array $models, string $current, bool $tiered = false ): void {
-		if ( $current !== '' && ! in_array( $current, $models, true ) ) {
-			array_unshift( $models, $current );
-		}
-		echo '<select id="' . esc_attr( $id ) . '" name="djinn_settings[' . esc_attr( $field ) . ']" class="regular-text">';
-		echo '<option value="">Provider default</option>';
-
-		if ( ! $tiered ) {
-			foreach ( $models as $model ) {
-				$this->modelOption( $model, $current );
-			}
-			echo '</select>';
-			return;
-		}
-
-		$groups  = [
-			'recommended' => 'Recommended',
-			'standard'    => 'Other models',
-			'limited'     => 'Not recommended — too small for multi-step wishes',
-		];
-		$buckets = [ 'recommended' => [], 'standard' => [], 'limited' => [] ];
-		foreach ( $models as $model ) {
-			$buckets[ ModelCatalog::chatTier( $model ) ][] = $model;
-		}
-		foreach ( $groups as $key => $groupLabel ) {
-			if ( empty( $buckets[ $key ] ) ) {
-				continue;
-			}
-			echo '<optgroup label="' . esc_attr( $groupLabel ) . '">';
-			foreach ( $buckets[ $key ] as $model ) {
-				$this->modelOption( $model, $current );
-			}
-			echo '</optgroup>';
-		}
-		echo '</select>';
-	}
-
-	/** One priced <option>, marked selected when it is the current value. */
-	private function modelOption( string $model, string $current ): void {
-		printf(
-			'<option value="%s" %s>%s</option>',
-			esc_attr( $model ),
-			selected( $current, $model, false ),
-			esc_html( $model . ' — ' . Pricing::describe( $model ) )
-		);
-	}
 }

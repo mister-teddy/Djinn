@@ -1,3 +1,4 @@
+/proxy
 /vendor/
 /node_modules/
 composer.lock
@@ -6,11 +7,6 @@ composer.lock
 .djinn-seed.json
 .wp-env.override.json
 .wp-env.override.json.pause
-
-# Proxy service local files
-/proxy/target/
-/proxy/.env
-
 # Build artifacts
 /build/
 /dist/

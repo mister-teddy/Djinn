@@ -4,6 +4,8 @@ declare( strict_types=1 );
 
 namespace Djinn;
 
+use Djinn\Provider\Providers;
+
 /**
  * Plugin settings: edition, which LLM provider to use, the API key / proxy token, and model names.
  * Stored in a single option array; secrets are never sent back to the client.
@@ -65,6 +67,11 @@ class Settings {
 		return self::all()['site_token'];
 	}
 
+	/** Persist a settings payload through the canonical sanitizer (same path as the options.php form). */
+	public static function update( array $input ): void {
+		update_option( self::OPTION, self::sanitize( $input ) );
+	}
+
 	/** Persist the per-site proxy token (used by automatic ORG site registration). */
 	public static function storeSiteToken( string $token ): void {
 		$stored = get_option( self::OPTION, [] );
@@ -91,6 +98,9 @@ class Settings {
 		if ( $model ) {
 			return $model;
 		}
+		if ( self::usesProxy() ) {
+			return 'gemini-embedding-001'; // the proxy embeds via Gemini server-side
+		}
 		return self::provider() === 'gemini' ? 'gemini-embedding-001' : 'text-embedding-3-small';
 	}
 
@@ -115,7 +125,7 @@ class Settings {
 		$input   = is_array( $input ) ? $input : [];
 		$current = self::all();
 
-		$provider = isset( $input['provider'] ) && in_array( $input['provider'], [ 'openai', 'gemini', 'anthropic', 'claude-max', 'proxy' ], true )
+		$provider = isset( $input['provider'] ) && is_string( $input['provider'] ) && Providers::has( $input['provider'] )
 			? $input['provider']
 			: $current['provider'];
 

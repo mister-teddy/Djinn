@@ -22,12 +22,17 @@ class UsageRecorder {
 	}
 
 	/**
-	 * @param string $kind 'chat' or 'embed'
-	 * @param bool   $estimated True when token counts were inferred (e.g. Gemini embeddings,
-	 *                          whose API returns no usage metadata).
+	 * @param string     $kind         'chat' or 'embed'
+	 * @param bool       $estimated    True when token counts were inferred (e.g. Gemini embeddings,
+	 *                                 whose API returns no usage metadata).
+	 * @param float|null $costOverride The authoritative charge for this call, when the source knows it
+	 *                                 (the hosted proxy reports its post-markup charge). Stored verbatim
+	 *                                 so the row is frozen at the rate charged — immune to later pricing
+	 *                                 changes. Null ⇒ estimate locally from public list prices (BYO keys).
 	 */
-	public static function record( string $provider, string $model, string $kind, int $promptTokens, int $completionTokens, bool $estimated = false ): void {
+	public static function record( string $provider, string $model, string $kind, int $promptTokens, int $completionTokens, bool $estimated = false, ?float $costOverride = null ): void {
 		try {
+			$cost = $costOverride ?? Pricing::cost( $model, max( 0, $promptTokens ), max( 0, $completionTokens ) );
 			Repository::recordUsage(
 				[
 					'user_id'           => function_exists( 'get_current_user_id' ) ? get_current_user_id() : 0,
@@ -38,7 +43,7 @@ class UsageRecorder {
 					'prompt_tokens'     => max( 0, $promptTokens ),
 					'completion_tokens' => max( 0, $completionTokens ),
 					'estimated'         => $estimated ? 1 : 0,
-					'cost'              => Pricing::cost( $model, max( 0, $promptTokens ), max( 0, $completionTokens ) ),
+					'cost'              => $cost,
 				]
 			);
 		} catch ( Throwable $e ) {

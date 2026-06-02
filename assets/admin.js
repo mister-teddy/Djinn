@@ -1,16 +1,13 @@
-/* global Djinn, wp */
+/* global Djinn, wp, DjinnUI */
 ( function () {
-	const { createElement: el, useState, useRef, useEffect } = wp.element;
-	const { Button, Spinner, Notice } = wp.components;
-
-	function api( path, body ) {
-		return fetch( Djinn.restUrl + path, {
-			method: body ? 'POST' : 'GET',
-			credentials: 'same-origin',
-			headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': Djinn.nonce },
-			body: body ? JSON.stringify( body ) : undefined,
-		} ).then( ( r ) => r.json() );
-	}
+	// Shared chrome + helpers come from the DjinnUI module (assets/components.js); Lamp-specific
+	// pieces (chat, streaming, the sidebar, message cards) stay below.
+	const {
+		el, useState, useRef, useEffect, Button, Spinner, Notice, Lamp, Sparkle, Popover,
+		usePanelResize, ResizeHandle, ToastHost, toast, formatBytes, formatCost, makeApi,
+	} = DjinnUI;
+	const api = makeApi( Djinn );
+	// renderMarkdown / safeUrl / mdInline / mdTable stay local — only the Lamp renders Markdown.
 
 	// Persist the active conversation so a page reload returns to it (per site, keyed by REST URL).
 	const ACTIVE_CHAT_KEY = 'djinn_active_chat:' + Djinn.restUrl;
@@ -30,50 +27,6 @@
 		try {
 			window.localStorage.removeItem( ACTIVE_CHAT_KEY );
 		} catch ( e ) {}
-	}
-
-	// Line-art genie lamp — the wordmark of the product. Rising spout + flame on the left, a
-	// bulbous body with a lid knob, a handle curl on the right, and a small foot.
-	function Lamp( { size = 28, glow = false } ) {
-		return el(
-			'svg',
-			{
-				className: 'djinn-lamp' + ( glow ? ' djinn-lamp-glow' : '' ),
-				width: size,
-				height: size,
-				viewBox: '0 0 64 64',
-				fill: 'none',
-				stroke: 'currentColor',
-				strokeWidth: 2.2,
-				strokeLinecap: 'round',
-				strokeLinejoin: 'round',
-				'aria-hidden': true,
-			},
-			// flame above the spout
-			el( 'path', { d: 'M7 21 C5 17 9 15 7.5 11 C10.5 14 10.5 18 9 20', className: 'djinn-lamp-wisp' } ),
-			// spout (left, rising) — a slim tapering funnel
-			el( 'path', { d: 'M20 35 C13 32 8 28 6 22 L10 20.5 C12 26 16 30 22 33 Z' } ),
-			// body (bulbous vessel)
-			el( 'path', { d: 'M19 45 C12 45 10 38 15 34 C21 29 31 27 41 29 C50 31 54 35 53 40 C52 45 46 47 39 47 L23 47 C21.5 47 20 46.2 19 45 Z' } ),
-			// lid dome + knob
-			el( 'path', { d: 'M27 28.5 C30 24 38 24 41 28.5' } ),
-			el( 'circle', { cx: 34, cy: 23, r: 2.2, fill: 'currentColor', stroke: 'none' } ),
-			// handle (right curl)
-			el( 'path', { d: 'M53 35 C60 36 62 43 56 47' } ),
-			// foot
-			el( 'path', { d: 'M24 47 L40 47 L37 52 L27 52 Z' } )
-		);
-	}
-
-	function Sparkle() {
-		return el(
-			'svg',
-			{ width: 14, height: 14, viewBox: '0 0 16 16', 'aria-hidden': true, className: 'djinn-sparkle' },
-			el( 'path', {
-				d: 'M8 1 L9.4 6.6 L15 8 L9.4 9.4 L8 15 L6.6 9.4 L1 8 L6.6 6.6 Z',
-				fill: 'currentColor',
-			} )
-		);
 	}
 
 	function PendingCard( { pending, busy, onConfirm, onCancel } ) {
@@ -157,20 +110,6 @@
 		}
 		Object.keys( node ).forEach( ( k ) => collectDownloads( node[ k ], acc ) );
 		return acc;
-	}
-
-	function formatBytes( n ) {
-		n = Number( n ) || 0;
-		if ( n < 1024 ) {
-			return n + ' B';
-		}
-		const u = [ 'KB', 'MB', 'GB' ];
-		let i = -1;
-		do {
-			n /= 1024;
-			i++;
-		} while ( n >= 1024 && i < u.length - 1 );
-		return n.toFixed( 1 ) + ' ' + u[ i ];
 	}
 
 	// A single conjured line: ✦ purpose … ✓ status. Click to expand the incantation (operation,
@@ -445,18 +384,6 @@
 		);
 	}
 
-	// Adaptive currency: keep tiny amounts legible instead of rounding to $0.00.
-	function formatCost( usd ) {
-		const n = Number( usd ) || 0;
-		if ( n === 0 ) {
-			return '$0.00';
-		}
-		if ( n < 0.01 ) {
-			return '$' + n.toFixed( 6 ).replace( /0+$/, '' ).replace( /\.$/, '' );
-		}
-		return '$' + n.toFixed( n < 1 ? 4 : 2 );
-	}
-
 	// Running token + cost total for the open conversation. Updates after each wish/grant.
 	function Meter( { usage } ) {
 		if ( ! usage || ! usage.calls ) {
@@ -512,6 +439,9 @@
 		const [ chats, setChats ] = useState( [] );
 		const [ usage, setUsage ] = useState( null );
 		const [ indexed, setIndexed ] = useState( Djinn.indexed );
+		const [ stale, setStale ] = useState( Djinn.indexStale );
+		const [ indexing, setIndexing ] = useState( false );
+		const [ indexInfo, setIndexInfo ] = useState( null ); // GET /index-status, for the build popover
 		const [ error, setError ] = useState( '' );
 		const [ attachment, setAttachment ] = useState( null ); // { token, filename, size } once uploaded
 		const [ step, setStep ] = useState( '' ); // current streaming step label
@@ -522,13 +452,8 @@
 				return s === null ? window.matchMedia( '(max-width: 782px)' ).matches : s === '1';
 			} catch ( e ) { return false; }
 		} );
-		const [ sidebarWidth, setSidebarWidth ] = useState( () => {
-			try {
-				const w = parseInt( localStorage.getItem( 'djinn_sidebar_width' ), 10 );
-				return ( w >= 150 && w <= 400 ) ? w : 200;
-			} catch ( e ) { return 200; }
-		} );
-		const [ resizing, setResizing ] = useState( false );
+		// Reusable drag-to-resize (also used by the Cave). The handle markup is DjinnUI.ResizeHandle.
+		const sidebar = usePanelResize( { storageKey: 'djinn_sidebar_width', min: 150, max: 400, initial: 200, axis: 'x' } );
 		const scroller = useRef( null );
 		const fileInput = useRef( null );
 		const inputRef = useRef( null );
@@ -559,6 +484,8 @@
 				setChatId( saved );
 				loadTranscript( saved );
 			}
+			// Index health for the Build/Update popover — lazy, never blocks first paint.
+			api( '/index-status' ).then( ( r ) => setIndexInfo( r ) ).catch( () => {} );
 		}, [] );
 
 		// Remember the open conversation across reloads.
@@ -792,29 +719,13 @@
 			} );
 		}
 
-		// Drag the handle to resize the sidebar; width persists. Disabled while collapsed or on narrow
-		// screens (where the sidebar overlays at a fixed width).
+		// Drag the handle to resize the sidebar; width persists (via usePanelResize). Disabled while
+		// collapsed or on narrow screens (where the sidebar overlays at a fixed width).
 		function startResize( e ) {
 			if ( collapsed || window.matchMedia( '(max-width: 782px)' ).matches ) {
 				return;
 			}
-			e.preventDefault();
-			const startX = e.clientX;
-			const startW = sidebarWidth;
-			let lastW = startW;
-			setResizing( true );
-			function onMove( ev ) {
-				lastW = Math.min( 400, Math.max( 150, startW + ( ev.clientX - startX ) ) );
-				setSidebarWidth( lastW );
-			}
-			function onUp() {
-				document.removeEventListener( 'mousemove', onMove );
-				document.removeEventListener( 'mouseup', onUp );
-				setResizing( false );
-				try { localStorage.setItem( 'djinn_sidebar_width', String( lastW ) ); } catch ( e2 ) {}
-			}
-			document.addEventListener( 'mousemove', onMove );
-			document.addEventListener( 'mouseup', onUp );
+			sidebar.startResize( e );
 		}
 
 		async function deleteChat( id ) {
@@ -850,6 +761,50 @@
 			}
 		}
 
+		// Build (or refresh) the schema index in place — no trip to the Cave. Disabled while it runs so
+		// the (synchronous, billable) reindex can't be fired twice.
+		async function buildIndex() {
+			if ( indexing ) {
+				return;
+			}
+			setIndexing( true );
+			try {
+				const r = await api( '/reindex', {} );
+				if ( r && r.status === 'ok' ) {
+					toast( ( indexed ? 'Index updated' : 'Index built' ) + ' — ' + ( r.chunks || 0 ) + ' schema chunks embedded.' );
+					setIndexed( true );
+					setStale( false );
+					// Drop the server-rendered "stale index" red dot from the admin menu (it otherwise
+					// lingers until the next page load).
+					document.querySelectorAll( '.djinn-reindex' ).forEach( ( n ) => n.remove() );
+					api( '/index-status' ).then( ( s ) => setIndexInfo( s ) ).catch( () => {} );
+				} else {
+					toast( ( r && r.message ) || 'Could not build the index.', 'error' );
+				}
+			} catch ( e ) {
+				toast( String( e ), 'error' );
+			} finally {
+				setIndexing( false );
+			}
+		}
+
+		// Index details for the build button's hover popover (model · live types · estimated cost).
+		function indexPopover() {
+			if ( indexInfo && indexInfo.embeds === false ) {
+				return el( 'div', null, 'This provider has no embeddings, so schema search runs on the full schema — no index needed.' );
+			}
+			const est = indexInfo && indexInfo.estimate;
+			const cost = est
+				? ( est.unpriced ? 'unknown' : ( est.free || est.cost === 0 ? 'free' : formatCost( est.cost ) ) )
+				: '…';
+			const detail = est ? ' (~' + ( est.tokens || 0 ).toLocaleString() + ' tokens · ' + ( est.chunks || 0 ) + ' chunks)' : '';
+			return el( 'dl', null,
+				el( 'dt', null, 'Embedding model' ), el( 'dd', null, indexInfo ? indexInfo.model : '…' ),
+				el( 'dt', null, 'Schema types' ), el( 'dd', null, indexInfo ? String( indexInfo.count_live ) : '…' ),
+				el( 'dt', null, 'Estimated cost' ), el( 'dd', null, cost + detail )
+			);
+		}
+
 		if ( ! Djinn.configured ) {
 			return el(
 				'div',
@@ -865,20 +820,35 @@
 
 		const empty = messages.length === 0;
 
+		// The build/update affordance: a primary "Build RAG" when there's no index (it replaces the
+		// send button), or a secondary "Update RAG" beside "Make wish" when the index is stale. The
+		// hover popover shows what a build would cost.
+		const buildLabel = indexing ? ( indexed ? 'Updating…' : 'Building…' ) : ( indexed ? 'Update RAG' : 'Build RAG' );
+		const buildBtn = el( Popover, { key: 'build', placement: 'top', content: indexPopover() },
+			el( Button, {
+				className: indexed ? 'djinn-build' : 'djinn-send',
+				variant: indexed ? 'secondary' : 'primary',
+				busy: indexing,
+				disabled: indexing,
+				onClick: buildIndex,
+			}, indexed ? null : el( Sparkle ), buildLabel )
+		);
+
 		return el(
 			'div',
 			{
-				className: 'djinn-layout' + ( collapsed ? ' is-collapsed' : '' ) + ( resizing ? ' is-resizing' : '' ) + ( dragOver ? ' djinn-dragging' : '' ),
+				className: 'djinn-layout' + ( collapsed ? ' is-collapsed' : '' ) + ( sidebar.resizing ? ' is-resizing' : '' ) + ( dragOver ? ' djinn-dragging' : '' ),
 				onDragEnter,
 				onDragOver,
 				onDragLeave,
 				onDrop,
 			},
+			el( ToastHost ),
 			dragOver ? el( 'div', { className: 'djinn-drop-overlay' },
 				el( 'div', { className: 'djinn-drop-card' }, '📎 Drop a file to attach it to your wish' )
 			) : null,
-			el( Sidebar, { chats, activeId: chatId, busy, onNew: newChat, onOpen: openChat, onDelete: deleteChat, width: collapsed ? 0 : sidebarWidth } ),
-			el( 'div', { className: 'djinn-resizer', onMouseDown: startResize },
+			el( Sidebar, { chats, activeId: chatId, busy, onNew: newChat, onOpen: openChat, onDelete: deleteChat, width: collapsed ? 0 : sidebar.size } ),
+			el( ResizeHandle, { axis: 'x', onMouseDown: startResize, className: 'djinn-lamp-resizer' },
 				el( 'button', {
 					type: 'button',
 					className: 'djinn-resizer-btn',
@@ -910,13 +880,6 @@
 					el( Meter, { usage } )
 				)
 			),
-			! indexed
-				? el( Notice, { status: 'info', isDismissible: false },
-						'The lamp slumbers — ',
-						el( 'a', { href: Djinn.indexUrl }, 'awaken its memory' ),
-						' to sharpen the Djinn\'s knowledge of your site.'
-					)
-				: null,
 			error ? el( Notice, { status: 'error', onRemove: () => setError( '' ) }, error ) : null,
 			el(
 				'div',
@@ -963,18 +926,36 @@
 						className: 'djinn-input',
 						value: input,
 						ref: inputRef,
-						placeholder: 'Whisper your wish…  (Enter to send · Shift+Enter for newline)',
+						placeholder: indexed
+							? 'Whisper your wish…  (Enter to send · Shift+Enter for newline)'
+							: 'Build the RAG index to begin granting wishes…',
 						rows: 1,
 						disabled: busy,
 						onChange: ( e ) => setInput( e.target.value ),
 						onKeyDown: ( e ) => {
 							if ( e.key === 'Enter' && ! e.shiftKey ) {
 								e.preventDefault();
-								send();
+								// No index yet → wishing is gated behind building it (see the composer buttons).
+								if ( indexed ) {
+									send();
+								}
 							}
 						},
 					} ),
-					el( Button, { className: 'djinn-send', disabled: busy || ( ! input.trim() && ! attachment ), onClick: send }, el( Sparkle ), 'Make wish' )
+					// No index → "Build RAG" is the primary action and replaces send (wishing is gated
+					// until then). A stale index keeps "Make wish" and adds "Update RAG" beside it. The
+					// build runs inline (buildIndex); the hover popover shows what it would cost.
+					! indexed
+						? buildBtn
+						: [
+							stale ? buildBtn : null,
+							el( Button, {
+								key: 'send',
+								className: 'djinn-send',
+								disabled: busy || ( ! input.trim() && ! attachment ),
+								onClick: send,
+							}, el( Sparkle ), 'Make wish' ),
+						]
 				)
 			)
 			)

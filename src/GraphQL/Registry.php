@@ -22,14 +22,26 @@ class Registry {
 	/** @var array<string,Type> Shared object/input types, by name, for features that reuse them. */
 	private array $types = [];
 
+	/** @var array<string,string> Capability domain per "kind:name", for the admin Capabilities view. */
+	private array $domains = [];
+
+	/** The domain operations are filed under until changed — set per feature by SchemaFactory. */
+	private string $currentDomain = 'Core';
+
+	public function setCurrentDomain( string $domain ): void {
+		$this->currentDomain = $domain;
+	}
+
 	/** @param array<string,mixed> $config A graphql-php field definition. */
 	public function addQuery( string $name, array $config ): void {
-		$this->queries[ $name ] = $config;
+		$this->queries[ $name ]           = $config;
+		$this->domains[ 'query:' . $name ] = $this->currentDomain;
 	}
 
 	/** @param array<string,mixed> $config */
 	public function addMutation( string $name, array $config ): void {
-		$this->mutations[ $name ] = $config;
+		$this->mutations[ $name ]             = $config;
+		$this->domains[ 'mutation:' . $name ] = $this->currentDomain;
 	}
 
 	public function setType( string $name, Type $type ): void {
@@ -48,5 +60,46 @@ class Registry {
 	/** @return array<string,array<string,mixed>> */
 	public function mutations(): array {
 		return $this->mutations;
+	}
+
+	/**
+	 * Flat operation catalog for the admin Capabilities view — every query and mutation with its
+	 * domain, kind, description, argument shape, and return type. Capability gating is per-resolver,
+	 * so this is the full surface ("what the Djinn can do"), not a per-user permission check.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function operations(): array {
+		$out = [];
+		foreach ( [ 'query' => $this->queries, 'mutation' => $this->mutations ] as $kind => $fields ) {
+			foreach ( $fields as $name => $config ) {
+				$out[] = [
+					'domain'      => $this->domains[ $kind . ':' . $name ] ?? 'Core',
+					'name'        => $name,
+					'kind'        => $kind,
+					'description' => (string) ( $config['description'] ?? '' ),
+					'args'        => self::describeArgs( $config['args'] ?? [] ),
+					'returns'     => isset( $config['type'] ) ? (string) $config['type'] : '',
+				];
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * @param array<string,mixed> $args
+	 * @return array<int,array<string,string|bool>>
+	 */
+	private static function describeArgs( array $args ): array {
+		$out = [];
+		foreach ( $args as $argName => $arg ) {
+			$type = isset( $arg['type'] ) ? (string) $arg['type'] : '';
+			$out[] = [
+				'name'     => (string) $argName,
+				'type'     => $type,
+				'required' => str_ends_with( $type, '!' ),
+			];
+		}
+		return $out;
 	}
 }

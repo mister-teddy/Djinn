@@ -13,8 +13,8 @@ use GraphQL\Type\Definition\Type;
 /**
  * Tier-3 curated support for WooCommerce — hand-tuned product/order operations that beat the
  * generic post + REST paths in quality (real prices, stock, order totals). Registered ONLY when
- * WooCommerce is active (see SchemaFactory::features and self::isActive), so its types never enter
- * the schema — and therefore never the RAG index — on non-Woo sites. It also claims the `product`
+ * WooCommerce is active (see SchemaFactory::features and self::isActive), so on non-Woo sites its
+ * types stay out of the schema, and therefore out of the RAG index. It also claims the `product`
  * post type so the generic discovery chunks don't redundantly describe it.
  */
 class WooCommerceFeature implements Feature {
