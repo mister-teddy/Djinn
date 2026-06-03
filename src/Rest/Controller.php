@@ -104,12 +104,10 @@ class Controller {
 			'callback'            => [ $this, 'verify' ],
 		] );
 
-		// Relay a Stripe SetupIntent from the proxy (server-side, so the browser never sees the site
-		// token and there's no cross-origin call). The in-admin card form calls this.
-		register_rest_route( self::NS, '/billing-intent', [
+		register_rest_route( self::NS, '/billing-checkout', [
 			'methods'             => 'POST',
 			'permission_callback' => $auth,
-			'callback'            => [ $this, 'billingIntent' ],
+			'callback'            => [ $this, 'billingCheckout' ],
 		] );
 
 		// --- Cave dashboard data (read by cave.js) ---------------------------------------------
@@ -162,18 +160,18 @@ class Controller {
 		return new WP_REST_Response( [ 'nonce' => (string) $req->get_param( 'nonce' ) ] );
 	}
 
-	/** Ask the proxy for a Stripe SetupIntent client secret + publishable key for this site's account. */
-	public function billingIntent(): WP_REST_Response {
+	public function billingCheckout( WP_REST_Request $req ): WP_REST_Response {
 		$token = Settings::siteToken();
 		if ( $token === '' ) {
 			return new WP_REST_Response( [ 'message' => 'Connect a Djinn account first.' ], 400 );
 		}
-		$res = wp_remote_post(
-			Settings::proxyUrl() . '/billing/setup-intent',
+		$kind = $req->get_param( 'kind' ) === 'subscription' ? 'subscription' : 'credit';
+		$res  = wp_remote_post(
+			Settings::proxyUrl() . '/billing/checkout',
 			[
 				'timeout' => 20,
 				'headers' => [ 'content-type' => 'application/json' ],
-				'body'    => wp_json_encode( [ 'token' => $token ] ),
+				'body'    => wp_json_encode( [ 'token' => $token, 'kind' => $kind ] ),
 			]
 		);
 		if ( is_wp_error( $res ) ) {
@@ -181,16 +179,13 @@ class Controller {
 		}
 		$code = (int) wp_remote_retrieve_response_code( $res );
 		$json = json_decode( (string) wp_remote_retrieve_body( $res ), true );
-		if ( $code !== 200 || ! is_array( $json ) || empty( $json['clientSecret'] ) ) {
+		if ( $code !== 200 || ! is_array( $json ) || empty( $json['url'] ) ) {
 			$msg = is_array( $json ) && isset( $json['error']['message'] )
 				? (string) $json['error']['message']
 				: 'Billing is not available yet.';
 			return new WP_REST_Response( [ 'message' => $msg ], $code ?: 502 );
 		}
-		return new WP_REST_Response( [
-			'clientSecret'   => (string) $json['clientSecret'],
-			'publishableKey' => (string) ( $json['publishableKey'] ?? '' ),
-		] );
+		return new WP_REST_Response( [ 'url' => (string) $json['url'] ] );
 	}
 
 	/**

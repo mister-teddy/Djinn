@@ -58,14 +58,6 @@
 			}
 		}, [ provider ] );
 
-		// Bind the Stripe modal once the proxy payment view is on screen and no card is on file.
-		useEffect( () => {
-			if ( DjinnCave.stripeEnabled && provider === 'proxy' && account && account.usesProxy &&
-				! account.payg && window.DjinnBilling && window.DjinnBilling.mount ) {
-				window.DjinnBilling.mount();
-			}
-		}, [ account, provider ] );
-
 		if ( ! s ) {
 			return el( Tile, { tone: 'account', title: 'Account' }, el( Spinner ) );
 		}
@@ -132,34 +124,28 @@
 			key: 'credit',
 			value: formatCost( account.balanceUsd || 0 ),
 			label: 'Account credit',
-			sub: account.payg ? 'auto top-up on' : 'top up to continue',
+			sub: account.subscribed ? 'auto-renew on' : 'top up to continue',
 		} ) );
 		const kids = [ el( 'div', { key: 'cards', className: 'djinn-cards' }, cards ) ];
-		if ( DjinnCave.stripeEnabled ) {
+		if ( DjinnCave.polarEnabled ) {
 			kids.push( el( PaymentBlock, { key: 'pay', account } ) );
 		}
 		return el( 'div', null, kids );
 	}
 
 	function PaymentBlock( { account } ) {
-		if ( account.payg ) {
-			return el( 'p', { className: 'description' }, '✓ A card is on file — automatic top-up is on.' );
-		}
+		const checkout = ( kind ) => () => {
+			if ( window.DjinnBilling && window.DjinnBilling.checkout ) {
+				window.DjinnBilling.checkout( kind );
+			}
+		};
 		return el( 'div', { className: 'djinn-payment' },
-			el( 'p', { className: 'description' }, 'Add a card to keep wishing — prepaid with automatic top-up, no charge now.' ),
-			el( 'button', { type: 'button', className: 'button button-primary', id: 'djinn-add-card' }, 'Add a card' ),
-			el( 'div', { id: 'djinn-billing-modal', className: 'djinn-modal', hidden: true },
-				el( 'div', { className: 'djinn-modal-backdrop', 'data-djinn-close': 'true' } ),
-				el( 'div', { className: 'djinn-modal-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'djinn-billing-title' },
-					el( 'button', { type: 'button', className: 'djinn-modal-x', id: 'djinn-billing-cancel', 'data-djinn-close': 'true', 'aria-label': 'Close' }, '×' ),
-					el( 'h2', { id: 'djinn-billing-title' }, 'Add a card' ),
-					el( 'p', { className: 'description' }, 'Prepaid with automatic top-up — no charge now. Your card is stored by Stripe; it never touches this site.' ),
-					el( 'div', { id: 'djinn-payment-element' } ),
-					el( 'div', { className: 'djinn-modal-actions' },
-						el( 'button', { type: 'button', className: 'button button-primary', id: 'djinn-billing-save', disabled: true }, 'Save card' ),
-						el( 'span', { id: 'djinn-billing-msg' } )
-					)
-				)
+			el( 'p', { className: 'description' }, 'Add credit to keep wishing — you pay only for what you use, billed by Polar.' ),
+			el( 'div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' } },
+				el( Button, { className: 'djinn-gold', variant: 'primary', onClick: checkout( 'credit' ) }, 'Add credit' ),
+				account.subscribed
+					? el( 'span', { className: 'description' }, '✓ Auto-renew on' )
+					: el( Button, { variant: 'secondary', onClick: checkout( 'subscription' ) }, 'Subscribe (auto-renew)' )
 			)
 		);
 	}

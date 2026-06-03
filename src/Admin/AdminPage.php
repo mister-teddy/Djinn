@@ -95,7 +95,7 @@ class AdminPage {
 				'edition'       => Settings::edition(),
 				'isOrg'         => Settings::isOrg(),
 				'configured'    => Settings::isConfigured(),
-				'stripeEnabled' => Settings::usesProxy(),
+				'polarEnabled'  => Settings::usesProxy(),
 				'providers'     => Providers::forClient(),
 				'privacyUrl'    => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
 			]
@@ -129,14 +129,9 @@ class AdminPage {
 		);
 	}
 
-	/**
-	 * ORG settings page only: Stripe.js (the one sanctioned remote script) + the in-admin card
-	 * form's logic. The form calls our own REST relay (/billing-intent), so the site token never
-	 * leaves the server and there's no cross-origin request.
-	 */
 	private function enqueueBilling(): void {
-		wp_enqueue_script( 'stripe-js', 'https://js.stripe.com/v3/', [], null, true );
-		wp_register_script( 'djinn-billing', false, [ 'stripe-js' ], DJINN_VERSION, true );
+		wp_enqueue_script( 'polar-embed', 'https://cdn.jsdelivr.net/npm/@polar-sh/checkout@latest/dist/embed.global.js', [], null, true );
+		wp_register_script( 'djinn-billing', false, [ 'polar-embed' ], DJINN_VERSION, true );
 		wp_enqueue_script( 'djinn-billing' );
 		wp_localize_script(
 			'djinn-billing',
@@ -149,89 +144,25 @@ class AdminPage {
 		wp_add_inline_script( 'djinn-billing', self::billingScript() );
 	}
 
-	/**
-	 * Vanilla-JS Stripe card form in a modal. The Cave is React now, so this exposes
-	 * `window.DjinnBilling.mount()` for cave.js to call (in a useEffect) after it renders the modal
-	 * markup — binding by id before React mounts would find nothing. Idempotent per button instance.
-	 */
 	private static function billingScript(): string {
 		return <<<'JS'
 window.DjinnBilling = window.DjinnBilling || {};
-window.DjinnBilling.mount = function () {
-	var openBtn = document.getElementById('djinn-add-card');
-	var modal = document.getElementById('djinn-billing-modal');
-	if (!openBtn || !modal || openBtn.dataset.djinnBound) { return; }
-	openBtn.dataset.djinnBound = '1';
-	var saveBtn = document.getElementById('djinn-billing-save');
-	var msg = document.getElementById('djinn-billing-msg');
-	var mount = document.getElementById('djinn-payment-element');
-	var stripe, elements, ready = false, loading = false, saved = false;
-
-	function openModal() {
-		modal.hidden = false;
-		document.body.classList.add('djinn-modal-open');
-	}
-	function closeModal() {
-		modal.hidden = true;
-		document.body.classList.remove('djinn-modal-open');
-		// Reflect the new card-on-file state in the tile once the user dismisses a successful save.
-		if (saved) { window.location.reload(); }
-	}
-
-	// Mount the Payment Element on first open; subsequent opens reuse it.
-	async function loadForm() {
-		if (ready || loading) { return; }
-		loading = true;
-		msg.textContent = 'Loading the secure payment form…';
-		try {
-			var r = await fetch(DjinnBilling.restUrl + '/billing-intent', {
-				method: 'POST',
-				headers: { 'X-WP-Nonce': DjinnBilling.nonce }
-			});
-			var d = await r.json();
-			if (!r.ok || !d.clientSecret) {
-				throw new Error((d && d.message) || 'Billing is not available yet.');
-			}
-			stripe = Stripe(d.publishableKey);
-			elements = stripe.elements({ clientSecret: d.clientSecret });
-			elements.create('payment').mount(mount);
-			msg.textContent = '';
-			saveBtn.disabled = false;
-			ready = true;
-		} catch (e) {
-			msg.textContent = e.message || 'Could not start billing.';
-		} finally {
-			loading = false;
+window.DjinnBilling.checkout = async function ( kind ) {
+	try {
+		var r = await fetch( DjinnBilling.restUrl + '/billing-checkout', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': DjinnBilling.nonce },
+			body: JSON.stringify( { kind: kind || 'credit' } )
+		} );
+		var d = await r.json();
+		if ( ! r.ok || ! d.url ) {
+			throw new Error( ( d && d.message ) || 'Billing is not available yet.' );
 		}
+		var checkout = await window.PolarEmbedCheckout.create( d.url, { theme: 'dark' } );
+		checkout.addEventListener( 'success', function () { window.location.reload(); } );
+	} catch ( e ) {
+		window.alert( e.message || 'Could not start checkout.' );
 	}
-
-	openBtn.addEventListener('click', function () {
-		openModal();
-		loadForm();
-	});
-
-	saveBtn.addEventListener('click', async function () {
-		if (saved) { closeModal(); return; }
-		if (!ready) { return; }
-		saveBtn.disabled = true;
-		msg.textContent = 'Saving…';
-		var result = await stripe.confirmSetup({ elements: elements, redirect: 'if_required' });
-		if (result.error) {
-			msg.textContent = 'Error: ' + result.error.message;
-			saveBtn.disabled = false;
-		} else {
-			saved = true;
-			saveBtn.textContent = 'Done';
-			msg.textContent = 'Card saved — automatic top-up is on. You can keep wishing past the free trial.';
-		}
-	});
-
-	modal.querySelectorAll('[data-djinn-close]').forEach(function (node) {
-		node.addEventListener('click', closeModal);
-	});
-	document.addEventListener('keydown', function (e) {
-		if (e.key === 'Escape' && !modal.hidden) { closeModal(); }
-	});
 };
 JS;
 	}

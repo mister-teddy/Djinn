@@ -12,7 +12,7 @@ use Djinn\Settings;
  */
 class ProxyAccount {
 
-	/** @return array{balanceUsd?:float,spentUsd?:float,wishesLeft?:int,payg?:bool}|null */
+	/** @return array{balanceUsd?:float,spentUsd?:float,wishesLeft?:int,paid?:bool,subscribed?:bool}|null */
 	public static function fetch(): ?array {
 		$token = Settings::siteToken();
 		if ( $token === '' ) {
