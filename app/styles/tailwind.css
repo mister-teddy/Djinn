@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	.djinn-app,
+	.djinn-app * {
+		box-sizing: border-box;
+	}
+	.djinn-app h1,
+	.djinn-app h2,
+	.djinn-app h3,
+	.djinn-app h4 {
+		margin: 0;
+		font-weight: inherit;
+	}
+}

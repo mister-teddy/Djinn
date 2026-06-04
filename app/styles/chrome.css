@@ -1,0 +1,64 @@
+/* Page-level paint and wp-admin chrome adjustments that live outside the SPA root (so they can't
+   be scoped under .djinn-app). Both screens go full-bleed and hide top-level admin notices — each
+   app carries its own feedback inside its panels. */
+
+/* ---- Lamp ---- */
+body.toplevel_page_djinn {
+	background: var( --djinn-midnight );
+	overscroll-behavior: none;
+}
+body.toplevel_page_djinn #wpcontent {
+	padding-left: 0;
+}
+body.toplevel_page_djinn #wpbody-content {
+	padding-bottom: 0;
+}
+body.toplevel_page_djinn #wpfooter {
+	display: none;
+}
+body.toplevel_page_djinn #wpbody-content > .notice,
+body.toplevel_page_djinn #wpbody-content > .updated,
+body.toplevel_page_djinn #wpbody-content > .error,
+body.toplevel_page_djinn #wpbody-content > .update-nag,
+body.toplevel_page_djinn .update-nag {
+	display: none;
+}
+.djinn-wrap {
+	margin: 0;
+	padding: 0;
+	max-width: none;
+	height: calc( 100vh - 32px );
+	overflow: hidden;
+}
+@media screen and ( max-width: 782px ) {
+	.djinn-wrap {
+		height: calc( 100vh - 46px );
+	}
+}
+#djinn-root {
+	height: 100%;
+	color: var( --djinn-ivory );
+	font-size: 16px;
+}
+
+/* ---- Cave ---- */
+body.djinn_page_djinn-cave {
+	background: #fff;
+	overscroll-behavior: none;
+}
+body.djinn_page_djinn-cave #wpcontent {
+	padding-left: 0;
+}
+body.djinn_page_djinn-cave #wpbody-content {
+	padding-bottom: 0;
+}
+body.djinn_page_djinn-cave #wpfooter {
+	display: none;
+}
+body.djinn_page_djinn-cave #wpbody-content > .notice,
+body.djinn_page_djinn-cave #wpbody-content > .updated,
+body.djinn_page_djinn-cave #wpbody-content > .error,
+body.djinn_page_djinn-cave #wpbody-content > .update-nag,
+body.djinn_page_djinn-cave .update-nag {
+	display: none;
+}

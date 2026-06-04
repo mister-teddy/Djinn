@@ -1,5 +1,5 @@
 {
-	"core": "WordPress/WordPress#6.5",
+	"core": "WordPress/WordPress#6.8",
 	"phpVersion": "8.2",
 	"plugins": [ "." ],
 	"testsEnvironment": false,

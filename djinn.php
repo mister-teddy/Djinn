@@ -4,7 +4,7 @@
  * Description:       Whisper your wish to the Djinn — a wish-granting AI assistant in your WordPress admin that fulfils requests by generating GraphQL against an in-house schema of your site.
  * Version:           0.5.2
  * Requires PHP:      8.0
- * Requires at least: 6.0
+ * Requires at least: 6.6
  * Author:            Djinn
  * License:           GPL-2.0-or-later
  * Text Domain:       djinn

@@ -10,8 +10,9 @@ use Djinn\Settings;
 use Djinn\Store\Repository;
 
 /**
- * Registers the admin menu (the lamp + a settings sub-page) and enqueues the no-build
- * front-end, which uses WordPress's bundled React (`wp-element`) and component globals.
+ * Registers the admin menu (Lamp + Cave of Wonders) and enqueues the compiled React/Tailwind SPA
+ * from build/, reading each entry's dependencies and cache-busting version from the *.asset.php
+ * that @wordpress/scripts emits.
  */
 class AdminPage {
 
@@ -39,7 +40,7 @@ class AdminPage {
 	}
 
 	public function renderApp(): void {
-		echo '<div class="wrap djinn-wrap"><div id="djinn-root"></div></div>';
+		echo '<div class="wrap djinn-wrap djinn-app"><div id="djinn-root"></div></div>';
 	}
 
 	/**
@@ -64,40 +65,60 @@ class AdminPage {
 		}
 	}
 
-	/**
-	 * Register the shared component library (DjinnUI) + palette, depended on by both apps. Registering
-	 * (not enqueuing) is enough — WordPress pulls a dependency in when a dependent script/style loads.
-	 */
-	private function enqueueUi(): void {
-		wp_enqueue_style( 'wp-components' );
-		// Cardo — the app's serif, shared by both screens.
+	/** Whether the front-end has been compiled. If not, surface a notice instead of a blank screen. */
+	private function buildReady(): bool {
+		if ( is_readable( DJINN_DIR . 'build/lamp.asset.php' ) ) {
+			return true;
+		}
+		add_action( 'admin_notices', static function () {
+			echo '<div class="notice notice-error"><p><strong>Djinn:</strong> the front-end is not built. Run <code>npm install &amp;&amp; npm run build</code> in the plugin directory.</p></div>';
+		} );
+		return false;
+	}
+
+	/** Cardo — the serif both screens share. Registering is enough; each app's style depends on it. */
+	private function registerFont(): void {
 		wp_register_style(
 			'djinn-cardo',
 			'https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&display=swap',
 			[],
 			null
 		);
-		wp_register_script( 'djinn-ui', DJINN_URL . 'assets/components.js', [ 'wp-element', 'wp-components', 'wp-api-fetch' ], DJINN_VERSION, true );
-		wp_register_style( 'djinn-ui', DJINN_URL . 'assets/components.css', [ 'wp-components', 'djinn-cardo' ], DJINN_VERSION );
 	}
 
-	/** The Cave of Wonders — a React dashboard (Account · Capabilities · Spend) on shared components. */
+	/**
+	 * Enqueue one built entry's JS + CSS, taking its dependency list and cache-busting version from
+	 * the *.asset.php webpack emits. Returns the script handle so the caller can localize onto it.
+	 */
+	private function enqueueEntry( string $entry ): string {
+		$asset  = require DJINN_DIR . "build/{$entry}.asset.php";
+		$handle = "djinn-{$entry}";
+		wp_enqueue_script( $handle, DJINN_URL . "build/{$entry}.js", $asset['dependencies'], $asset['version'], true );
+		wp_enqueue_style( $handle, DJINN_URL . "build/{$entry}.css", [ 'djinn-cardo' ], $asset['version'] );
+		wp_style_add_data( $handle, 'rtl', 'replace' );
+		return $handle;
+	}
+
+	/** The Cave of Wonders — Account · Capabilities · Spend. */
 	private function enqueueCave(): void {
-		$this->enqueueUi();
-		wp_enqueue_script( 'djinn-cave-app', DJINN_URL . 'assets/cave.js', [ 'djinn-ui' ], DJINN_VERSION, true );
-		wp_enqueue_style( 'djinn-cave', DJINN_URL . 'assets/cave.css', [ 'djinn-ui' ], DJINN_VERSION );
+		if ( ! $this->buildReady() ) {
+			return;
+		}
+		$this->registerFont();
+		$handle = $this->enqueueEntry( 'cave' );
 		wp_localize_script(
-			'djinn-cave-app',
+			$handle,
 			'DjinnCave',
 			[
-				'restUrl'       => esc_url_raw( rest_url( 'djinn/v1' ) ),
-				'nonce'         => wp_create_nonce( 'wp_rest' ),
-				'edition'       => Settings::edition(),
-				'isOrg'         => Settings::isOrg(),
-				'configured'    => Settings::isConfigured(),
-				'polarEnabled'  => Settings::usesProxy(),
-				'providers'     => Providers::forClient(),
-				'privacyUrl'    => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
+				'restUrl'      => esc_url_raw( rest_url( 'djinn/v1' ) ),
+				'gqlUrl'       => esc_url_raw( rest_url( 'djinn/v1/graphql' ) ),
+				'nonce'        => wp_create_nonce( 'wp_rest' ),
+				'edition'      => Settings::edition(),
+				'isOrg'        => Settings::isOrg(),
+				'configured'   => Settings::isConfigured(),
+				'polarEnabled' => Settings::usesProxy(),
+				'providers'    => Providers::forClient(),
+				'privacyUrl'   => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
 			]
 		);
 		if ( Settings::usesProxy() ) {
@@ -105,17 +126,19 @@ class AdminPage {
 		}
 	}
 
-	/** The no-build React app for the Lamp screen. */
+	/** The Lamp — the wish-granting chat. */
 	private function enqueueApp(): void {
-		$this->enqueueUi();
-		wp_enqueue_script( 'djinn-app', DJINN_URL . 'assets/admin.js', [ 'djinn-ui' ], DJINN_VERSION, true );
-		wp_enqueue_style( 'djinn-app', DJINN_URL . 'assets/admin.css', [ 'djinn-ui' ], DJINN_VERSION );
-
+		if ( ! $this->buildReady() ) {
+			return;
+		}
+		$this->registerFont();
+		$handle = $this->enqueueEntry( 'lamp' );
 		wp_localize_script(
-			'djinn-app',
+			$handle,
 			'Djinn',
 			[
 				'restUrl'     => esc_url_raw( rest_url( 'djinn/v1' ) ),
+				'gqlUrl'      => esc_url_raw( rest_url( 'djinn/v1/graphql' ) ),
 				'nonce'       => wp_create_nonce( 'wp_rest' ),
 				'isOrg'       => Settings::isOrg(),
 				'configured'  => Settings::isConfigured(),
@@ -129,47 +152,14 @@ class AdminPage {
 		);
 	}
 
+	/** Load Polar's embed SDK so the Cave's payment block can open checkout (it drives it directly). */
 	private function enqueueBilling(): void {
 		wp_enqueue_script( 'polar-embed', 'https://cdn.jsdelivr.net/npm/@polar-sh/checkout@latest/dist/embed.global.js', [], null, true );
-		wp_register_script( 'djinn-billing', false, [ 'polar-embed' ], DJINN_VERSION, true );
-		wp_enqueue_script( 'djinn-billing' );
-		wp_localize_script(
-			'djinn-billing',
-			'DjinnBilling',
-			[
-				'restUrl' => esc_url_raw( rest_url( 'djinn/v1' ) ),
-				'nonce'   => wp_create_nonce( 'wp_rest' ),
-			]
-		);
-		wp_add_inline_script( 'djinn-billing', self::billingScript() );
 	}
 
-	private static function billingScript(): string {
-		return <<<'JS'
-window.DjinnBilling = window.DjinnBilling || {};
-window.DjinnBilling.checkout = async function ( kind ) {
-	try {
-		var r = await fetch( DjinnBilling.restUrl + '/billing-checkout', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': DjinnBilling.nonce },
-			body: JSON.stringify( { kind: kind || 'credit' } )
-		} );
-		var d = await r.json();
-		if ( ! r.ok || ! d.url ) {
-			throw new Error( ( d && d.message ) || 'Billing is not available yet.' );
-		}
-		var checkout = await window.PolarEmbedCheckout.create( d.url, { theme: 'dark' } );
-		checkout.addEventListener( 'success', function () { window.location.reload(); } );
-	} catch ( e ) {
-		window.alert( e.message || 'Could not start checkout.' );
-	}
-};
-JS;
-	}
-
-	/** The Cave of Wonders — a React dashboard (Account · Capabilities · Spend) mounted by cave.js. */
+	/** The Cave of Wonders — Account · Capabilities · Spend, mounted by the cave bundle. */
 	public function renderCave(): void {
-		echo '<div class="wrap djinn-wrap djinn-cave-wrap"><div id="djinn-cave-root"></div></div>';
+		echo '<div class="wrap djinn-wrap djinn-cave-wrap djinn-app"><div id="djinn-cave-root"></div></div>';
 	}
 
 }

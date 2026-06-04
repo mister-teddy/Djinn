@@ -1,7 +1,7 @@
 === Djinn ===
 Contributors: misterteddy
 Tags: ai, assistant, automation, content, gemini
-Requires at least: 6.0
+Requires at least: 6.6
 Tested up to: 6.8
 Requires PHP: 8.0
 Stable tag: 0.5.2
@@ -20,7 +20,7 @@ What you can wish for: posts & pages, taxonomies, comments, users, media, appear
 
 = Free vs. bring-your-own-key =
 
-* **Free edition** — no API key needed. New sites get **three free wishes**; to keep going, add a card (prepaid, auto top-up). Wishes are routed through Djinn's hosted gateway (see *External services*).
+* **Free edition** — no API key needed. New sites get **three free wishes**; to keep going, top up prepaid credit (auto-recharge), handled by Polar. Wishes are routed through Djinn's hosted gateway (see *External services*).
 * **Bring-your-own-key** — use your own OpenAI, Google Gemini, or Anthropic key; calls go directly from your server to that provider.
 
 == External services ==
@@ -36,14 +36,14 @@ To fulfil a wish, Djinn sends data to a large language model. This happens **onl
 
 **Provider policies:** Google Gemini https://ai.google.dev/terms · OpenAI https://openai.com/policies/ · Anthropic https://www.anthropic.com/legal/consumer-terms
 
-The hosted gateway retains only usage metadata (token counts, model, timestamps, your account) to meter and bill — not your prompt or response bodies. Payment, if you add a card, is handled by Stripe.
+The hosted gateway retains only usage metadata (token counts, model, timestamps, your account) to meter and bill — not your prompt or response bodies. Top-ups, if you add credit, are handled by Polar (the merchant of record).
 
 == Installation ==
 
 1. Install and activate the plugin.
-2. **Free edition:** open **Djinn** in the admin — your site registers automatically and you can start wishing (3 free wishes). If your site isn't publicly reachable, paste an account token under **Djinn → Settings**.
-   **BYO edition:** under **Djinn → Settings**, choose a provider and paste your API key (or define `DJINN_API_KEY` in `wp-config.php`).
-3. Open **Djinn → Memory** and build the schema index, then visit **Djinn → Lamp** and make a wish.
+2. **Free edition:** open **Djinn → Cave of Wonders** — your site links to the hosted gateway automatically (3 free wishes). If your site isn't publicly reachable, paste an account token in the Account tile.
+   **BYO edition:** in **Djinn → Cave of Wonders** (Account tile), choose a provider and paste your API key (or define `DJINN_API_KEY` in `wp-config.php`).
+3. Open **Djinn → Lamp**, click **Build RAG** to build the schema index, then make a wish.
 
 == Frequently Asked Questions ==
 

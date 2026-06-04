@@ -15,13 +15,13 @@ There are no hand-written per-feature tools. The Djinn has exactly two:
 ## How it works
 
 ```
-Admin SPA (bundled React)  ──fetch──▶  REST /djinn/v1/*  ──▶  PHP agent loop
-                                                                ├─ search_schema → RAG retriever (cosine)
-                                                                └─ run_graphql   → parse op:
-                                                                      query    → execute now
-                                                                      mutation → Grant? → execute
-                                                                            ▼
-                                                          in-house graphql-php schema → WP core functions
+Admin SPA (React/Tailwind)  ──POST /wish/stream (SSE)──▶  PHP agent loop
+                                                            ├─ search_schema → RAG retriever (cosine)
+                                                            └─ run_graphql   → parse op:
+                                                                  query    → execute now
+                                                                  mutation → Grant? → execute
+                                                                        ▼
+                                                      in-house graphql-php schema → WP core functions
 ```
 
 - **No WPGraphQL dependency.** The schema is our own (`src/GraphQL/`), executed by the bundled
@@ -30,12 +30,20 @@ Admin SPA (bundled React)  ──fetch──▶  REST /djinn/v1/*  ──▶  PH
   exceed the logged-in admin's real rights.
 - **Extensible schema.** Capabilities are modular features (`src/GraphQL/Features/`); a plugin can
   register its own types/resolvers via the `djinn_register_schema` action — no core edits.
-- **Multi-provider.** OpenAI and Google Gemini adapters ship today (`src/Provider/`); the
-  `Provider` interface makes adding others straightforward.
-- **No build step for the front-end** — it uses WordPress's bundled `wp-element` (React).
+- **Multi-provider.** OpenAI, Google Gemini, and Anthropic adapters ship today (`src/Provider/`);
+  the `Provider` interface makes adding others straightforward.
+- **The admin UI is a TypeScript/React/Tailwind SPA** in `app/`, built with `@wordpress/scripts`
+  into `build/` (React comes from WordPress's bundled `wp-element`). Run `npm run build` (or
+  `make watch`) to compile it.
+- **The SPA's control plane is its own GraphQL endpoint** — `POST /djinn/v1/graphql`, a small
+  hand-built admin schema (`src/GraphQL/Admin/`) on the same `graphql-php`, queried with a typed
+  [genql](https://github.com/remorses/genql) client. REST is kept only for what GraphQL can't
+  carry: the streaming wish turn (`/wish`, `/wish/stream`), `/grant`, binary `/upload`+`/download`,
+  and the public proxy `/verify` callback.
 
-Four admin screens: **Lamp** (chat), **Settings** (provider/key/models), **Memory** (build &
-inspect the schema index), **Spend** (token + cost usage).
+Two admin screens: **Lamp** (chat) and **Cave of Wonders** — a dashboard of three tiles:
+**Account** (provider/key/models or the hosted-proxy account), **Capabilities** (every operation
+the Djinn can run + index status), and **Spend** (token + cost usage).
 
 ## What you can wish for
 
@@ -59,8 +67,9 @@ add_action( 'djinn_register_schema', function ( $registry ) {
 } );
 ```
 
-After any schema change, rebuild the index from the **Memory** tile of **Djinn → Cave of Wonders**
-(it shows a diff of what changed and the estimated embedding cost first).
+After any schema change, rebuild the index from the Lamp's **Build / Update RAG** button (its hover
+popover shows the estimated embedding cost first); the **Capabilities** tile of **Djinn → Cave of
+Wonders** lists which types changed.
 
 ## Install (development)
 
@@ -71,7 +80,8 @@ Requires Docker and Node (for [`wp-env`](https://developer.wordpress.org/block-e
 ```bash
 cp .env.example .env        # then paste your provider API key into .env
 make up                     # composer install + wp-env start + activate + seed settings
-make lamp                   # build the schema index (same as the Memory tile's Rebuild)
+npm ci && make build        # install JS deps + compile the admin SPA (or `make watch` to rebuild on change)
+make lamp                   # build the schema index (same as the Lamp's Build RAG button)
 make open                   # open wp-admin (admin / password)
 ```
 
@@ -82,11 +92,11 @@ after editing), `make cli "<wp-cli args>"`, `make logs`, `make down` (stop), `ma
 ### Manual
 
 1. `composer install` in the plugin directory.
-2. Activate **Djinn** in wp-admin (creates the custom tables).
-3. **Djinn → Cave of Wonders**, Account tile: choose a provider, paste an API key (or define
+2. `npm ci && npm run build` to compile the admin SPA into `build/` (the admin shows a notice until you do).
+3. Activate **Djinn** in wp-admin (creates the custom tables).
+4. **Djinn → Cave of Wonders**, Account tile: choose a provider, paste an API key (or define
    `DJINN_API_KEY` in `wp-config.php`); models are picked from dropdowns discovered from your key. Save.
-4. Same page, Memory tile: **Awaken the lamp** to build the schema index, then open **Djinn → Lamp**
-   and make a wish.
+5. Open **Djinn → Lamp**, click **Build RAG** to build the schema index, then make a wish.
 
 ## Try it
 

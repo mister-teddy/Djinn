@@ -20,7 +20,7 @@ WP := $(WPENV) run cli wp
 # wp-env mounts this directory as a plugin under its folder name (case-sensitive).
 SLUG := $(notdir $(CURDIR))
 
-.PHONY: up start restart check activate seed lamp cli logs down destroy open docs dist release
+.PHONY: up start restart check activate seed lamp cli logs down destroy open docs dist release build watch schema
 
 up: start activate seed
 	@echo ""
@@ -42,10 +42,23 @@ check:
 	@err=0; for f in djinn.php $$(find src -name '*.php'); do \
 		php -l "$$f" >/dev/null 2>&1 || { echo "  ✗ $$f"; php -l "$$f"; err=1; }; \
 	done; [ $$err -eq 0 ] || exit 1; echo "  ✓ PHP OK"
-	@echo "→ Checking front-end JS…"
-	@node --check assets/admin.js && echo "  ✓ assets/admin.js OK"
+	@echo "→ Type-checking the front-end…"
+	@npm run typecheck >/dev/null && echo "  ✓ TypeScript OK"
 	@echo "→ Regenerating Composer autoloader…"
 	@composer dump-autoload -o 2>&1 | tail -1
+
+# Front-end build. `make build` compiles the SPA (Lamp + Cave) to build/; `make watch` rebuilds on
+# change for wp-env dev (the plugin is bind-mounted, so output is live on refresh). Run `npm ci`
+# once first. `make schema` regenerates the admin GraphQL SDL from PHP, then the genql client.
+build:
+	npm run build
+
+watch:
+	npm start
+
+schema:
+	$(WP) eval-file wp-content/plugins/$(SLUG)/bin/dump-schema.php
+	npm run codegen
 
 start:
 	composer install --no-interaction

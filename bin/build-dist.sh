@@ -24,11 +24,13 @@ rm -rf build/dist "$ZIP"
 mkdir -p "$STAGE" dist
 
 # Copy the plugin, leaving out everything that isn't part of the installable artifact. vendor/ is
-# regenerated fresh (prod-only) in the stage so dev packages (phpunit, …) never ship.
+# regenerated fresh (prod-only) in the stage so dev packages (phpunit, …) never ship; the compiled
+# front-end in build/ DOES ship (CI runs `npm run build` first), but its TS source + tooling don't.
 rsync -a --exclude-from=- ./ "$STAGE/" <<'EXCL'
 /proxy/
 /bin/
-/build/
+/app/
+/schema/
 /dist/
 /node_modules/
 /vendor/
@@ -43,6 +45,12 @@ rsync -a --exclude-from=- ./ "$STAGE/" <<'EXCL'
 /.gitignore
 /.djinn-seed.json
 /CLAUDE.md
+/package.json
+/package-lock.json
+/webpack.config.js
+/tsconfig.json
+/tailwind.config.js
+/postcss.config.js
 *.pdf
 *.zip
 .DS_Store

@@ -1,0 +1,218 @@
+type Query {
+  settings: Settings!
+  account: Account!
+  models(provider: String, refresh: Boolean): ModelCatalog!
+  operations: OperationsReport!
+  indexStatus: IndexStatus!
+  usage: Usage!
+  chats: [Chat!]!
+  chat(id: Int!): ChatDetail
+}
+
+type Settings {
+  edition: String!
+  isOrg: Boolean!
+  provider: String!
+  chatModel: String
+  embeddingModel: String
+  hasApiKey: Boolean!
+  hasSiteToken: Boolean!
+  usesProxy: Boolean!
+  configured: Boolean!
+}
+
+type Account {
+  usesProxy: Boolean!
+  connected: Boolean
+  balanceUsd: Float
+  spentUsd: Float
+  wishesLeft: Int
+  paid: Boolean
+  subscribed: Boolean
+}
+
+type ModelCatalog {
+  chat: [ChatModel!]!
+  embed: [EmbedModel!]!
+  live: Boolean!
+  error: String
+}
+
+type ChatModel {
+  id: String!
+  tier: String
+  price: String
+}
+
+type EmbedModel {
+  id: String!
+  price: String
+}
+
+type OperationsReport {
+  operations: [Operation!]!
+  unindexed: [String!]!
+  outdated: [String!]!
+}
+
+type Operation {
+  domain: String!
+  name: String!
+  kind: String!
+  description: String
+  args: [OpArg!]!
+  returns: String
+}
+
+type OpArg {
+  name: String!
+  type: String!
+  required: Boolean!
+}
+
+type IndexStatus {
+  configured: Boolean!
+  embeds: Boolean!
+  indexed: Boolean
+  upToDate: Boolean
+  model: String
+  storedModel: String
+  indexedAt: String
+  countStored: Int
+  countLive: Int
+  estimate: IndexEstimate
+  diff: IndexDiff
+}
+
+type IndexEstimate {
+  chunks: Int!
+  tokens: Int!
+  cost: Float!
+  free: Boolean!
+  unpriced: Boolean!
+}
+
+type IndexDiff {
+  added: [String!]!
+  changed: [String!]!
+}
+
+type Usage {
+  totals: UsageTotals!
+  byModel: [UsageByModel!]!
+  byDay: [UsageByDay!]!
+  recent: [UsageRecent!]!
+  account: Account
+}
+
+type UsageTotals {
+  calls: Int!
+  prompt: Int!
+  completion: Int!
+  cost: Float!
+  hasEstimates: Boolean!
+}
+
+type UsageByModel {
+  provider: String
+  model: String
+  kind: String
+  calls: Int!
+  prompt: Int!
+  completion: Int!
+  cost: Float!
+  estimated: Boolean!
+}
+
+type UsageByDay {
+  day: String!
+  calls: Int!
+  cost: Float!
+}
+
+type UsageRecent {
+  createdAt: String
+  provider: String
+  model: String
+  kind: String
+  promptTokens: Int!
+  completionTokens: Int!
+  estimated: Boolean!
+  cost: Float!
+}
+
+type Chat {
+  id: Int!
+  title: String
+  createdAt: String
+}
+
+type ChatDetail {
+  chatId: Int!
+  messages: [ChatMessage!]!
+  usage: ChatUsage!
+}
+
+type ChatMessage {
+  role: String!
+  content: String
+  attachments: [Attachment!]
+  kind: String
+  status: String
+  operation: String
+  variables: JSON
+  summary: String
+  message: String
+  result: JSON
+  pendingId: Int
+}
+
+type Attachment {
+  filename: String
+  token: String
+  size: Int
+}
+
+"Arbitrary JSON (a GraphQL operation's variables or result)."
+scalar JSON
+
+type ChatUsage {
+  prompt: Int!
+  completion: Int!
+  tokens: Int!
+  cost: Float!
+  calls: Int!
+}
+
+type Mutation {
+  saveSettings(input: SettingsInput!): Settings!
+  connect: Account!
+  reindex: ReindexResult!
+  resetUsage: Boolean!
+  billingCheckout(kind: BillingKind!): CheckoutSession!
+  deleteChat(id: Int!): Boolean!
+}
+
+input SettingsInput {
+  provider: String
+  apiKey: String
+  chatModel: String
+  embeddingModel: String
+  siteToken: String
+}
+
+type ReindexResult {
+  status: String!
+  chunks: Int
+  message: String
+}
+
+enum BillingKind {
+  credit
+  subscription
+}
+
+type CheckoutSession {
+  url: String!
+}
+

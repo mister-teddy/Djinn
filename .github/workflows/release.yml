@@ -30,6 +30,11 @@ jobs:
       - name: Install Composer deps
         run: composer install --no-interaction --prefer-dist
 
+      # Compile the admin SPA (Lamp + Cave) into build/ — the dist ZIP ships build/, not the TS
+      # source. Uses the committed genql client + schema, so no running WordPress is needed here.
+      - name: Build front-end
+        run: npm ci && npm run build
+
       # 1) Installable ZIPs — both editions (each stamps its own DJINN_EDITION + fresh prod vendor).
       #    ORG bakes in the hosted proxy URL so the released zip is ready to install.
       - name: Build edition ZIPs
