@@ -18,14 +18,17 @@ class ProxyAccount {
 		if ( $token === '' ) {
 			return null;
 		}
-		$res = wp_remote_get(
-			Settings::proxyUrl() . '/v1/account',
-			[ 'timeout' => 15, 'headers' => [ 'Authorization' => 'Bearer ' . $token ] ]
-		);
-		if ( is_wp_error( $res ) ) {
+		try {
+			$data = ProxyClient::call(
+				'query { account { balanceUsd spentUsd wishesLeft paid subscribed } }',
+				[],
+				$token,
+				15
+			);
+		} catch ( ProxyException $e ) {
 			return null;
 		}
-		$json = json_decode( (string) wp_remote_retrieve_body( $res ), true );
-		return is_array( $json ) ? $json : null;
+		$account = $data['account'] ?? null;
+		return is_array( $account ) ? $account : null;
 	}
 }

@@ -8,6 +8,8 @@ use Djinn\GraphQL\SchemaFactory;
 use Djinn\Provider\ModelCatalog;
 use Djinn\Provider\Providers;
 use Djinn\Provider\ProxyAccount;
+use Djinn\Provider\ProxyClient;
+use Djinn\Provider\ProxyException;
 use Djinn\Rag\Indexer;
 use Djinn\Rag\IndexStatus;
 use Djinn\Settings;
@@ -220,23 +222,21 @@ class AdminResolvers {
 		if ( Settings::siteToken() !== '' ) {
 			return self::account();
 		}
-		$res = wp_remote_post(
-			Settings::proxyUrl() . '/register',
-			[
-				'timeout' => 20,
-				'headers' => [ 'content-type' => 'application/json' ],
-				'body'    => wp_json_encode( [
-					'siteUrl'   => home_url(),
-					'verifyUrl' => rest_url( 'djinn/v1/verify' ),
-					'trial'     => Settings::isOrg(),
-				] ),
-			]
-		);
-		if ( is_wp_error( $res ) ) {
-			throw new UserError( 'Could not reach the Djinn service.' );
+		try {
+			$data = ProxyClient::call(
+				'mutation ( $siteUrl: String!, $verifyPath: String, $trial: Boolean ) {
+					register( siteUrl: $siteUrl, verifyPath: $verifyPath, trial: $trial ) { token }
+				}',
+				[
+					'siteUrl'    => home_url(),
+					'verifyPath' => wp_make_link_relative( rest_url( 'djinn/v1/verify' ) ),
+					'trial'      => Settings::isOrg(),
+				]
+			);
+		} catch ( ProxyException $e ) {
+			throw new UserError( $e->getMessage() );
 		}
-		$json  = json_decode( (string) wp_remote_retrieve_body( $res ), true );
-		$token = is_array( $json ) ? (string) ( $json['token'] ?? '' ) : '';
+		$token = (string) ( $data['register']['token'] ?? '' );
 		if ( $token === '' ) {
 			throw new UserError( 'The Djinn service did not return a token.' );
 		}
@@ -265,26 +265,20 @@ class AdminResolvers {
 			throw new UserError( 'Connect a Djinn account first.' );
 		}
 		$kind = $kind === 'subscription' ? 'subscription' : 'credit';
-		$res  = wp_remote_post(
-			Settings::proxyUrl() . '/billing/checkout',
-			[
-				'timeout' => 20,
-				'headers' => [ 'content-type' => 'application/json' ],
-				'body'    => wp_json_encode( [ 'token' => $token, 'kind' => $kind ] ),
-			]
-		);
-		if ( is_wp_error( $res ) ) {
-			throw new UserError( 'Could not reach billing.' );
+		try {
+			$data = ProxyClient::call(
+				'mutation ( $kind: String! ) { billingCheckout( kind: $kind ) { url } }',
+				[ 'kind' => $kind ],
+				$token
+			);
+		} catch ( ProxyException $e ) {
+			throw new UserError( $e->unreachable ? 'Could not reach billing.' : $e->getMessage() );
 		}
-		$code = (int) wp_remote_retrieve_response_code( $res );
-		$json = json_decode( (string) wp_remote_retrieve_body( $res ), true );
-		if ( $code !== 200 || ! is_array( $json ) || empty( $json['url'] ) ) {
-			$msg = is_array( $json ) && isset( $json['error']['message'] )
-				? (string) $json['error']['message']
-				: 'Billing is not available yet.';
-			throw new UserError( $msg );
+		$url = (string) ( $data['billingCheckout']['url'] ?? '' );
+		if ( $url === '' ) {
+			throw new UserError( 'Billing is not available yet.' );
 		}
-		return [ 'url' => (string) $json['url'] ];
+		return [ 'url' => $url ];
 	}
 
 	public static function deleteChat( int $id ): bool {

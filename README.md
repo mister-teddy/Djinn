@@ -85,8 +85,7 @@ make lamp                   # build the schema index (same as the Lamp's Build R
 make open                   # open wp-admin (admin / password)
 ```
 
-Then visit **Djinn → Lamp** and make a wish. Other targets: `make restart` (validate + bounce
-after editing), `make cli "<wp-cli args>"`, `make logs`, `make down` (stop), `make destroy`
+Then visit **Djinn → Lamp** and make a wish. Other targets: `make restart` (factory reset), `make cli "<wp-cli args>"`, `make logs`, `make down` (stop), `make destroy`
 (wipe). `make up` is idempotent — re-run it (or `make seed`) after editing `.env`.
 
 ### Manual
@@ -94,6 +93,7 @@ after editing), `make cli "<wp-cli args>"`, `make logs`, `make down` (stop), `ma
 1. `composer install` in the plugin directory.
 2. `npm ci && npm run build` to compile the admin SPA into `build/` (the admin shows a notice until you do).
 3. Activate **Djinn** in wp-admin (creates the custom tables).
+// out of date
 4. **Djinn → Cave of Wonders**, Account tile: choose a provider, paste an API key (or define
    `DJINN_API_KEY` in `wp-config.php`); models are picked from dropdowns discovered from your key. Save.
 5. Open **Djinn → Lamp**, click **Build RAG** to build the schema index, then make a wish.

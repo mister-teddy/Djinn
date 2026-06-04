@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
 import { config, type ProviderInfo } from '@shared/api';
-import { Tile, Spinner, Notice, Button, Field, Select, PasswordField, StatCard, Cards, toast, type OptionGroup } from '@shared/ui';
+import { Tile, Spinner, Skeleton, Notice, Button, Field, Select, PasswordField, StatCard, Cards, toast, type OptionGroup } from '@shared/ui';
 import {
 	loadAccountSettings,
 	loadModels,
@@ -64,7 +64,7 @@ export function AccountTile() {
 	}, [ provider ] );
 
 	if ( ! settings ) {
-		return <Tile title="Account"><Spinner /></Tile>;
+		return <Tile title="Account"><CardsSkeleton count={ 2 } /></Tile>;
 	}
 	const isOrg = settings.isOrg;
 
@@ -113,6 +113,20 @@ export function AccountTile() {
 	);
 }
 
+function CardsSkeleton( { count }: { count: number } ) {
+	return (
+		<Cards>
+			{ Array.from( { length: count } ).map( ( _, i ) => (
+				<div key={ i } className="min-w-[160px] flex-1 rounded-control border border-line bg-white px-[18px] py-4">
+					<Skeleton className="h-[26px] w-24" />
+					<Skeleton className="mt-1.5 h-4 w-28" />
+					<Skeleton className="mt-0.5 h-3 w-20" />
+				</div>
+			) ) }
+		</Cards>
+	);
+}
+
 function ProxyView( { account, setAccount, isOrg }: { account: AccountData | null; setAccount: ( a: AccountData ) => void; isOrg: boolean } ) {
 	const [ connecting, setConnecting ] = useState( false );
 	const [ error, setError ] = useState( '' );
@@ -135,7 +149,7 @@ function ProxyView( { account, setAccount, isOrg }: { account: AccountData | nul
 	}, [ account ] );
 
 	if ( ! account ) {
-		return <Spinner />;
+		return <CardsSkeleton count={ isOrg ? 2 : 1 } />;
 	}
 	if ( ! account.connected ) {
 		if ( error ) {

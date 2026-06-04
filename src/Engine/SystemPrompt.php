@@ -4,6 +4,8 @@ declare( strict_types=1 );
 
 namespace Djinn\Engine;
 
+use Djinn\Provider\ProxyClient;
+use Djinn\Provider\ProxyException;
 use Djinn\Settings;
 
 class SystemPrompt {
@@ -26,15 +28,11 @@ class SystemPrompt {
 			return $cached;
 		}
 		$prompt = '';
-		$res    = wp_remote_get(
-			Settings::proxyUrl() . '/v1/system-prompt',
-			[ 'timeout' => 8, 'headers' => [ 'Authorization' => 'Bearer ' . Settings::siteToken() ] ]
-		);
-		if ( ! is_wp_error( $res ) ) {
-			$json = json_decode( (string) wp_remote_retrieve_body( $res ), true );
-			if ( is_array( $json ) && isset( $json['systemPrompt'] ) ) {
-				$prompt = (string) $json['systemPrompt'];
-			}
+		try {
+			$data   = ProxyClient::call( 'query { systemPrompt }', [], Settings::siteToken(), 8 );
+			$prompt = isset( $data['systemPrompt'] ) ? (string) $data['systemPrompt'] : '';
+		} catch ( ProxyException $e ) {
+			$prompt = '';
 		}
 		set_transient( 'djinn_org_prompt', $prompt, 12 * HOUR_IN_SECONDS );
 		return $prompt;

@@ -42,6 +42,10 @@ export function Spinner() {
 	return <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />;
 }
 
+export function Skeleton( { className = '' }: { className?: string } ) {
+	return <span className={ `block animate-pulse rounded bg-black/10 ${ className }` } aria-hidden />;
+}
+
 // ---- Notice -----------------------------------------------------------------------------------
 
 type NoticeStatus = 'info' | 'success' | 'error' | 'warning';
