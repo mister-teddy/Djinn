@@ -7,6 +7,7 @@ namespace Djinn\Rest;
 use Djinn\Engine\AgentLoop;
 use Djinn\Files\Downloads;
 use Djinn\GraphQL\Admin\AdminSchema;
+use Djinn\GraphQL\PairingSchema;
 use Djinn\Store\Repository;
 use GraphQL\Error\DebugFlag;
 use GraphQL\GraphQL;
@@ -17,7 +18,7 @@ use WP_REST_Response;
  * REST surface for the admin SPA. The control plane (settings, account, billing, index, usage, chat
  * CRUD) is served by the GraphQL endpoint; the REST routes here are the parts GraphQL can't carry —
  * the streaming wish turn, binary upload/download, and the public proxy site-binding callback.
- * Everything except /verify requires manage_options and a valid nonce.
+ * Everything except /claim requires manage_options and a valid nonce.
  */
 class Controller {
 
@@ -60,13 +61,13 @@ class Controller {
 			'callback'            => [ $this, 'download' ],
 		] );
 
-		// PUBLIC: the hosted proxy calls this back during /register to prove this site is a real,
-		// reachable Djinn install. It only echoes the proxy's nonce — no data, no auth (the proxy
-		// isn't a WP user). Safe: knowing the nonce just confirms the site is up and runs Djinn.
-		register_rest_route( self::NS, '/verify', [
-			'methods'             => 'GET',
+		// PUBLIC: the hosted proxy calls this back during register() to push this site's token. The
+		// PairingSchema stores it only while connect() has a pairing window open, and the proxy can't
+		// be a WP user — hence no auth here. Knowing the URL grants nothing without an open window.
+		register_rest_route( self::NS, '/claim', [
+			'methods'             => 'POST',
 			'permission_callback' => '__return_true',
-			'callback'            => [ $this, 'verify' ],
+			'callback'            => [ $this, 'claim' ],
 		] );
 
 		// The admin control-plane GraphQL endpoint the Cave + Lamp SPAs query. Same manage_options +
@@ -96,9 +97,13 @@ class Controller {
 		return new WP_REST_Response( $result );
 	}
 
-	/** Echo the proxy's nonce, confirming the Djinn plugin is live on this site (site-binding). */
-	public function verify( WP_REST_Request $req ): WP_REST_Response {
-		return new WP_REST_Response( [ 'nonce' => (string) $req->get_param( 'nonce' ) ] );
+	/** Public pairing endpoint: the proxy pushes this site's token here during connect(). */
+	public function claim( WP_REST_Request $req ): WP_REST_Response {
+		$body  = (array) $req->get_json_params();
+		$query = (string) ( $body['query'] ?? '' );
+		$vars  = isset( $body['variables'] ) && is_array( $body['variables'] ) ? $body['variables'] : null;
+		$result = GraphQL::executeQuery( PairingSchema::build(), $query, null, null, $vars )->toArray( DebugFlag::NONE );
+		return new WP_REST_Response( $result );
 	}
 
 	public function wish( WP_REST_Request $req ): WP_REST_Response {

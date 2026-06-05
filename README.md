@@ -41,7 +41,8 @@ Admin SPA (React/Tailwind)  ──POST /wish/stream (SSE)──▶  PHP agent lo
   hand-built admin schema (`src/GraphQL/Admin/`) on the same `graphql-php`, queried with a typed
   [genql](https://github.com/remorses/genql) client. REST is kept only for what GraphQL can't
   carry: the streaming wish turn (`/wish`, `/wish/stream`), `/grant`, binary `/upload`+`/download`,
-  and the public proxy `/verify` callback.
+  and the public proxy `/claim` pairing callback (its own tiny public `graphql-php` schema,
+  `src/GraphQL/PairingSchema.php`).
 
 Two admin screens: **Lamp** (chat) and **Cave of Wonders** — a dashboard of three tiles:
 **Account** (provider/key/models or the hosted-proxy account), **Capabilities** (every operation

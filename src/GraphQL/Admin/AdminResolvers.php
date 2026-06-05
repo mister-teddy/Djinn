@@ -4,6 +4,7 @@ declare( strict_types=1 );
 
 namespace Djinn\GraphQL\Admin;
 
+use Djinn\GraphQL\PairingSchema;
 use Djinn\GraphQL\SchemaFactory;
 use Djinn\Provider\ModelCatalog;
 use Djinn\Provider\Providers;
@@ -209,8 +210,11 @@ class AdminResolvers {
 	}
 
 	/**
-	 * Link this site to the hosted proxy: register with it and store the returned site token.
-	 * Idempotent — once a token exists, returns the current account.
+	 * Link this site to the hosted proxy. We open a short pairing window, then ask the proxy to
+	 * register; the proxy calls our public `claim` mutation back and pushes the token, which
+	 * PairingSchema stores only while the window is open. The token never travels in the register
+	 * response, so knowing this site's domain isn't enough to obtain its token. Idempotent — once a
+	 * token exists, returns the current account.
 	 *
 	 * @return array<string,mixed>
 	 */
@@ -221,25 +225,34 @@ class AdminResolvers {
 		if ( Settings::siteToken() !== '' ) {
 			return self::account();
 		}
+		// Open a pairing window keyed by a fresh secret nonce. We send the nonce to the proxy over
+		// TLS; the proxy echoes it back when it pushes the token to our public claim callback, and
+		// PairingSchema accepts the token only if it matches. An attacker never sees the nonce, so
+		// they can't push a token of their own during the window.
+		$nonce = wp_generate_password( 40, false );
+		set_transient( PairingSchema::PENDING, $nonce, 5 * MINUTE_IN_SECONDS );
 		try {
-			$data = ProxyClient::call(
-				'mutation ( $siteUrl: String!, $verifyPath: String, $trial: Boolean ) {
-					register( siteUrl: $siteUrl, verifyPath: $verifyPath, trial: $trial ) { token }
+			ProxyClient::call(
+				'mutation ( $siteUrl: String!, $claimPath: String, $pairingNonce: String!, $trial: Boolean ) {
+					register( siteUrl: $siteUrl, claimPath: $claimPath, pairingNonce: $pairingNonce, trial: $trial ) { ok }
 				}',
 				[
-					'siteUrl'    => home_url(),
-					'verifyPath' => wp_make_link_relative( rest_url( 'djinn/v1/verify' ) ),
-					'trial'      => Settings::isOrg(),
+					'siteUrl'      => home_url(),
+					'claimPath'    => wp_make_link_relative( rest_url( 'djinn/v1/claim' ) ),
+					'pairingNonce' => $nonce,
+					'trial'        => Settings::isOrg(),
 				]
 			);
 		} catch ( ProxyException $e ) {
+			delete_transient( PairingSchema::PENDING );
 			throw new UserError( $e->getMessage() );
 		}
-		$token = (string) ( $data['register']['token'] ?? '' );
-		if ( $token === '' ) {
-			throw new UserError( 'The Djinn service did not return a token.' );
+		delete_transient( PairingSchema::PENDING );
+		// The claim callback wrote the token in another request, so our option cache is stale here.
+		Settings::flushCache();
+		if ( Settings::siteToken() === '' ) {
+			throw new UserError( 'The Djinn service could not complete pairing. Make sure this site is publicly reachable, then try again.' );
 		}
-		Settings::storeSiteToken( $token );
 		return self::account();
 	}
 

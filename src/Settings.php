@@ -80,6 +80,12 @@ class Settings {
 		update_option( self::OPTION, $stored );
 	}
 
+	/** Drop the cached option so a value written in another request (e.g. the pairing claim callback) reads fresh. */
+	public static function flushCache(): void {
+		wp_cache_delete( self::OPTION, 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+	}
+
 	/** Base URL of the hosted proxy (no trailing /v1). */
 	public static function proxyUrl(): string {
 		if ( defined( 'DJINN_PROXY_URL' ) && DJINN_PROXY_URL ) {
