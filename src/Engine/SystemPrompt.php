@@ -16,8 +16,8 @@ class SystemPrompt {
 	 * common case) so the loop falls back to build(). Cached ~12h (it only changes on a proxy
 	 * redeploy) to avoid a per-wish call; a prompt change propagates within that window.
 	 *
-	 * An override REPLACES the entire prompt — it does NOT get the per-site/theme context build()
-	 * adds — so any needed context must be written into the override itself.
+	 * An override replaces the static instructions only; SystemPrompt::context() (site, master, date,
+	 * theme shape) is always appended after it, so the per-site facts the model needs are never lost.
 	 */
 	public static function orgOverride(): string {
 		if ( ! Settings::isOrg() || Settings::siteToken() === '' ) {
@@ -38,27 +38,19 @@ class SystemPrompt {
 		return $prompt;
 	}
 
+	/** The full prompt: static instructions plus the per-site context block. */
 	public static function build(): string {
-		$user     = wp_get_current_user();
-		$siteName = get_option( 'blogname' );
-		$date     = gmdate( 'Y-m-d' );
+		return self::instructions() . "\n\n" . self::context();
+	}
 
-		$isBlock   = function_exists( 'wp_is_block_theme' ) && wp_is_block_theme();
-		$themeName = wp_get_theme()->get( 'Name' );
-		$shape     = $isBlock
-			? "{$themeName}, a block (FSE) theme. To find or change anything a visitor sees on a page, "
-				. "call `renderedPage` (by view/pageId/postId/url): it composes the page's whole block "
-				. "tree and names the editable source — a template, a template part, or a post — for each "
-				. "region, so you edit the right one. Header, footer, and other regions are template parts "
-				. "(`siteTemplateParts`); their navigation is a Navigation block backed by a `wp_navigation` "
-				. "post (read via `posts` with that postType). Classic `navMenus` and widget `sidebars` are "
-				. "empty on this site — read appearance from the block side."
-			: "{$themeName}, a classic theme. Navigation lives in `navMenus` and menu locations; footer and "
-				. "sidebar content lives in widget `sidebars`. The block Site Editor is unavailable here.";
-
+	/**
+	 * The static instruction body — identical for every site. An ORG prompt override replaces this
+	 * part; context() is appended either way.
+	 */
+	private static function instructions(): string {
 		return <<<PROMPT
-You are the Djinn, a wish-granting assistant in the WordPress admin of "{$siteName}". You fulfil
-plain-language wishes by running GraphQL, with REST as a fallback, against this site.
+You are the Djinn, a wish-granting assistant in this WordPress site's admin. You fulfil
+plain-language wishes by running GraphQL, with REST as a fallback, against the site.
 
 Your reach is whatever the schema exposes: content, taxonomies, comments, users, media, settings,
 appearance, navigation, widgets, the site editor, and system management (plugins, themes, core).
@@ -106,8 +98,35 @@ come back empty is a wish impossible.
 - A file the user attached arrives as an "import token", not a URL: use `importMedia` to bring it
   into the media library (it takes the token, and its `postId` sets a post's featured image in one step). `sideloadMedia` is for public URLs only.
 - Voice: calm, capable, slightly old. Precise, never theatrical.
+PROMPT;
+	}
 
+	/**
+	 * The dynamic, per-site context block. Always appended — to build()'s instructions or, for ORG
+	 * sites, to the proxy's prompt override — so the model always has the site/theme facts (e.g.
+	 * whether this is a block or classic theme) that change which operations are correct.
+	 */
+	public static function context(): string {
+		$user     = wp_get_current_user();
+		$siteName = get_option( 'blogname' );
+		$date     = gmdate( 'Y-m-d' );
+
+		$isBlock   = function_exists( 'wp_is_block_theme' ) && wp_is_block_theme();
+		$themeName = wp_get_theme()->get( 'Name' );
+		$shape     = $isBlock
+			? "{$themeName}, a block (FSE) theme. To find or change anything a visitor sees on a page, "
+				. "call `renderedPage` (by view/pageId/postId/url): it composes the page's whole block "
+				. "tree and names the editable source — a template, a template part, or a post — for each "
+				. "region, so you edit the right one. Header, footer, and other regions are template parts "
+				. "(`siteTemplateParts`); their navigation is a Navigation block backed by a `wp_navigation` "
+				. "post (read via `posts` with that postType). Classic `navMenus` and widget `sidebars` are "
+				. "empty on this site — read appearance from the block side."
+			: "{$themeName}, a classic theme. Navigation lives in `navMenus` and menu locations; footer and "
+				. "sidebar content lives in widget `sidebars`. The block Site Editor is unavailable here.";
+
+		return <<<PROMPT
 ## Context
+- Site: "{$siteName}".
 - Master: {$user->display_name} (id {$user->ID}).
 - Today: {$date} (UTC).
 - Theme: {$shape}

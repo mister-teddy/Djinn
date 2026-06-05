@@ -4,15 +4,17 @@
 
 An admin AI assistant for WordPress. Speak in plain language — *"create a draft page titled
 About"*, *"list my five newest posts"*, *"set the tagline to Built with Djinn"* — and the Djinn
-fulfils it by **generating GraphQL on the fly** against an in-house schema of your site.
+fulfils it.
 
-There are no hand-written per-feature tools. The Djinn has exactly two:
+## How it works
+
+There are no hand-written per-feature tools. The Djinn works through a small, fixed toolset:
 
 - `search_schema` — semantic (RAG) search over the site's GraphQL schema.
 - `run_graphql` — execute a GraphQL operation. Reads run immediately; **wishes that write pause
   for your blessing**, showing the exact mutation and variables before anything happens.
-
-## How it works
+- `rest_call` — call a WordPress REST route directly, the escape hatch for plugins with no native
+  GraphQL field. Reads run immediately; writes pause for your blessing, like mutations.
 
 ```
 Admin SPA (React/Tailwind)  ──POST /wish/stream (SSE)──▶  PHP agent loop

@@ -210,8 +210,7 @@ class AdminResolvers {
 
 	/**
 	 * Link this site to the hosted proxy: register with it and store the returned site token.
-	 * Idempotent — once a token exists, returns the current account. Replaces the old admin_init
-	 * auto-registration so the UI can await the result instead of polling for a reload.
+	 * Idempotent — once a token exists, returns the current account.
 	 *
 	 * @return array<string,mixed>
 	 */

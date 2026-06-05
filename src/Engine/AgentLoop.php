@@ -29,7 +29,7 @@ class AgentLoop {
 	 * this on MALFORMED_FUNCTION_CALL (it chokes serialising a long GraphQL string) or an empty STOP.
 	 * Resampling usually recovers, so we retry a stalled turn this many times before giving up.
 	 */
-	private const MAX_STALLS = 3;
+	private const MAX_STALLS = 1;
 
 	/**
 	 * Start a turn from a new user wish.
@@ -201,11 +201,17 @@ class AgentLoop {
 		$provider = ProviderFactory::make();
 		ProxyProvider::setConversation( (string) $chatId );
 		$override = SystemPrompt::orgOverride();
-		$system   = $override !== '' ? $override : SystemPrompt::build();
+		$system   = $override !== '' ? $override . "\n\n" . SystemPrompt::context() : SystemPrompt::build();
 		$tools    = Tools::specs();
 		$stalls   = 0;
 
 		for ( $round = 0; $round < self::MAX_ROUNDS; $round++ ) {
+			// Each round is one provider call (up to a 60s HTTP timeout) plus a local tool exec. Reset
+			// the per-request execution clock each round so a long multi-round wish isn't killed
+			// mid-turn by max_execution_time. Hosts that disable set_time_limit simply skip this.
+			if ( function_exists( 'set_time_limit' ) ) {
+				set_time_limit( 120 );
+			}
 			$history = $this->expandAttachments( Repository::getMessages( $chatId ) );
 
 			try {
