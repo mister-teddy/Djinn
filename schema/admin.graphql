@@ -11,7 +11,7 @@ type Query {
 
 type Settings {
   edition: String!
-  isOrg: Boolean!
+  isPro: Boolean!
   provider: String!
   chatModel: String
   embeddingModel: String
@@ -26,7 +26,6 @@ type Account {
   connected: Boolean
   balanceUsd: Float
   spentUsd: Float
-  wishesLeft: Int
   paid: Boolean
   subscribed: Boolean
 }
@@ -187,6 +186,8 @@ type ChatUsage {
 type Mutation {
   saveSettings(input: SettingsInput!): Settings!
   connect: Account!
+  activateLicense(key: String!): Settings!
+  deactivateLicense: Settings!
   reindex: ReindexResult!
   resetUsage: Boolean!
   billingCheckout(kind: BillingKind!): CheckoutSession!

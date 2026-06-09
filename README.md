@@ -136,31 +136,48 @@ estimates from public list prices — tune them with the `djinn_model_pricing` f
 
 ## Editions
 
-Djinn builds in two editions — **same capabilities**, differing only in how LLM calls are paid for:
+Djinn ships in two editions, set by the `DJINN_EDITION` build constant (default `free`). They differ
+only in **scope** — every inference provider (your own OpenAI / Gemini / Anthropic / Claude Code key,
+or the managed Djinn proxy) works in both.
 
-| | **BYO** (default) | **ORG** (free, for WordPress.org) |
+| | **Free** (WordPress.org) | **Pro** (separate ZIP) |
 |---|---|---|
-| LLM access | Your own OpenAI/Gemini key (or our proxy) | Always our hosted proxy |
-| Account tile | Provider + key + model dropdowns | Account token only (no keys/models) |
-| Cost | You pay your provider directly | 3 free wishes, then prepaid auto-recharge |
+| Writes | Content: posts, pages, media, categories, comments | Full schema: users, settings, navigation, appearance, plugins/themes/core, WooCommerce |
+| `rest_call` escape hatch | — | ✓ (any REST route) |
+| Reads | Everything | Everything |
+| Providers | All (BYO key or managed proxy) | All (BYO key or managed proxy) |
+| Unlock | — | Polar license key, activated in the Cave |
 
-The edition is the `DJINN_EDITION` constant (default `byo`). Build installable ZIPs:
+The managed proxy is available in **both** editions (prepaid credit via Polar); the edition gates
+capability scope, not provider access. Build installable ZIPs:
 
 ```bash
-make dist                                    # byo → dist/djinn-byo-<ver>.zip
-make dist org PROXY_URL=https://your-proxy   # org → dist/djinn-org-<ver>.zip (URL baked in)
+make dist                                     # free → dist/djinn-free-<ver>.zip
+make dist pro PROXY_URL=https://your-proxy    # pro  → dist/djinn-pro-<ver>.zip
 ```
 
-To test ORG locally, set in `wp-config.php`, then paste your account token in the Account tile of Djinn → Cave of Wonders:
+To test Pro locally, set in `wp-config.php`, then activate your license in Djinn → Cave of Wonders:
 
 ```php
-define( 'DJINN_EDITION', 'org' );
-define( 'DJINN_PROXY_URL', 'https://your-proxy' );
+define( 'DJINN_EDITION', 'pro' );
 ```
 
-## ORG edition: the hosted proxy
+### Pro features
 
-The free **ORG** edition takes no API key — wishes route through a small hosted, OpenAI-compatible
-gateway that meters usage and enforces the free-wishes + prepaid-credit limits. That gateway is a
-separate service (not in this repo, and excluded from `make dist`). The ORG data-use disclosure for
-WordPress.org is in [`docs/PRIVACY-DISCLOSURE.md`](docs/PRIVACY-DISCLOSURE.md).
+Pro unlocks the full schema scope today. On the Pro roadmap:
+
+- **Bulk + auto-grant** — batch wishes ("rewrite all 200 product descriptions") and trusted-op
+  auto-grant that skips per-step confirmation for whitelisted mutations.
+- **Scheduled / recurring wishes** — cron-driven autonomy ("every Monday, draft a post from my
+  newsletter"; "weekly broken-link sweep").
+- **Site memory (RAG)** — a full-site semantic index with auto-reindex on publish, so wishes draw on
+  your existing content and keep a consistent brand voice.
+- **Multi-site control** — manage many sites from one license, with a shared prompt library and seats.
+- **History / undo / audit** — full wish history with diffs and one-click revert.
+
+## The hosted proxy
+
+The managed proxy takes no API key — wishes route through a small hosted, OpenAI-compatible gateway
+that meters usage and bills prepaid credit (topped up via Polar). It is a separate service (not in
+this repo, and excluded from `make dist`). The data-use disclosure for WordPress.org is in
+[`docs/PRIVACY-DISCLOSURE.md`](docs/PRIVACY-DISCLOSURE.md).

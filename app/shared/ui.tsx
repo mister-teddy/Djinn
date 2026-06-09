@@ -17,9 +17,9 @@ interface ButtonProps {
 const BTN_BASE =
 	'inline-flex items-center justify-center gap-2 rounded-control px-3 py-1.5 text-[13px] font-semibold transition disabled:cursor-default disabled:opacity-50';
 const BTN_TONE = {
-	primary: 'border-0 bg-gradient-to-b from-gold to-gold-deep text-midnight hover:shadow-[0_4px_14px_-4px_rgba(251,191,36,0.7)]',
-	secondary: 'border border-line bg-white text-[#1d2327] hover:bg-[#f6f7f7]',
-	tertiary: 'border-0 bg-transparent',
+	primary: 'bg-gradient-to-b from-gold to-gold-deep text-midnight hover:shadow-[0_4px_14px_-4px_rgba(251,191,36,0.7)]',
+	secondary: 'bg-[#ececef] text-[#1d2327] hover:bg-[#e2e2e6]',
+	tertiary: 'bg-transparent',
 };
 
 export function Button( { variant = 'secondary', isDestructive, busy, disabled, onClick, title, className = '', children }: ButtonProps ) {
@@ -69,9 +69,9 @@ export function Notice( { status = 'info', children }: { status?: NoticeStatus; 
 export function Tile( { title, actions, className = '', children }: { title: string; actions?: ReactNode; className?: string; children: ReactNode } ) {
 	return (
 		<section className={ `flex h-full w-full min-w-0 flex-col overflow-hidden bg-white ${ className }` }>
-			<header className="flex flex-none items-center gap-2 border-b border-divider bg-gradient-to-br from-midnight to-violet px-5 py-3">
+			<header className="flex flex-none items-center gap-2 bg-gradient-to-br from-midnight to-violet px-5 py-2.5">
 				<span className="text-[13px] leading-none text-gold" aria-hidden>✦</span>
-				<h2 className="text-[15px] font-semibold text-ivory">{ title }</h2>
+				<h2 className="text-[15px] font-semibold leading-tight text-ivory">{ title }</h2>
 				{ actions && <div className="ml-auto">{ actions }</div> }
 			</header>
 			<div className="min-h-0 flex-1 overflow-auto p-5 [overscroll-behavior:contain] [&>*:first-child]:mt-0">{ children }</div>
@@ -80,12 +80,12 @@ export function Tile( { title, actions, className = '', children }: { title: str
 }
 
 export function Card( { className = '', children }: { className?: string; children: ReactNode } ) {
-	return <div className={ `flex-1 rounded-control border border-line bg-white px-[18px] py-4 ${ className }` }>{ children }</div>;
+	return <div className={ `flex-1 rounded-djinn bg-[#f5f5f7] px-[18px] py-4 ${ className }` }>{ children }</div>;
 }
 
 export function StatCard( { value, label, sub }: { value: ReactNode; label: string; sub?: string } ) {
 	return (
-		<div className="min-w-[160px] flex-1 rounded-control border border-line bg-white px-[18px] py-4">
+		<div className="min-w-[160px] flex-1 rounded-djinn bg-[#f5f5f7] px-[18px] py-4">
 			<div className="text-[26px] font-semibold leading-tight">{ value }</div>
 			<div className="mt-1.5 font-semibold text-[#1d2327]">{ label }</div>
 			{ sub && <div className="mt-0.5 text-xs text-[#787c82]">{ sub }</div> }
@@ -120,7 +120,7 @@ export interface OptionGroup {
 	options: Option[];
 }
 
-const CONTROL = 'min-w-[280px] max-w-full rounded border border-[#8c8f94] bg-white px-2 py-1 text-[13px]';
+const CONTROL = 'min-w-[280px] max-w-full rounded-control border-0 bg-[#ececef] px-2.5 py-1.5 text-[13px] text-[#1d2327] outline-none transition focus:bg-white focus:shadow-[0_0_0_2px_rgba(251,191,36,0.45)]';
 
 export function Select( {
 	id,
@@ -177,17 +177,17 @@ export function Table<Row>( { columns, rows, empty }: { columns: Column<Row>[]; 
 		return empty ? <p className="text-[#787c82]">{ empty }</p> : null;
 	}
 	return (
-		<table className="w-full overflow-hidden rounded-control border border-line text-[13px] [border-collapse:collapse]">
+		<table className="w-full overflow-hidden rounded-control text-[13px] [border-collapse:collapse]">
 			<thead>
-				<tr className="bg-[#f6f7f7] text-left">
-					{ columns.map( ( c, i ) => <th key={ i } className="border-b border-line px-3 py-1.5 font-semibold">{ c.label }</th> ) }
+				<tr className="bg-[#ececef] text-left">
+					{ columns.map( ( c, i ) => <th key={ i } className="px-3 py-2 font-semibold text-[#3c434a]">{ c.label }</th> ) }
 				</tr>
 			</thead>
 			<tbody>
 				{ rows.map( ( row, ri ) => (
-					<tr key={ ri } className="odd:bg-white even:bg-[#fafafa]">
+					<tr key={ ri } className="odd:bg-white even:bg-[#f7f7f9]">
 						{ columns.map( ( c, ci ) => (
-							<td key={ ci } className="border-t border-line px-3 py-1.5">{ c.render ? c.render( row ) : String( ( row as Record<string, unknown> )[ c.key as string ] ?? '' ) }</td>
+							<td key={ ci } className="px-3 py-1.5">{ c.render ? c.render( row ) : String( ( row as Record<string, unknown> )[ c.key as string ] ?? '' ) }</td>
 						) ) }
 					</tr>
 				) ) }
@@ -217,14 +217,20 @@ export function Popover( { placement = 'top', content, className = '', children 
 		} else {
 			style.bottom = window.innerHeight - rect.top + 8;
 		}
+		// Portal into a `.djinn-app` wrapper (not bare <body>): Tailwind utilities are scoped under
+		// `.djinn-app` (the `important` option), so a body-level portal would render unstyled — which is
+		// why the panel looked transparent. The wrapper has no transform/filter, so `position: fixed`
+		// stays viewport-relative.
 		panel = createPortal(
-			<span
-				className="pointer-events-none block min-w-[200px] max-w-[320px] rounded-[10px] border border-gold/35 bg-midnight-2 px-3 py-2.5 text-xs leading-relaxed text-ivory shadow-[0_12px_32px_-10px_rgba(0,0,0,0.6)]"
-				role="tooltip"
-				style={ style }
-			>
-				{ content }
-			</span>,
+			<div className="djinn-app">
+				<span
+					className="pointer-events-none block min-w-[200px] max-w-[320px] rounded-xl bg-[rgba(20,14,38,0.85)] px-3.5 py-2.5 text-xs leading-relaxed text-ivory shadow-[inset_0_0_0_1px_rgba(255,255,255,0.10),inset_0_1px_0_rgba(255,255,255,0.14),0_16px_44px_-12px_rgba(0,0,0,0.75)] [-webkit-backdrop-filter:blur(22px)_saturate(160%)] [backdrop-filter:blur(22px)_saturate(160%)]"
+					role="tooltip"
+					style={ style }
+				>
+					{ content }
+				</span>
+			</div>,
 			document.body
 		);
 	}
@@ -323,12 +329,13 @@ export function ToastHost() {
 		};
 	}, [] );
 	return (
-		<div className="pointer-events-none fixed bottom-6 right-6 z-[100001] flex flex-col items-end gap-2">
+		<div className="pointer-events-none fixed right-6 top-[44px] z-[100001] flex flex-col items-end gap-2">
 			{ items.map( ( t ) => (
 				<div
 					key={ t.id }
-					className={ `pointer-events-auto max-w-[360px] cursor-pointer rounded-[10px] border border-gold/30 border-l-[3px] bg-midnight-2 px-[15px] py-[11px] text-[13px] leading-snug text-ivory shadow-[0_12px_32px_-10px_rgba(0,0,0,0.6)] ${ TOAST_TONE[ t.status ] }` }
+					className={ `pointer-events-auto max-w-[360px] cursor-pointer rounded-xl border-l-[3px] bg-[rgba(20,14,38,0.82)] px-[15px] py-[11px] text-[13px] leading-snug text-ivory shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_38px_-12px_rgba(0,0,0,0.6)] [-webkit-backdrop-filter:blur(20px)_saturate(160%)] [backdrop-filter:blur(20px)_saturate(160%)] ${ TOAST_TONE[ t.status ] }` }
 					role="status"
+					style={ { animation: 'djinnToastIn 0.18s ease-out' } }
 					onClick={ () => setItems( ( list ) => list.filter( ( x ) => x.id !== t.id ) ) }
 				>
 					{ t.message }

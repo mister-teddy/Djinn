@@ -38,8 +38,6 @@ class AgentLoop {
 	 */
 	public function run( int $chatId, string $userText, array $attachments = [] ): array {
 		Repository::addMessage( $chatId, $this->userEntry( $userText, $attachments ) );
-		// A fresh user wish — count it against the proxy's free-wish allowance (no-op off-proxy).
-		ProxyProvider::markNewWish();
 		return $this->attachUsage( $chatId, $this->loop( $chatId ) );
 	}
 
@@ -52,7 +50,6 @@ class AgentLoop {
 	 */
 	public function streamRun( int $chatId, string $userText, callable $emit, array $attachments = [] ): void {
 		Repository::addMessage( $chatId, $this->userEntry( $userText, $attachments ) );
-		ProxyProvider::markNewWish();
 
 		try {
 			$result = $this->loop( $chatId, $emit );
@@ -200,7 +197,7 @@ class AgentLoop {
 
 		$provider = ProviderFactory::make();
 		ProxyProvider::setConversation( (string) $chatId );
-		$override = SystemPrompt::orgOverride();
+		$override = SystemPrompt::proxyOverride();
 		$system   = $override !== '' ? $override . "\n\n" . SystemPrompt::context() : SystemPrompt::build();
 		$tools    = Tools::specs();
 		$stalls   = 0;

@@ -7,15 +7,69 @@ import {
 	saveSettings,
 	connect,
 	billingCheckout,
+	activateLicense,
+	deactivateLicense,
 	type SettingsData,
 	type AccountData,
 	type ModelsData,
 } from './data';
 
+interface PolarCheckoutInstance {
+	addEventListener: ( ev: string, fn: () => void ) => void;
+	close: () => void;
+}
+interface PolarCheckout {
+	create: ( url: string, opts?: { theme?: 'light' | 'dark' } ) => Promise<PolarCheckoutInstance>;
+}
 declare global {
 	interface Window {
-		PolarEmbedCheckout?: { create: ( url: string, opts?: { theme?: string } ) => Promise<{ addEventListener: ( ev: string, fn: () => void ) => void }> };
+		Polar?: { EmbedCheckout?: PolarCheckout };
 	}
+}
+
+// Polar's embedded-checkout SDK exposes `window.Polar.EmbedCheckout` (the Cave preloads the script).
+// Resolve it if it's ready, else load it on demand — and always settle (a timeout falls back to a
+// redirect) so the button can never get stuck spinning.
+const POLAR_EMBED_SRC = 'https://cdn.jsdelivr.net/npm/@polar-sh/checkout@latest/dist/embed.global.js';
+let polarEmbedPromise: Promise<PolarCheckout | null> | null = null;
+function ensurePolarEmbed(): Promise<PolarCheckout | null> {
+	if ( window.Polar?.EmbedCheckout ) {
+		return Promise.resolve( window.Polar.EmbedCheckout );
+	}
+	if ( ! polarEmbedPromise ) {
+		polarEmbedPromise = new Promise( ( resolve ) => {
+			let settled = false;
+			const settle = ( v: PolarCheckout | null ) => {
+				if ( ! settled ) {
+					settled = true;
+					resolve( v );
+				}
+			};
+			const timer = setTimeout( () => settle( window.Polar?.EmbedCheckout ?? null ), 4000 );
+			const done = () => {
+				clearTimeout( timer );
+				settle( window.Polar?.EmbedCheckout ?? null );
+			};
+			const existing = document.querySelector<HTMLScriptElement>( `script[src="${ POLAR_EMBED_SRC }"]` );
+			if ( existing ) {
+				// Preloaded — its load event may already have fired, so resolve now if it's ready.
+				if ( window.Polar?.EmbedCheckout ) {
+					done();
+				} else {
+					existing.addEventListener( 'load', done );
+					existing.addEventListener( 'error', done );
+				}
+				return;
+			}
+			const node = document.createElement( 'script' );
+			node.src = POLAR_EMBED_SRC;
+			node.async = true;
+			node.addEventListener( 'load', done );
+			node.addEventListener( 'error', done );
+			document.head.appendChild( node );
+		} );
+	}
+	return polarEmbedPromise;
 }
 
 const REGISTRY: ProviderInfo[] = config.providers || [];
@@ -66,7 +120,7 @@ export function AccountTile() {
 	if ( ! settings ) {
 		return <Tile title="Account"><CardsSkeleton count={ 2 } /></Tile>;
 	}
-	const isOrg = settings.isOrg;
+	const isProBuild = settings.edition === 'pro';
 
 	async function save() {
 		setSaving( true );
@@ -86,13 +140,11 @@ export function AccountTile() {
 
 	return (
 		<Tile title="Account">
-			{ ! isOrg && (
-				<Field label="Provider" htmlFor="djinn-provider" description={ DESC[ provider ] || '' }>
-					<Select id="djinn-provider" value={ provider } onChange={ setProvider } options={ PROVIDERS } />
-				</Field>
-			) }
+			<Field label="Provider" htmlFor="djinn-provider" description={ DESC[ provider ] || '' }>
+				<Select id="djinn-provider" value={ provider } onChange={ setProvider } options={ PROVIDERS } />
+			</Field>
 			{ provider === 'proxy' ? (
-				<ProxyView account={ account } setAccount={ setAccount } isOrg={ isOrg } />
+				<ProxyView account={ account } setAccount={ setAccount } />
 			) : (
 				<KeyView
 					provider={ provider }
@@ -106,9 +158,10 @@ export function AccountTile() {
 					hasApiKey={ settings.hasApiKey }
 				/>
 			) }
-			{ ! isOrg && (
-				<Button variant="primary" className="mt-2" busy={ saving } onClick={ save }>Save settings</Button>
-			) }
+			<Button variant="primary" className="mt-2" busy={ saving } onClick={ save }>Save settings</Button>
+			{ isProBuild
+				? <LicenseView settings={ settings } setSettings={ setSettings } />
+				: <UpgradeView /> }
 		</Tile>
 	);
 }
@@ -117,7 +170,7 @@ function CardsSkeleton( { count }: { count: number } ) {
 	return (
 		<Cards>
 			{ Array.from( { length: count } ).map( ( _, i ) => (
-				<div key={ i } className="min-w-[160px] flex-1 rounded-control border border-line bg-white px-[18px] py-4">
+				<div key={ i } className="min-w-[160px] flex-1 rounded-djinn bg-[#f5f5f7] px-[18px] py-4">
 					<Skeleton className="h-[26px] w-24" />
 					<Skeleton className="mt-1.5 h-4 w-28" />
 					<Skeleton className="mt-0.5 h-3 w-20" />
@@ -127,7 +180,7 @@ function CardsSkeleton( { count }: { count: number } ) {
 	);
 }
 
-function ProxyView( { account, setAccount, isOrg }: { account: AccountData | null; setAccount: ( a: AccountData ) => void; isOrg: boolean } ) {
+function ProxyView( { account, setAccount }: { account: AccountData | null; setAccount: ( a: AccountData ) => void } ) {
 	const [ connecting, setConnecting ] = useState( false );
 	const [ error, setError ] = useState( '' );
 	const tried = useRef( false );
@@ -149,7 +202,7 @@ function ProxyView( { account, setAccount, isOrg }: { account: AccountData | nul
 	}, [ account ] );
 
 	if ( ! account ) {
-		return <CardsSkeleton count={ isOrg ? 2 : 1 } />;
+		return <CardsSkeleton count={ 1 } />;
 	}
 	if ( ! account.connected ) {
 		if ( error ) {
@@ -171,9 +224,6 @@ function ProxyView( { account, setAccount, isOrg }: { account: AccountData | nul
 	return (
 		<div>
 			<Cards>
-				{ isOrg && (
-					<StatCard value={ account.wishesLeft != null ? String( account.wishesLeft ) : '—' } label="Free wishes left" />
-				) }
 				<StatCard
 					value={ '$' + ( account.balanceUsd || 0 ).toFixed( 2 ) }
 					label="Account credit"
@@ -185,30 +235,112 @@ function ProxyView( { account, setAccount, isOrg }: { account: AccountData | nul
 	);
 }
 
+// Pro build: paste a Polar license key to unlock the full schema scope on this site.
+function LicenseView( { settings, setSettings }: { settings: SettingsData; setSettings: ( s: SettingsData ) => void } ) {
+	const [ key, setKey ] = useState( '' );
+	const [ busy, setBusy ] = useState( false );
+
+	async function activate() {
+		setBusy( true );
+		try {
+			setSettings( await activateLicense( key ) );
+			setKey( '' );
+			toast( 'Pro unlocked — the full schema is available.' );
+		} catch ( e ) {
+			toast( String( ( e as Error )?.message || e ), 'error' );
+		} finally {
+			setBusy( false );
+		}
+	}
+
+	async function remove() {
+		setBusy( true );
+		try {
+			setSettings( await deactivateLicense() );
+			toast( 'License removed from this site.' );
+		} catch ( e ) {
+			toast( String( ( e as Error )?.message || e ), 'error' );
+		} finally {
+			setBusy( false );
+		}
+	}
+
+	if ( settings.isPro ) {
+		return (
+			<div className="mt-4 border-t border-[#e4e4e7] pt-3.5">
+				<p className="text-[#787c82]">✓ Djinn Pro is active on this site — the full schema scope is unlocked.</p>
+				<Button className="mt-2" busy={ busy } onClick={ remove }>Remove license</Button>
+			</div>
+		);
+	}
+	return (
+		<div className="mt-4 border-t border-[#e4e4e7] pt-3.5">
+			<Field label="Pro license key" htmlFor="djinn-license" description="From your Polar purchase. Unlocks the full schema scope on this site.">
+				<PasswordField id="djinn-license" value={ key } onChange={ setKey } placeholder="Paste your license key" />
+			</Field>
+			<Button variant="primary" className="mt-2" busy={ busy } disabled={ ! key.trim() } onClick={ activate }>Activate Pro</Button>
+		</div>
+	);
+}
+
+// Free build: surface what Pro adds and link to the purchase page.
+function UpgradeView() {
+	return (
+		<div className="mt-4 border-t border-[#e4e4e7] pt-3.5">
+			<p className="text-[#787c82]">
+				This is Djinn Free — wishes read anything and write content (posts, pages, media, categories, comments).
+				Djinn Pro unlocks the full schema: users, settings, navigation, appearance, plugins/themes/core, WooCommerce,
+				and the universal REST escape hatch.
+			</p>
+			<a className="mt-2 inline-block text-gold hover:underline" href={ config.proUrl || 'https://buy.polar.sh/polar_cl_DGwSeP4nDmqeEXZLw4vC6RFkEBP7frjlGPU3u2768kC' } target="_blank" rel="noopener">Get Djinn Pro →</a>
+		</div>
+	);
+}
+
 function PaymentBlock( { account }: { account: AccountData } ) {
+	const [ loading, setLoading ] = useState<'' | 'credit' | 'subscription'>( '' );
 	const checkout = ( kind: 'credit' | 'subscription' ) => async () => {
+		if ( loading ) {
+			return;
+		}
+		setLoading( kind );
 		try {
 			const url = await billingCheckout( kind );
-			const embed = window.PolarEmbedCheckout;
+			const embed = await ensurePolarEmbed();
 			if ( embed ) {
-				const co = await embed.create( url, { theme: 'dark' } );
+				const co = await embed.create( url, { theme: 'light' } );
+				// The SDK's own ✕ posts a message the parent only accepts from polar.sh/sandbox.polar.sh;
+				// if the checkout is served from another origin it's ignored, so guarantee a way out via
+				// the instance's close() on Escape.
+				const onKey = ( ev: KeyboardEvent ) => {
+					if ( ev.key === 'Escape' ) {
+						co.close();
+					}
+				};
+				window.addEventListener( 'keydown', onKey );
 				co.addEventListener( 'success', () => window.location.reload() );
+				co.addEventListener( 'close', () => {
+					window.removeEventListener( 'keydown', onKey );
+					setLoading( '' );
+				} );
 			} else {
-				window.location.href = url;
+				window.location.href = url; // keep the spinner running through the navigation
+				return;
 			}
 		} catch ( e ) {
 			toast( String( ( e as Error )?.message || 'Could not start checkout.' ), 'error' );
 		}
+		setLoading( '' );
 	};
 	return (
 		<div className="mt-3.5">
-			<p className="text-[#787c82]">Add credit to keep wishing — you pay only for what you use, billed by Polar.</p>
+			<p className="text-[#787c82]">Add credit to keep wishing — you pay only for what you use, billed securely by Polar in a popup (you stay on this page).</p>
 			<div className="mt-2 flex flex-wrap items-center gap-2">
-				<Button variant="primary" onClick={ checkout( 'credit' ) }>Add credit</Button>
+				<Button variant="primary" busy={ loading === 'credit' } disabled={ !! loading } onClick={ checkout( 'credit' ) }>Add credit</Button>
 				{ account.subscribed ? (
 					<span className="text-[#787c82]">✓ Auto-renew on</span>
 				) : (
-					<Button onClick={ checkout( 'subscription' ) }>Subscribe (auto-renew)</Button>
+					<Button busy={ loading === 'subscription' } disabled={ !! loading } onClick={ checkout( 'subscription' ) }>Subscribe (auto-renew)</Button>
 				) }
 			</div>
 		</div>

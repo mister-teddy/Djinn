@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Djinn
  * Description:       Whisper your wish to the Djinn — a wish-granting AI assistant in your WordPress admin that fulfils requests by generating GraphQL against an in-house schema of your site.
- * Version:           0.5.2
+ * Version:           0.6.0
  * Requires PHP:      8.0
  * Requires at least: 6.6
  * Author:            Djinn
@@ -16,13 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'DJINN_VERSION', '0.5.2' );
+define( 'DJINN_VERSION', '0.6.0' );
 define( 'DJINN_FILE', __FILE__ );
 
-// Build edition: 'byo' (bring-your-own-key) by default; the dist build stamps 'org' for the free,
-// proxy-only WordPress.org build. Override in wp-config.php for local testing if needed.
+// Build edition: 'free' by default (the WordPress.org build); the dist build stamps 'pro' for the
+// paid build, whose full scope is unlocked by a Polar license key. Override in wp-config.php for
+// local testing if needed.
 if ( ! defined( 'DJINN_EDITION' ) ) {
-	define( 'DJINN_EDITION', 'byo' );
+	define( 'DJINN_EDITION', 'free' );
 }
 define( 'DJINN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'DJINN_URL', plugin_dir_url( __FILE__ ) );

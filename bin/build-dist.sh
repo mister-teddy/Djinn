@@ -3,17 +3,19 @@
 # Build an installable plugin ZIP: the plugin code + production Composer deps only. Excludes the
 # proxy service, dev tooling, and build artifacts. Output: dist/djinn-<edition>-<version>.zip
 #
-# Usage: build-dist.sh [byo|org]   (default byo)
-#   ORG builds stamp DJINN_EDITION='org'. Set PROXY_URL=https://… to also bake the proxy URL.
+# Usage: build-dist.sh [free|pro]   (default free)
+#   Pro builds stamp DJINN_EDITION='pro'. Set PROXY_URL=https://…, POLAR_ORG_ID=…, and/or
+#   PRO_URL=https://buy.polar.sh/… to bake those constants (define-if-not-set, so wp-config.php
+#   can still override).
 #
 set -euo pipefail
 cd "$( dirname "$0" )/.."
 
-EDITION="${1:-byo}"
-[ -z "$EDITION" ] && EDITION="byo"
+EDITION="${1:-free}"
+[ -z "$EDITION" ] && EDITION="free"
 case "$EDITION" in
-	byo|org) ;;
-	*) echo "Unknown edition '$EDITION' (use: byo|org)." >&2; exit 1 ;;
+	free|pro) ;;
+	*) echo "Unknown edition '$EDITION' (use: free|pro)." >&2; exit 1 ;;
 esac
 
 VERSION="$( grep -oE "DJINN_VERSION', '[^']+" djinn.php | cut -d"'" -f3 )"
@@ -56,12 +58,19 @@ rsync -a --exclude-from=- ./ "$STAGE/" <<'EXCL'
 .DS_Store
 EXCL
 
-# Stamp the edition (and optionally the proxy URL) into the built plugin.
-if [ "$EDITION" = "org" ]; then
-	sed -i.bak "s/define( 'DJINN_EDITION', 'byo' )/define( 'DJINN_EDITION', 'org' )/" "$STAGE/djinn.php"
-	if [ -n "${PROXY_URL:-}" ]; then
-		sed -i.bak "s#define( 'DJINN_EDITION', 'org' );#define( 'DJINN_EDITION', 'org' );\\nif ( ! defined( 'DJINN_PROXY_URL' ) ) { define( 'DJINN_PROXY_URL', '${PROXY_URL}' ); }#" "$STAGE/djinn.php"
-	fi
+# Stamp the edition into the built plugin (the default build stays 'free').
+if [ "$EDITION" = "pro" ]; then
+	sed -i.bak "s/define( 'DJINN_EDITION', 'free' )/define( 'DJINN_EDITION', 'pro' )/" "$STAGE/djinn.php"
+	rm -f "$STAGE/djinn.php.bak"
+fi
+
+# Optionally bake constants after the edition line (define-if-not-set, so wp-config.php can override).
+inject=""
+[ -n "${PROXY_URL:-}" ]    && inject="${inject}if ( ! defined( 'DJINN_PROXY_URL' ) ) { define( 'DJINN_PROXY_URL', '${PROXY_URL}' ); }\\n"
+[ -n "${POLAR_ORG_ID:-}" ] && inject="${inject}if ( ! defined( 'DJINN_POLAR_ORG_ID' ) ) { define( 'DJINN_POLAR_ORG_ID', '${POLAR_ORG_ID}' ); }\\n"
+[ -n "${PRO_URL:-}" ]      && inject="${inject}if ( ! defined( 'DJINN_PRO_URL' ) ) { define( 'DJINN_PRO_URL', '${PRO_URL}' ); }\\n"
+if [ -n "$inject" ]; then
+	sed -i.bak "s#define( 'DJINN_EDITION', '${EDITION}' );#define( 'DJINN_EDITION', '${EDITION}' );\\n${inject}#" "$STAGE/djinn.php"
 	rm -f "$STAGE/djinn.php.bak"
 fi
 

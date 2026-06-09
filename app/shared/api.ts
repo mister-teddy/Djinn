@@ -15,7 +15,7 @@ export interface DjinnConfig {
 	restUrl: string;
 	gqlUrl: string;
 	nonce: string;
-	isOrg: boolean;
+	usesProxy: boolean;
 	configured: boolean;
 	privacyUrl?: string;
 	// Lamp
@@ -26,6 +26,8 @@ export interface DjinnConfig {
 	siteName?: string;
 	// Cave
 	edition?: string;
+	isPro?: boolean;
+	proUrl?: string;
 	polarEnabled?: boolean;
 	providers?: ProviderInfo[];
 }

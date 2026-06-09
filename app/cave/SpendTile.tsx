@@ -7,7 +7,7 @@ import { loadUsage, resetUsage, type UsageData, type UsageRow, type UsageRecentR
 export function SpendTile() {
 	const [ data, setData ] = useState<UsageData | null>( null );
 	const [ resetting, setResetting ] = useState( false );
-	const isOrg = config.isOrg;
+	const onProxy = config.usesProxy;
 
 	const load = () => loadUsage().then( setData ).catch( () => {} );
 	useEffect( () => {
@@ -37,11 +37,11 @@ export function SpendTile() {
 	type AnyRow = UsageRow | UsageRecentRow;
 	const providerCol: Column<AnyRow> = { label: 'Provider', render: ( r ) => cap( r.provider || '' ) };
 	const modelCol: Column<AnyRow> = { label: 'Model', render: ( r ) => <code>{ r.model }</code> };
-	const costCol: Column<AnyRow> = { label: isOrg ? 'Cost' : 'Est. cost', render: ( r ) => formatCost( r.cost ) };
+	const costCol: Column<AnyRow> = { label: onProxy ? 'Cost' : 'Est. cost', render: ( r ) => formatCost( r.cost ) };
 
 	const byModelCols: Column<UsageRow>[] = [
-		...( isOrg ? [] : [ providerCol, modelCol ] ),
-		{ label: isOrg ? 'Type' : 'Kind', key: 'kind' },
+		...( onProxy ? [] : [ providerCol, modelCol ] ),
+		{ label: onProxy ? 'Type' : 'Kind', key: 'kind' },
 		{ label: 'Calls', render: ( r ) => r.calls.toLocaleString() },
 		{ label: 'Input', render: ( r ) => r.prompt.toLocaleString() },
 		{ label: 'Output', render: ( r ) => r.completion.toLocaleString() },
@@ -49,8 +49,8 @@ export function SpendTile() {
 	];
 	const recentCols: Column<UsageRecentRow>[] = [
 		{ label: 'When (UTC)', key: 'createdAt' },
-		...( isOrg ? [] : [ providerCol, modelCol ] ),
-		{ label: isOrg ? 'Type' : 'Kind', key: 'kind' },
+		...( onProxy ? [] : [ providerCol, modelCol ] ),
+		{ label: onProxy ? 'Type' : 'Kind', key: 'kind' },
 		{ label: 'In', render: ( r ) => r.promptTokens.toLocaleString() },
 		{ label: 'Out', render: ( r ) => r.completionTokens.toLocaleString() },
 		costCol,
@@ -59,15 +59,15 @@ export function SpendTile() {
 	return (
 		<Tile title="Spend">
 			<p className="text-[#787c82]">
-				{ isOrg
+				{ onProxy
 					? 'What using the Djinn has cost — billed to your account as you go.'
 					: 'Estimated spend — based on public list prices, so treat it as a guide.' }
 			</p>
 			<Cards>
 				<StatCard
 					value={ formatCost( t.cost ) }
-					label={ isOrg ? 'Charged so far' : 'Estimated spend' }
-					sub={ isOrg ? 'billed to your account' : t.hasEstimates ? 'includes estimated tokens' : 'all metered' }
+					label={ onProxy ? 'Charged so far' : 'Estimated spend' }
+					sub={ onProxy ? 'billed to your account' : t.hasEstimates ? 'includes estimated tokens' : 'all metered' }
 				/>
 				<StatCard value={ t.calls.toLocaleString() } label="Provider calls" sub="chat + embed" />
 				<StatCard value={ t.prompt.toLocaleString() } label="Input tokens" />
@@ -77,11 +77,11 @@ export function SpendTile() {
 			<DailyBars byDay={ data.byDay } />
 			{ ! empty && (
 				<>
-					<h3 className="mb-2 mt-5 text-[13px] font-semibold uppercase tracking-wide text-[#50575e]">{ isOrg ? 'By type' : 'By model' }</h3>
+					<h3 className="mb-2 mt-5 text-[13px] font-semibold uppercase tracking-wide text-[#50575e]">{ onProxy ? 'By type' : 'By model' }</h3>
 					<Table columns={ byModelCols } rows={ data.byModel } />
 					<h3 className="mb-2 mt-5 text-[13px] font-semibold uppercase tracking-wide text-[#50575e]">Recent calls</h3>
 					<Table columns={ recentCols } rows={ data.recent } />
-					{ ! isOrg && (
+					{ ! onProxy && (
 						<div className="mt-6">
 							<Button isDestructive busy={ resetting } onClick={ reset }>Reset the tally</Button>
 						</div>
@@ -106,7 +106,7 @@ function DailyBars( { byDay }: { byDay: { day: string; cost: number }[] } ) {
 	}
 	const max = days.reduce( ( m, d ) => Math.max( m, d.cost ), 0 );
 	return (
-		<div className="flex h-40 items-end gap-2 rounded-control border border-line bg-white p-4">
+		<div className="flex h-40 items-end gap-2 rounded-djinn bg-[#f5f5f7] p-4">
 			{ days.map( ( d ) => {
 				const pct = max > 0 ? Math.max( 3, Math.round( ( d.cost / max ) * 100 ) ) : 3;
 				return (

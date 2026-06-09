@@ -56,23 +56,23 @@ function OperationsList( { ops }: { ops: OperationsData } ) {
 				const isOpen = !! open[ d ];
 				const list = byDomain[ d ].slice().sort( ( a, b ) => a.name.localeCompare( b.name ) );
 				return (
-					<div key={ d } className="border-t border-[#f0f0f1]">
+					<div key={ d }>
 						<button
 							type="button"
-							className="flex w-full items-center gap-2 bg-transparent px-0.5 py-2 text-left text-[#1d2327] hover:text-black"
+							className="flex w-full items-center gap-2 rounded px-1.5 py-2 text-left text-[#1d2327] transition hover:bg-[#f6f7f7]"
 							aria-expanded={ isOpen }
 							onClick={ () => toggle( d ) }
 						>
-							<span className={ `text-[10px] leading-none text-[#787c82] transition-transform ${ isOpen ? 'rotate-90' : '' }` } aria-hidden>▶</span>
+							<span className={ `text-[9px] leading-none text-[#787c82] transition-transform ${ isOpen ? 'rotate-90' : '' }` } aria-hidden>▶</span>
 							<h3 className="m-0 text-[13px] font-semibold uppercase tracking-wide text-[#50575e]">{ d }</h3>
 							<span className="ml-auto text-[11px] font-normal text-[#787c82]">{ list.length }</span>
 						</button>
 						{ isOpen && (
-							<div className="mb-2">
+							<div className="mb-2 pl-1.5">
 								{ list.map( ( o ) => (
-									<Popover key={ o.kind + ':' + o.name } placement="top" content={ opDetails( o ) } className="flex w-full items-center gap-2 border-t border-[#f6f7f7] py-1.5 pl-3.5">
-										<span className={ `inline-block rounded px-1.5 text-[10px] font-semibold uppercase tracking-wide ${ o.kind === 'query' ? 'bg-[rgba(110,231,183,0.16)] text-[#1f7a5c]' : 'bg-violet-soft text-[#6d28d9]' }` }>{ o.kind }</span>
-										<code className="flex-none font-semibold">{ o.name }</code>
+									<Popover key={ o.kind + ':' + o.name } placement="top" content={ opDetails( o ) } className="w-full items-center gap-2.5 rounded px-2 py-1.5 transition hover:bg-[#f6f7f7]">
+										<span className={ `flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[5px] text-[11px] font-bold leading-none text-white ${ o.kind === 'query' ? 'bg-[#10b981]' : 'bg-[#8b5cf6]' }` } title={ o.kind === 'query' ? 'Query (read)' : 'Mutation (write)' }>{ o.kind === 'query' ? 'Q' : 'M' }</span>
+										<code className="flex-none font-semibold text-[13px] text-[#1d2327]">{ o.name }</code>
 										{ o.description && <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[#787c82]">{ o.description }</span> }
 									</Popover>
 								) ) }

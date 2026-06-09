@@ -36,11 +36,17 @@ jobs:
         run: npm ci && npm run build
 
       # 1) Installable ZIPs — both editions (each stamps its own DJINN_EDITION + fresh prod vendor).
-      #    ORG bakes in the hosted proxy URL so the released zip is ready to install.
+      #    Both bake the hosted proxy URL (the managed proxy is a provider option in either edition)
+      #    and the Pro checkout URL (the Free build shows the upgrade CTA); Pro also bakes the public
+      #    Polar org id used to validate license keys.
       - name: Build edition ZIPs
+        env:
+          PROXY_URL: https://djinn-proxy-351601184057.asia-northeast1.run.app
+          PRO_URL: ${{ vars.POLAR_PRO_URL }}
+          POLAR_ORG_ID: ${{ vars.POLAR_ORG_ID }}
         run: |
-          make dist byo
-          make dist org PROXY_URL=https://djinn-proxy-351601184057.asia-northeast1.run.app
+          make dist free PROXY_URL="$PROXY_URL" PRO_URL="$PRO_URL"
+          make dist pro  PROXY_URL="$PROXY_URL" PRO_URL="$PRO_URL" POLAR_ORG_ID="$POLAR_ORG_ID"
 
       # 2) Showcase — boot the real app, seed canned conversations, screenshot the live UI.
       #    The PNGs are consumed by the docs step below (embedded in the PDF), not uploaded loose.

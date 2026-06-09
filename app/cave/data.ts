@@ -2,7 +2,7 @@ import { gql } from '@shared/api';
 
 export interface SettingsData {
 	edition: string;
-	isOrg: boolean;
+	isPro: boolean;
 	provider: string;
 	chatModel: string | null;
 	embeddingModel: string | null;
@@ -17,7 +17,6 @@ export interface AccountData {
 	connected: boolean | null;
 	balanceUsd: number | null;
 	spentUsd: number | null;
-	wishesLeft: number | null;
 	paid: boolean | null;
 	subscribed: boolean | null;
 }
@@ -92,14 +91,13 @@ const ACCOUNT_FIELDS = {
 	connected: true,
 	balanceUsd: true,
 	spentUsd: true,
-	wishesLeft: true,
 	paid: true,
 	subscribed: true,
 } as const;
 
 const SETTINGS_FIELDS = {
 	edition: true,
-	isOrg: true,
+	isPro: true,
 	provider: true,
 	chatModel: true,
 	embeddingModel: true,
@@ -134,6 +132,16 @@ export async function saveSettings( input: SettingsInput ): Promise<SettingsData
 export async function connect(): Promise<AccountData> {
 	const d = await gql.mutation( { connect: ACCOUNT_FIELDS } );
 	return d.connect as AccountData;
+}
+
+export async function activateLicense( key: string ): Promise<SettingsData> {
+	const d = await gql.mutation( { activateLicense: { __args: { key }, ...SETTINGS_FIELDS } } );
+	return d.activateLicense as SettingsData;
+}
+
+export async function deactivateLicense(): Promise<SettingsData> {
+	const d = await gql.mutation( { deactivateLicense: SETTINGS_FIELDS } );
+	return d.deactivateLicense as SettingsData;
 }
 
 export async function loadOperations(): Promise<OperationsData> {

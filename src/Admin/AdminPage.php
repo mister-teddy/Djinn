@@ -114,11 +114,13 @@ class AdminPage {
 				'gqlUrl'       => esc_url_raw( rest_url( 'djinn/v1/graphql' ) ),
 				'nonce'        => wp_create_nonce( 'wp_rest' ),
 				'edition'      => Settings::edition(),
-				'isOrg'        => Settings::isOrg(),
+				'isPro'        => Settings::isPro(),
+				'usesProxy'    => Settings::usesProxy(),
 				'configured'   => Settings::isConfigured(),
 				'polarEnabled' => Settings::usesProxy(),
 				'providers'    => Providers::forClient(),
 				'privacyUrl'   => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
+				'proUrl'       => esc_url_raw( Settings::proUrl() ),
 			]
 		);
 		if ( Settings::usesProxy() ) {
@@ -140,7 +142,7 @@ class AdminPage {
 				'restUrl'     => esc_url_raw( rest_url( 'djinn/v1' ) ),
 				'gqlUrl'      => esc_url_raw( rest_url( 'djinn/v1/graphql' ) ),
 				'nonce'       => wp_create_nonce( 'wp_rest' ),
-				'isOrg'       => Settings::isOrg(),
+				'usesProxy'   => Settings::usesProxy(),
 				'configured'  => Settings::isConfigured(),
 				'indexed'     => Repository::chunkCount() > 0,
 				'indexStale'  => IndexStatus::needsReindex(),

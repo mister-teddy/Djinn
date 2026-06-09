@@ -7,12 +7,12 @@ namespace Djinn\Provider;
 use Djinn\Settings;
 
 /**
- * Reads the site's account state (credit balance, free wishes left) from the hosted proxy, for
+ * Reads the site's account state (credit balance, spend, payment status) from the hosted proxy, for
  * the Account and Spend tiles of the Cave of Wonders in proxy mode.
  */
 class ProxyAccount {
 
-	/** @return array{balanceUsd?:float,spentUsd?:float,wishesLeft?:int,paid?:bool,subscribed?:bool}|null */
+	/** @return array{balanceUsd?:float,spentUsd?:float,paid?:bool,subscribed?:bool}|null */
 	public static function fetch(): ?array {
 		$token = Settings::siteToken();
 		if ( $token === '' ) {
@@ -20,7 +20,7 @@ class ProxyAccount {
 		}
 		try {
 			$data = ProxyClient::call(
-				'query { account { balanceUsd spentUsd wishesLeft paid subscribed } }',
+				'query { account { balanceUsd spentUsd paid subscribed } }',
 				[],
 				$token,
 				15

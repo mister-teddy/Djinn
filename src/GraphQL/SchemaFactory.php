@@ -4,6 +4,7 @@ declare( strict_types=1 );
 
 namespace Djinn\GraphQL;
 
+use Djinn\Settings;
 use GraphQL\Type\Definition\InputObjectType;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
@@ -149,23 +150,26 @@ class SchemaFactory {
 			],
 			'resolve' => [ $res, 'deletePost' ],
 		] );
-		$reg->addMutation( 'updateOption', [
-			'type'        => Type::boolean(),
-			'description' => 'Set a wp_options value. Value is a string (use JSON for non-scalar values).',
-			'args'        => [
-				'name'  => [ 'type' => Type::nonNull( Type::string() ) ],
-				'value' => [ 'type' => Type::nonNull( Type::string() ) ],
-			],
-			'resolve'     => [ $res, 'updateOption' ],
-		] );
-		$reg->addMutation( 'updateSiteInfo', [
-			'type'    => Type::boolean(),
-			'args'    => [
-				'title'       => [ 'type' => Type::string() ],
-				'description' => [ 'type' => Type::string() ],
-			],
-			'resolve' => [ $res, 'updateSiteInfo' ],
-		] );
+		// Site-settings writes are Pro: Free can read options/site info but changes only content.
+		if ( Settings::isPro() ) {
+			$reg->addMutation( 'updateOption', [
+				'type'        => Type::boolean(),
+				'description' => 'Set a wp_options value. Value is a string (use JSON for non-scalar values).',
+				'args'        => [
+					'name'  => [ 'type' => Type::nonNull( Type::string() ) ],
+					'value' => [ 'type' => Type::nonNull( Type::string() ) ],
+				],
+				'resolve'     => [ $res, 'updateOption' ],
+			] );
+			$reg->addMutation( 'updateSiteInfo', [
+				'type'    => Type::boolean(),
+				'args'    => [
+					'title'       => [ 'type' => Type::string() ],
+					'description' => [ 'type' => Type::string() ],
+				],
+				'resolve' => [ $res, 'updateSiteInfo' ],
+			] );
+		}
 
 		// --- Built-in feature domains -------------------------------------
 		foreach ( self::features() as $feature ) {
@@ -203,7 +207,19 @@ class SchemaFactory {
 	}
 
 	/**
-	 * Built-in capability domains, in menu-ish order. Add a class here to grow the schema.
+	 * The Free edition's content-only feature set. Everything else is Pro — a newly added Feature is
+	 * Pro by default until it is listed here, which is the safe direction for a new capability.
+	 */
+	private const FREE_FEATURES = [
+		Features\MediaFeature::class,
+		Features\TaxonomyFeature::class,
+		Features\CommentsFeature::class,
+	];
+
+	/**
+	 * Built-in capability domains, in menu-ish order. Add a class here to grow the schema. Free
+	 * registers only FREE_FEATURES (plus the always-on inline content block); Pro registers all, so
+	 * the scope gate is purely which features exist in the schema — no per-call tier checks.
 	 *
 	 * @return array<int,Feature>
 	 */
@@ -231,6 +247,13 @@ class SchemaFactory {
 		// (and therefore their RAG chunks) never appear on sites that don't have the plugin.
 		if ( Features\WooCommerceFeature::isActive() ) {
 			$features[] = new Features\WooCommerceFeature();
+		}
+
+		if ( ! Settings::isPro() ) {
+			$features = array_values( array_filter(
+				$features,
+				static fn( Feature $f ) => in_array( get_class( $f ), self::FREE_FEATURES, true )
+			) );
 		}
 
 		return $features;

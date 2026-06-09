@@ -37,7 +37,7 @@ class AdminSchema {
 			'name'   => 'Settings',
 			'fields' => [
 				'edition'        => Type::nonNull( Type::string() ),
-				'isOrg'          => Type::nonNull( Type::boolean() ),
+				'isPro'          => Type::nonNull( Type::boolean() ),
 				'provider'       => Type::nonNull( Type::string() ),
 				'chatModel'      => Type::string(),
 				'embeddingModel' => Type::string(),
@@ -55,7 +55,6 @@ class AdminSchema {
 				'connected'  => Type::boolean(),
 				'balanceUsd' => Type::float(),
 				'spentUsd'   => Type::float(),
-				'wishesLeft' => Type::int(),
 				'paid'       => Type::boolean(),
 				'subscribed' => Type::boolean(),
 			],
@@ -315,6 +314,12 @@ class AdminSchema {
 					'resolve' => static fn( $root, $args ) => AdminResolvers::saveSettings( (array) $args['input'] ),
 				],
 				'connect'         => [ 'type' => Type::nonNull( $account ), 'resolve' => static fn() => AdminResolvers::connect() ],
+				'activateLicense' => [
+					'type'    => Type::nonNull( $settings ),
+					'args'    => [ 'key' => Type::nonNull( Type::string() ) ],
+					'resolve' => static fn( $root, $args ) => AdminResolvers::activateLicense( (string) $args['key'] ),
+				],
+				'deactivateLicense' => [ 'type' => Type::nonNull( $settings ), 'resolve' => static fn() => AdminResolvers::deactivateLicense() ],
 				'reindex'         => [ 'type' => Type::nonNull( $reindexResult ), 'resolve' => static fn() => AdminResolvers::reindex() ],
 				'resetUsage'      => [ 'type' => Type::nonNull( Type::boolean() ), 'resolve' => static fn() => AdminResolvers::resetUsage() ],
 				'billingCheckout' => [

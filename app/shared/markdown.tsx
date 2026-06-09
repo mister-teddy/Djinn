@@ -1,12 +1,13 @@
 import { createElement as h } from '@wordpress/element';
 import type { ReactNode } from 'react';
 import { safeUrl } from './url';
+import { highlightGraphql, highlightJsonString } from './highlight';
 
 // Markdown → React (no library, no innerHTML; XSS-safe by construction). Only http(s)/mailto/
 // root-relative/anchor URLs survive; javascript:/data: are dropped.
 
 const A = 'text-gold underline underline-offset-2 hover:text-gold-deep';
-const CODE = 'rounded border border-white/10 bg-black/35 px-1.5 py-px font-mono text-[0.88em]';
+const CODE = 'rounded-[6px] bg-black/35 px-1.5 py-px font-mono text-[0.88em]';
 
 function mdInline( text: string ): ReactNode[] {
 	const patterns: { re: RegExp; make: ( m: RegExpExecArray ) => ReactNode }[] = [
@@ -69,13 +70,13 @@ function mdTable( lines: string[], start: number ): { next: number; node: ReactN
 		rows.push( cells( lines[ i ] ) );
 		i++;
 	}
-	const th = 'border border-gold/20 bg-gold/10 px-2.5 py-1.5 text-left font-semibold';
-	const td = 'border border-gold/20 px-2.5 py-1.5 text-left';
+	const th = 'bg-gold/[0.14] px-2.5 py-1.5 text-left font-semibold';
+	const td = 'px-2.5 py-1.5 text-left';
 	return {
 		next: i,
-		node: h( 'table', { className: 'my-2 w-full border-collapse text-[13px]' },
+		node: h( 'table', { className: 'my-2 w-full overflow-hidden rounded-[8px] border-collapse text-[13px]' },
 			h( 'thead', null, h( 'tr', null, ...head.map( ( c, j ) => h( 'th', { key: j, className: th }, ...mdInline( c ) ) ) ) ),
-			h( 'tbody', null, ...rows.map( ( r, ri ) => h( 'tr', { key: ri }, ...r.map( ( c, ci ) => h( 'td', { key: ci, className: td }, ...mdInline( c ) ) ) ) ) )
+			h( 'tbody', null, ...rows.map( ( r, ri ) => h( 'tr', { key: ri, className: ri % 2 ? 'bg-white/[0.03]' : undefined }, ...r.map( ( c, ci ) => h( 'td', { key: ci, className: td }, ...mdInline( c ) ) ) ) ) )
 		),
 	};
 }
@@ -91,6 +92,7 @@ export function renderMarkdown( text: string ): ReactNode[] {
 	while ( i < lines.length ) {
 		const line = lines[ i ];
 		if ( /^```/.test( line ) ) {
+			const lang = ( ( /^```\s*([\w-]+)/.exec( line ) || [] )[ 1 ] || '' ).toLowerCase();
 			const buf: string[] = [];
 			i++;
 			while ( i < lines.length && ! /^```/.test( lines[ i ] ) ) {
@@ -98,7 +100,12 @@ export function renderMarkdown( text: string ): ReactNode[] {
 				i++;
 			}
 			i++;
-			blocks.push( h( 'pre', { key: key++, className: 'my-2 overflow-x-auto rounded-lg border border-white/5 bg-black/45 px-3.5 py-3' }, h( 'code', { className: 'font-mono text-xs leading-relaxed text-[#e2e4e7] [white-space:pre]' }, buf.join( '\n' ) ) ) );
+			const code = buf.join( '\n' );
+			const body =
+				lang === 'graphql' || lang === 'gql' ? highlightGraphql( code )
+				: lang === 'json' ? highlightJsonString( code )
+				: [ code ];
+			blocks.push( h( 'pre', { key: key++, className: 'my-2 overflow-x-auto rounded-lg border border-white/5 bg-black/45 px-3.5 py-3' }, h( 'code', { className: 'font-mono text-xs leading-relaxed text-[#e2e4e7] [white-space:pre]' }, ...body ) ) );
 			continue;
 		}
 		if ( /^\s*$/.test( line ) ) {

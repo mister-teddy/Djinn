@@ -10,20 +10,22 @@ use Djinn\Provider\Providers;
  * Plugin settings: edition, which LLM provider to use, the API key / proxy token, and model names.
  * Stored in a single option array; secrets are never sent back to the client.
  *
- * Editions (DJINN_EDITION, stamped at build time, default 'byo'):
- *   - 'org' — free WordPress.org build: always uses our hosted proxy, no key entry.
- *   - 'byo' — bring-your-own-key build: OpenAI/Gemini directly, or optionally our proxy.
+ * Editions (DJINN_EDITION, stamped at build time, default 'free'):
+ *   - 'free' — WordPress.org build: any provider (BYO key or the managed proxy), content-only writes.
+ *   - 'pro'  — paid build: full schema scope, unlocked by a valid Polar license key.
+ * The edition gates capability scope only; every provider is available in both.
  */
 class Settings {
 
 	private const OPTION = 'djinn_settings';
 
 	public static function edition(): string {
-		return defined( 'DJINN_EDITION' ) && DJINN_EDITION === 'org' ? 'org' : 'byo';
+		return defined( 'DJINN_EDITION' ) && DJINN_EDITION === 'pro' ? 'pro' : 'free';
 	}
 
-	public static function isOrg(): bool {
-		return self::edition() === 'org';
+	/** A licensed Pro build. The free build and an unlicensed Pro build both report false. */
+	public static function isPro(): bool {
+		return self::edition() === 'pro' && \Djinn\License\LicenseClient::active();
 	}
 
 	/** @return array{provider:string,api_key:string,site_token:string,chat_model:string,embedding_model:string} */
@@ -39,11 +41,8 @@ class Settings {
 		return array_merge( $defaults, is_array( $stored ) ? $stored : [] );
 	}
 
-	/** The effective provider. ORG always routes through the proxy. */
+	/** The effective provider (default openai; 'proxy' routes through the hosted gateway). */
 	public static function provider(): string {
-		if ( self::isOrg() ) {
-			return 'proxy';
-		}
 		return self::all()['provider'];
 	}
 
@@ -92,6 +91,14 @@ class Settings {
 			return rtrim( (string) DJINN_PROXY_URL, '/' );
 		}
 		return 'https://proxy.djinn.app';
+	}
+
+	/** Polar checkout URL for the Pro upgrade. Baked at build (DJINN_PRO_URL); defaults to the live link. */
+	public static function proUrl(): string {
+		if ( defined( 'DJINN_PRO_URL' ) && DJINN_PRO_URL ) {
+			return (string) DJINN_PRO_URL;
+		}
+		return 'https://buy.polar.sh/polar_cl_DGwSeP4nDmqeEXZLw4vC6RFkEBP7frjlGPU3u2768kC';
 	}
 
 	/** The chosen chat model, or '' if none is set. No fallback: the user must pick one explicitly. */

@@ -25,7 +25,7 @@ export interface Query {
 
 export interface Settings {
     edition: Scalars['String']
-    isOrg: Scalars['Boolean']
+    isPro: Scalars['Boolean']
     provider: Scalars['String']
     chatModel: (Scalars['String'] | null)
     embeddingModel: (Scalars['String'] | null)
@@ -41,7 +41,6 @@ export interface Account {
     connected: (Scalars['Boolean'] | null)
     balanceUsd: (Scalars['Float'] | null)
     spentUsd: (Scalars['Float'] | null)
-    wishesLeft: (Scalars['Int'] | null)
     paid: (Scalars['Boolean'] | null)
     subscribed: (Scalars['Boolean'] | null)
     __typename: 'Account'
@@ -219,6 +218,8 @@ export interface ChatUsage {
 export interface Mutation {
     saveSettings: Settings
     connect: Account
+    activateLicense: Settings
+    deactivateLicense: Settings
     reindex: ReindexResult
     resetUsage: Scalars['Boolean']
     billingCheckout: CheckoutSession
@@ -255,7 +256,7 @@ export interface QueryGenqlSelection{
 
 export interface SettingsGenqlSelection{
     edition?: boolean | number
-    isOrg?: boolean | number
+    isPro?: boolean | number
     provider?: boolean | number
     chatModel?: boolean | number
     embeddingModel?: boolean | number
@@ -272,7 +273,6 @@ export interface AccountGenqlSelection{
     connected?: boolean | number
     balanceUsd?: boolean | number
     spentUsd?: boolean | number
-    wishesLeft?: boolean | number
     paid?: boolean | number
     subscribed?: boolean | number
     __typename?: boolean | number
@@ -470,6 +470,8 @@ export interface ChatUsageGenqlSelection{
 export interface MutationGenqlSelection{
     saveSettings?: (SettingsGenqlSelection & { __args: {input: SettingsInput} })
     connect?: AccountGenqlSelection
+    activateLicense?: (SettingsGenqlSelection & { __args: {key: Scalars['String']} })
+    deactivateLicense?: SettingsGenqlSelection
     reindex?: ReindexResultGenqlSelection
     resetUsage?: boolean | number
     billingCheckout?: (CheckoutSessionGenqlSelection & { __args: {kind: BillingKind} })

@@ -109,13 +109,13 @@ docs:
 	bash bin/build-docs.sh "$(or $(SIZE),$(filter-out docs,$(MAKECMDGOALS)))"
 
 # Build an installable plugin ZIP (excludes the proxy, dev tooling, build artifacts).
-# `make dist org` or `make dist EDITION=org` for the WordPress.org build; default is byo.
+# `make dist pro` or `make dist EDITION=pro` for the paid build; default is the free WordPress.org build.
 dist:
 	bash bin/build-dist.sh "$(or $(EDITION),$(filter-out dist,$(MAKECMDGOALS)))"
 
 # Cut a release. This plugin lives as a subtree inside the private djinn-proxy monorepo; the public
 # repo (remote `djinn`) is what the GitHub "Release" workflow runs on. So a release publishes this
-# subtree to the public repo and tags it there, which fires the workflow (BYO + ORG zips + docs +
+# subtree to the public repo and tags it there, which fires the workflow (free + pro zips + docs +
 # GitHub Release). Run this FROM the plugin subtree dir, with the version already bumped & committed:
 #   bump DJINN_VERSION + the plugin header + readme.txt's Stable tag together → commit → `make release`.
 #

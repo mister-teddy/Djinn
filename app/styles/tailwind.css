@@ -2,16 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-	.djinn-app,
-	.djinn-app * {
-		box-sizing: border-box;
+/* These resets live OUTSIDE `@layer base` on purpose: in this wp-scripts/PostCSS build, custom
+   `@layer base` rules are dropped from the output (even plain box-sizing), so we emit them as plain,
+   unlayered CSS. Tailwind utilities are scoped under `.djinn-app` (the `important` option), so they
+   outrank these on specificity wherever a component sets a value — these only restore the defaults
+   preflight would have, which is disabled because the SPA lives inside wp-admin's global CSS. */
+
+.djinn-app,
+.djinn-app * {
+	box-sizing: border-box;
+}
+
+/* Preflight is off, so `border` utilities set a width with no style and nothing renders. Restore a
+   solid baseline (+ currentColor default) so every `border-*` actually draws. */
+.djinn-app *,
+.djinn-app *::before,
+.djinn-app *::after {
+	border-width: 0;
+	border-style: solid;
+	border-color: currentColor;
+}
+
+.djinn-app h1,
+.djinn-app h2,
+.djinn-app h3,
+.djinn-app h4 {
+	margin: 0;
+	padding: 0;
+	font-weight: inherit;
+	line-height: 1.2;
+}
+
+/* Native <button> chrome (UA border + grey background + text cursor) leaks without preflight. Reset
+   to a clean slate; component utilities re-add bg/border/radius on top. */
+.djinn-app button {
+	margin: 0;
+	padding: 0;
+	font: inherit;
+	color: inherit;
+	line-height: inherit;
+	background-color: transparent;
+	background-image: none;
+	border-width: 0;
+	cursor: pointer;
+	-webkit-appearance: none;
+	appearance: none;
+}
+.djinn-app button:disabled {
+	cursor: default;
+}
+
+@keyframes djinnToastIn {
+	from {
+		opacity: 0;
+		transform: translateX( 16px ) scale( 0.98 );
 	}
-	.djinn-app h1,
-	.djinn-app h2,
-	.djinn-app h3,
-	.djinn-app h4 {
-		margin: 0;
-		font-weight: inherit;
+	to {
+		opacity: 1;
+		transform: translateX( 0 ) scale( 1 );
 	}
 }

@@ -43,7 +43,7 @@ export function Sidebar( {
 					chats.map( ( c ) => (
 						<div
 							key={ c.id }
-							className={ `group flex items-stretch rounded-[9px] border transition ${ c.id === activeId ? 'border-gold/35 bg-gold/[0.12]' : 'border-transparent hover:bg-violet-soft' }` }
+							className={ `group flex items-stretch rounded-[9px] transition ${ c.id === activeId ? 'bg-gold/[0.16]' : 'hover:bg-violet-soft' }` }
 						>
 							<button
 								type="button"
@@ -78,10 +78,10 @@ export function Meter( { usage }: { usage: ChatUsage | null } ) {
 	if ( ! usage || ! usage.calls ) {
 		return null;
 	}
-	const showCost = ! config.isOrg;
+	const showCost = ! config.usesProxy;
 	return (
 		<div
-			className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-gold/30 bg-[rgba(15,10,30,0.45)] px-2.5 py-[5px] text-xs text-ivory [font-variant-numeric:tabular-nums]"
+			className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[rgba(15,10,30,0.55)] px-2.5 py-[5px] text-xs text-ivory [font-variant-numeric:tabular-nums]"
 			title={ `${ usage.prompt.toLocaleString() } in · ${ usage.completion.toLocaleString() } out · ${ usage.calls } calls` }
 		>
 			<span className="text-gold"><Sparkle /></span>

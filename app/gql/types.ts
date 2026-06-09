@@ -58,7 +58,7 @@ export default {
             "edition": [
                 1
             ],
-            "isOrg": [
+            "isPro": [
                 2
             ],
             "provider": [
@@ -98,9 +98,6 @@ export default {
             ],
             "spentUsd": [
                 6
-            ],
-            "wishesLeft": [
-                3
             ],
             "paid": [
                 2
@@ -500,6 +497,18 @@ export default {
             ],
             "connect": [
                 5
+            ],
+            "activateLicense": [
+                4,
+                {
+                    "key": [
+                        1,
+                        "String!"
+                    ]
+                }
+            ],
+            "deactivateLicense": [
+                4
             ],
             "reindex": [
                 29

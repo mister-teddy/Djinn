@@ -6,6 +6,7 @@ namespace Djinn\GraphQL\Admin;
 
 use Djinn\GraphQL\PairingSchema;
 use Djinn\GraphQL\SchemaFactory;
+use Djinn\License\LicenseClient;
 use Djinn\Provider\ModelCatalog;
 use Djinn\Provider\Providers;
 use Djinn\Provider\ProxyAccount;
@@ -32,7 +33,7 @@ class AdminResolvers {
 		$s = Settings::all();
 		return [
 			'edition'        => Settings::edition(),
-			'isOrg'          => Settings::isOrg(),
+			'isPro'          => Settings::isPro(),
 			'provider'       => Settings::provider(),
 			'chatModel'      => $s['chat_model'],
 			'embeddingModel' => $s['embedding_model'],
@@ -43,14 +44,13 @@ class AdminResolvers {
 		];
 	}
 
-	/** The hosted-proxy account (credit, free wishes, payment status) + connection state. */
+	/** The hosted-proxy account (credit, payment status) + connection state. */
 	public static function account(): array {
 		$base = [
 			'usesProxy'  => Settings::usesProxy(),
 			'connected'  => null,
 			'balanceUsd' => null,
 			'spentUsd'   => null,
-			'wishesLeft' => null,
 			'paid'       => null,
 			'subscribed' => null,
 		];
@@ -189,9 +189,6 @@ class AdminResolvers {
 	 * @return array<string,mixed>
 	 */
 	public static function saveSettings( array $input ): array {
-		if ( Settings::isOrg() ) {
-			throw new UserError( 'This edition is managed — settings are fixed.' );
-		}
 		$map = [
 			'provider'        => 'provider',
 			'apiKey'          => 'api_key',
@@ -233,14 +230,13 @@ class AdminResolvers {
 		set_transient( PairingSchema::PENDING, $nonce, 5 * MINUTE_IN_SECONDS );
 		try {
 			ProxyClient::call(
-				'mutation ( $siteUrl: String!, $claimPath: String, $pairingNonce: String!, $trial: Boolean ) {
-					register( siteUrl: $siteUrl, claimPath: $claimPath, pairingNonce: $pairingNonce, trial: $trial ) { ok }
+				'mutation ( $siteUrl: String!, $claimPath: String, $pairingNonce: String! ) {
+					register( siteUrl: $siteUrl, claimPath: $claimPath, pairingNonce: $pairingNonce ) { ok }
 				}',
 				[
 					'siteUrl'      => home_url(),
 					'claimPath'    => wp_make_link_relative( rest_url( 'djinn/v1/claim' ) ),
 					'pairingNonce' => $nonce,
-					'trial'        => Settings::isOrg(),
 				]
 			);
 		} catch ( ProxyException $e ) {
@@ -268,6 +264,23 @@ class AdminResolvers {
 	public static function resetUsage(): bool {
 		Repository::clearUsage();
 		return true;
+	}
+
+	/** Activate a Polar license key to unlock Pro scope on this site. @return array<string,mixed> */
+	public static function activateLicense( string $key ): array {
+		if ( Settings::edition() !== 'pro' ) {
+			throw new UserError( 'Licensing applies to the Pro edition.' );
+		}
+		if ( ! LicenseClient::activate( $key ) ) {
+			throw new UserError( 'That license key could not be activated. Check the key and that your plan has a spare activation.' );
+		}
+		return self::settings();
+	}
+
+	/** Release this site's activation and forget the key. @return array<string,mixed> */
+	public static function deactivateLicense(): array {
+		LicenseClient::deactivate();
+		return self::settings();
 	}
 
 	/** @return array<string,mixed> */

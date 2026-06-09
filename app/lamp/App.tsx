@@ -51,8 +51,8 @@ function autosize( node: HTMLTextAreaElement | null ): void {
 }
 
 const INPUT_CLASS =
-	'flex-1 resize-none overflow-y-auto rounded-[10px] border border-white/10 bg-black/25 px-3.5 py-3 font-serif text-[17px] leading-normal text-ivory transition placeholder:text-ivory-muted/70 focus:border-gold focus:shadow-[0_0_0_2px_rgba(251,191,36,0.25)] focus:outline-none [max-height:220px] [scrollbar-width:none]';
-const ICON_BTN = 'h-11 w-11 justify-center bg-white/[0.06] text-lg text-ivory border border-gold/30 hover:border-gold';
+	'flex-1 resize-none overflow-y-auto rounded-[10px] bg-black/25 px-3.5 py-3 font-serif text-[17px] leading-normal text-ivory transition placeholder:text-ivory-muted/70 focus:bg-black/35 focus:shadow-[0_0_0_2px_rgba(251,191,36,0.3)] focus:outline-none [max-height:220px] [scrollbar-width:none]';
+const ICON_BTN = 'h-11 w-11 justify-center bg-white/[0.06] text-lg text-ivory hover:bg-white/[0.12]';
 const HEADER_BG = 'bg-[radial-gradient(circle_at_8%_50%,rgba(251,191,36,0.18),transparent_38%),linear-gradient(135deg,var(--djinn-midnight),var(--djinn-violet))]';
 const THREAD_BG = 'bg-[radial-gradient(circle_at_80%_8%,rgba(251,191,36,0.08),transparent_42%),linear-gradient(180deg,var(--djinn-midnight),var(--djinn-midnight-2))]';
 
@@ -398,15 +398,18 @@ export function App() {
 		>
 			<ToastHost />
 			{ dragOver && (
-				<div className="pointer-events-none fixed inset-0 z-[100000] flex items-center justify-center bg-[rgba(15,23,42,0.5)] backdrop-blur-sm">
-					<div className="rounded-djinn border-2 border-dashed border-white/85 bg-[rgba(79,70,229,0.95)] px-7 py-[1.1rem] text-[1.05rem] font-semibold text-white shadow-[0_10px_40px_rgba(0,0,0,0.35)]">📎 Drop a file to attach it to your wish</div>
+				<div className="pointer-events-none fixed inset-0 z-[100000] flex items-center justify-center bg-[rgba(15,10,30,0.66)] backdrop-blur-sm">
+					<div className="flex items-center gap-3 rounded-djinn border-2 border-dashed border-gold/70 bg-gradient-to-br from-midnight-2 to-violet px-8 py-5 text-[1.05rem] font-semibold text-ivory shadow-[0_18px_50px_-12px_rgba(0,0,0,0.6),0_0_44px_-10px_rgba(251,191,36,0.45)]">
+						<span className="flex-none text-gold"><Lamp size={ 26 } glow /></span>
+						Drop a file to attach it to your wish
+					</div>
 				</div>
 			) }
 			<Sidebar chats={ chats } activeId={ chatId } busy={ busy } onNew={ newChat } onOpen={ openChat } onDelete={ deleteChat } width={ collapsed ? 0 : sidebar.size } />
 			<ResizeHandle axis="x" onMouseDown={ startResize }>
 				<button
 					type="button"
-					className="absolute left-1/2 top-1/2 z-[70] flex h-10 w-[22px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[7px] border border-gold/30 bg-gradient-to-br from-midnight-2 to-violet text-[15px] leading-none text-gold shadow-[0_2px_8px_rgba(0,0,0,0.35)] hover:from-violet hover:to-gold-ember hover:text-white"
+					className="absolute left-1/2 top-1/2 z-[70] flex h-10 w-[22px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[7px] bg-gradient-to-br from-midnight-2 to-violet text-[15px] leading-none text-gold shadow-[0_2px_8px_rgba(0,0,0,0.35)] hover:from-violet hover:to-gold-ember hover:text-white"
 					onMouseDown={ ( e ) => e.stopPropagation() }
 					onClick={ toggleSidebar }
 					title={ collapsed ? 'Show past wishes' : 'Hide past wishes' }
@@ -416,16 +419,16 @@ export function App() {
 				</button>
 			</ResizeHandle>
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
-				<div className={ `flex flex-none items-center justify-between gap-4 border-b border-divider px-[22px] py-4 ${ HEADER_BG }` }>
+				<div className={ `flex flex-none items-center justify-between gap-4 px-[22px] py-4 ${ HEADER_BG }` }>
 					<div className="flex items-center gap-3.5">
 						<span className="flex-none text-gold"><Lamp size={ 32 } glow={ ! empty || busy } /></span>
 						<div>
 							<h1 className="text-[22px] font-semibold tracking-wide text-ivory">Djinn</h1>
 							<p className="mt-0.5 max-w-[520px] text-[11.5px] leading-snug text-ivory-muted">
-								{ config.isOrg
+								{ config.usesProxy
 									? 'Wishes and the relevant site content travel through Djinn’s gateway to Google Gemini. '
 									: 'Wishes and the relevant site content are sent to your AI provider. ' }
-								{ config.isOrg && <a className="text-gold hover:underline" href={ config.privacyUrl } target="_blank" rel="noopener">Privacy</a> }
+								{ config.usesProxy && <a className="text-gold hover:underline" href={ config.privacyUrl } target="_blank" rel="noopener">Privacy</a> }
 							</p>
 						</div>
 					</div>
@@ -450,11 +453,11 @@ export function App() {
 						<div className="mt-3 flex items-center gap-2.5 italic text-ivory-muted"><Spinner /><span>{ step || 'The Djinn ponders…' }</span></div>
 					) }
 				</div>
-				<div className={ `flex flex-none flex-col items-stretch gap-2 border-t border-divider px-4 py-3.5 bg-gradient-to-br from-midnight to-violet` }>
+				<div className={ `flex flex-none flex-col items-stretch gap-2 px-4 py-3.5 bg-gradient-to-br from-midnight to-violet` }>
 					{ attachment && (
-						<div className="inline-flex max-w-full items-center gap-2 self-start rounded-full border border-gold/30 bg-gold/[0.12] px-3 py-1 text-xs text-ivory">
+						<div className="inline-flex max-w-full items-center gap-2 self-start rounded-full bg-gold/[0.16] px-3 py-1 text-xs text-ivory">
 							📎 { attachment.filename }{ attachment.size ? ` (${ formatBytes( attachment.size ) })` : '' }
-							<button type="button" className="h-[18px] w-[18px] rounded-full bg-black/25 leading-none text-ivory hover:bg-[rgba(248,113,113,0.4)]" onClick={ () => setAttachment( null ) } title="Remove">×</button>
+							<button type="button" className="inline-flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full bg-black/25 text-[13px] leading-none text-ivory transition hover:bg-[rgba(248,113,113,0.5)] hover:text-white" onClick={ () => setAttachment( null ) } title="Remove" aria-label="Remove attachment">×</button>
 						</div>
 					) }
 					<div className="flex items-start gap-2.5">

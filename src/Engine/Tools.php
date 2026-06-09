@@ -4,16 +4,21 @@ declare( strict_types=1 );
 
 namespace Djinn\Engine;
 
+use Djinn\Settings;
+
 /**
  * The Djinn's entire tool surface: discover the schema, then run GraphQL.
  * A single run_graphql handles reads and writes; the engine decides which by parsing the
  * operation type, and gates mutations behind human confirmation ("grant this wish?").
+ *
+ * `rest_call` (the universal escape hatch) is Pro-only and matches `RestFeature` being unregistered
+ * in Free — so the gate is purely which capabilities exist, with no tier checks in the agent loop.
  */
 class Tools {
 
 	/** @return array<int,array<string,mixed>> */
 	public static function specs(): array {
-		return [
+		$specs = [
 			[
 				'name'        => 'search_schema',
 				'description' => 'Search the site\'s GraphQL schema for types and fields relevant to the user\'s wish. Call this before writing a query so you use real field/argument names. Returns SDL fragments.',
@@ -50,7 +55,10 @@ class Tools {
 					'required'   => [ 'operation' ],
 				],
 			],
-			[
+		];
+
+		if ( Settings::isPro() ) {
+			$specs[] = [
 				'name'        => 'rest_call',
 				'description' => 'Call a WordPress REST route — the escape hatch for plugins with no native GraphQL field. Discover routes first via the `restRoutes` GraphQL query. GET/HEAD run immediately; POST/PUT/PATCH/DELETE are paused for the user to Grant. Each route enforces its own permissions.',
 				'parameters'  => [
@@ -79,7 +87,9 @@ class Tools {
 					],
 					'required'   => [ 'method', 'path' ],
 				],
-			],
-		];
+			];
+		}
+
+		return $specs;
 	}
 }

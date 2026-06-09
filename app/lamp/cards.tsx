@@ -1,12 +1,13 @@
 import { useState } from '@wordpress/element';
 import { Button, Sparkle, Lamp } from '@shared/ui';
 import { renderMarkdown } from '@shared/markdown';
+import { highlightGraphql, highlightJson } from '@shared/highlight';
 import { safeUrl } from '@shared/url';
 import { formatBytes } from '@shared/format';
 import { downloadUrl } from '@shared/api';
 import type { TranscriptMessage } from './chat';
 
-const CODE = 'mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg border border-white/5 bg-black/45 px-3.5 py-3 font-mono text-xs leading-relaxed text-[#e2e4e7]';
+const CODE = 'mt-2 overflow-x-auto whitespace-pre-wrap rounded-[10px] bg-black/45 px-3.5 py-3 font-mono text-xs leading-relaxed text-[#e2e4e7]';
 const CODE_LABEL = 'mt-2.5 text-[11px] uppercase tracking-wide text-ivory-muted';
 
 function humanize( s: string ): string {
@@ -64,15 +65,15 @@ function collectDownloads( node: unknown, acc: DownloadHit[] = [] ): DownloadHit
 function PendingCard( { pending, busy, onConfirm, onCancel }: { pending: TranscriptMessage; busy: boolean; onConfirm: () => void; onCancel: () => void } ) {
 	const hasVars = pending.variables && Object.keys( pending.variables ).length > 0;
 	return (
-		<div className="my-3.5 rounded-djinn border border-gold/55 bg-gradient-to-b from-gold/[0.12] to-gold/[0.04] px-[18px] py-4 shadow-[0_0_26px_-10px_rgba(251,191,36,0.45)]">
+		<div className="my-3.5 rounded-djinn bg-gradient-to-b from-gold/[0.18] to-gold/[0.05] px-[18px] py-4 shadow-[0_0_30px_-10px_rgba(251,191,36,0.5)]">
 			<div className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-gold">
 				<Sparkle />Grant this wish?
 			</div>
 			<p className="mb-2.5 text-[15px] leading-normal text-ivory">{ pending.summary }</p>
 			<details className="mb-2.5">
 				<summary className="cursor-pointer select-none text-xs text-ivory-muted hover:text-gold">Show the incantation</summary>
-				<pre className={ CODE }>{ pending.operation }</pre>
-				{ hasVars && <pre className={ `${ CODE } bg-black/30` }>{ JSON.stringify( pending.variables, null, 2 ) }</pre> }
+				<pre className={ CODE }>{ highlightGraphql( pending.operation || '' ) }</pre>
+				{ hasVars && <pre className={ `${ CODE } bg-black/30` }>{ highlightJson( pending.variables ) }</pre> }
 			</details>
 			<div className="mt-1.5 flex gap-2.5">
 				<Button variant="primary" busy={ busy } onClick={ onConfirm }><Sparkle />Grant</Button>
@@ -108,7 +109,7 @@ function IncantationCard( { action }: { action: TranscriptMessage } ) {
 					{ !! links.length && (
 						<div className="my-2 flex flex-wrap gap-2">
 							{ links.slice( 0, 8 ).map( ( l, idx ) => (
-								<span key={ idx } className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-2.5 py-1 text-xs">
+								<span key={ idx } className="inline-flex items-center gap-2 rounded-full bg-gold/[0.14] px-2.5 py-1 text-xs">
 									{ l.label && <span className="max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap text-ivory-muted">{ l.label }</span> }
 									{ l.view && <a className="font-semibold text-gold hover:text-gold-deep" href={ l.view } target="_blank" rel="noopener noreferrer">View ↗</a> }
 									{ l.edit && <a className="font-semibold text-gold hover:text-gold-deep" href={ l.edit } target="_blank" rel="noopener noreferrer">Edit ✎</a> }
@@ -119,16 +120,16 @@ function IncantationCard( { action }: { action: TranscriptMessage } ) {
 					{ !! downloads.length && (
 						<div className="my-2 flex flex-wrap gap-2">
 							{ downloads.map( ( d, idx ) => (
-								<a key={ idx } className="inline-flex items-center rounded-full border border-gold/40 bg-gold/[0.14] px-3 py-1 font-semibold text-gold hover:bg-gold/[0.22]" href={ downloadUrl( d.token ) }>
+								<a key={ idx } className="inline-flex items-center rounded-full bg-gold/[0.2] px-3 py-1 font-semibold text-gold hover:bg-gold/[0.28]" href={ downloadUrl( d.token ) }>
 									⤓ { d.filename }{ d.bytes ? ` (${ formatBytes( d.bytes ) })` : '' }
 								</a>
 							) ) }
 						</div>
 					) }
 					<div className={ CODE_LABEL }>Operation</div>
-					<pre className={ CODE }>{ action.operation }</pre>
-					{ hasVars && <><div className={ CODE_LABEL }>Variables</div><pre className={ `${ CODE } bg-black/30` }>{ JSON.stringify( action.variables, null, 2 ) }</pre></> }
-					{ !! action.result && <><div className={ CODE_LABEL }>Response</div><pre className={ `${ CODE } max-h-[260px] overflow-y-auto bg-black/30` }>{ JSON.stringify( action.result, null, 2 ) }</pre></> }
+					<pre className={ CODE }>{ highlightGraphql( action.operation || '' ) }</pre>
+					{ hasVars && <><div className={ CODE_LABEL }>Variables</div><pre className={ `${ CODE } bg-black/30` }>{ highlightJson( action.variables ) }</pre></> }
+					{ !! action.result && <><div className={ CODE_LABEL }>Response</div><pre className={ `${ CODE } max-h-[260px] overflow-y-auto bg-black/30` }>{ highlightJson( action.result ) }</pre></> }
 				</div>
 			) }
 		</div>
@@ -146,12 +147,12 @@ export function Message( { msg, busy, onConfirm, onCancel }: { msg: TranscriptMe
 	const hasText = ( msg.content || '' ) !== '';
 	const bubbleBase = 'max-w-full whitespace-pre-wrap rounded-2xl px-[15px] py-2.5 text-sm leading-relaxed';
 	const bubble = isAssistant
-		? <div className={ `${ bubbleBase } rounded-bl-[4px] border border-gold/[0.18] bg-white/5 text-ivory` }>{ renderMarkdown( msg.content || '' ) }</div>
+		? <div className={ `${ bubbleBase } rounded-bl-[4px] bg-white/[0.07] text-ivory` }>{ renderMarkdown( msg.content || '' ) }</div>
 		: hasText
 			? <div className={ `${ bubbleBase } rounded-br-[4px] bg-gradient-to-b from-[#fff8e7] to-ivory text-[#4a3a1a] shadow-[0_6px_18px_-10px_rgba(0,0,0,0.45)]` }>{ msg.content }</div>
 			: null;
 	const chips = ( msg.attachments || [] ).map( ( a, i ) => (
-		<span key={ 'att' + i } className="inline-flex max-w-full items-center gap-2 self-start rounded-full border border-gold/30 bg-gold/[0.12] px-3 py-1 text-xs text-ivory">
+		<span key={ 'att' + i } className="inline-flex max-w-full items-center gap-2 self-start rounded-full bg-gold/[0.16] px-3 py-1 text-xs text-ivory">
 			📎 { a.filename }{ a.size ? ` (${ formatBytes( a.size ) })` : '' }
 		</span>
 	) );

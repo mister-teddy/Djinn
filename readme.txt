@@ -4,7 +4,7 @@ Tags: ai, assistant, automation, content, gemini
 Requires at least: 6.6
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 0.5.2
+Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -16,12 +16,19 @@ Djinn is an AI assistant for the WordPress admin. Speak plainly — *"create a d
 
 Every action is capability-gated — Djinn can never exceed the logged-in admin's real rights.
 
-What you can wish for: posts & pages, taxonomies, comments, users, media, appearance & the site editor, options, and system management (plugins, themes, core) — all gated by your capabilities and the approval step.
+What you can wish for: Djinn reads anything on your site, and the free plugin writes content — posts & pages, media, categories & tags, comments — all gated by your capabilities and the approval step. **Djinn Pro** unlocks the full schema: users, settings, appearance & the site editor, options, system management (plugins, themes, core), WooCommerce, and a universal REST escape hatch.
 
-= Free vs. bring-your-own-key =
+= Free vs. Pro =
 
-* **Free edition** — no API key needed. New sites get **three free wishes**; to keep going, top up prepaid credit (auto-recharge), handled by Polar. Wishes are routed through Djinn's hosted gateway (see *External services*).
-* **Bring-your-own-key** — use your own OpenAI, Google Gemini, or Anthropic key; calls go directly from your server to that provider.
+The two editions differ only in **scope** — every model option works in both.
+
+* **Free** — read anything; write content (posts, pages, media, categories, comments). Use your own OpenAI, Google Gemini, or Anthropic key, or the managed Djinn proxy (no key to paste; prepaid credit handled by Polar).
+* **Pro** — unlocks the full schema scope above plus the REST escape hatch. A separate download, unlocked by a license key bought through Polar. Same model options as Free.
+
+= How LLM calls reach a provider =
+
+* **Your own key** — calls go directly from your server to the provider you configure (OpenAI, Google Gemini, or Anthropic).
+* **Managed proxy** — no key needed; wishes route through Djinn's hosted gateway, which meters usage and bills prepaid credit (see *External services*).
 
 == External services ==
 
@@ -31,8 +38,8 @@ To fulfil a wish, Djinn sends data to a large language model. This happens **onl
 
 **Where it goes:**
 
-* **Free edition** — to **Djinn's hosted gateway** at https://djinn-proxy-351601184057.asia-northeast1.run.app , which forwards the request to **Google Gemini** and meters usage. Operated by Nguyễn Hồng Phát. Terms: https://djinn-proxy-351601184057.asia-northeast1.run.app/terms — Privacy: https://djinn-proxy-351601184057.asia-northeast1.run.app/privacy
-* **Bring-your-own-key edition** — directly from your server to the provider you configure (**OpenAI**, **Google Gemini**, or **Anthropic**) using your own key.
+* **Managed proxy** — to **Djinn's hosted gateway** at https://djinn-proxy-351601184057.asia-northeast1.run.app , which forwards the request to **Google Gemini** and meters usage. Operated by Nguyễn Hồng Phát. Terms: https://djinn-proxy-351601184057.asia-northeast1.run.app/terms — Privacy: https://djinn-proxy-351601184057.asia-northeast1.run.app/privacy
+* **Your own key** — directly from your server to the provider you configure (**OpenAI**, **Google Gemini**, or **Anthropic**) using your own key.
 
 **Provider policies:** Google Gemini https://ai.google.dev/terms · OpenAI https://openai.com/policies/ · Anthropic https://www.anthropic.com/legal/consumer-terms
 
@@ -41,15 +48,16 @@ The hosted gateway retains only usage metadata (token counts, model, timestamps,
 == Installation ==
 
 1. Install and activate the plugin.
-2. **Free edition:** open **Djinn → Cave of Wonders** — your site links to the hosted gateway automatically (3 free wishes). If your site isn't publicly reachable, paste an account token in the Account tile.
-   **BYO edition:** in **Djinn → Cave of Wonders** (Account tile), choose a provider and paste your API key (or define `DJINN_API_KEY` in `wp-config.php`).
+2. In **Djinn → Cave of Wonders** (Account tile), pick how to pay for LLM calls:
+   **Your own key:** choose a provider and paste your API key (or define `DJINN_API_KEY` in `wp-config.php`).
+   **Managed proxy:** choose *Djinn key* — your site links to the hosted gateway automatically; add prepaid credit via Polar to start. If your site isn't publicly reachable, paste an account token instead.
 3. Open **Djinn → Lamp**, click **Build RAG** to build the schema index, then make a wish.
 
 == Frequently Asked Questions ==
 
 = Does Djinn require an account or API key? =
 
-The free edition needs neither — your site is registered automatically and gets three free wishes. To continue past the trial, add a card. The bring-your-own-key edition uses your own provider key with no account.
+Either, your choice. Bring your own provider key (OpenAI, Google Gemini, or Anthropic) with no account, or use the managed Djinn proxy — your site registers automatically and you add prepaid credit via Polar to start wishing.
 
 = Can Djinn change my site without asking? =
 
@@ -61,5 +69,9 @@ See *External services* above — only what a given wish requires, and only when
 
 == Changelog ==
 
+= 0.6.0 =
+* Free/Pro editions: Free writes content (posts, pages, media, taxonomies, comments); Pro unlocks the full schema scope and the REST escape hatch, via a Polar license key.
+* Every model option — your own key or the managed proxy — works in both editions; the proxy is prepaid via Polar (the free-wishes trial is retired).
+
 = 0.5.2 =
-* Site-bound free-edition onboarding via the hosted gateway; usage metering; capability-gated, approval-gated actions.
+* Site-bound onboarding via the hosted gateway; usage metering; capability-gated, approval-gated actions.

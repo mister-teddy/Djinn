@@ -15,7 +15,7 @@ final class Providers {
 			'gemini'     => [ 'label' => 'Google Gemini (your key)',               'class' => GeminiProvider::class,    'needsKey' => true,  'family' => 'gemini',    'embeddings' => true,  'description' => 'Use your own Google Gemini API key.',                                   'keyHint' => 'Paste your Google AI Studio key (AIza…), or define DJINN_API_KEY in wp-config.php.' ],
 			'anthropic'  => [ 'label' => 'Anthropic Claude (your key)',            'class' => AnthropicProvider::class, 'needsKey' => true,  'family' => 'anthropic', 'embeddings' => false, 'description' => 'Use your own Anthropic API key. No embeddings — schema search runs on the full schema.', 'keyHint' => 'Paste your Anthropic key (sk-ant-…), or define DJINN_API_KEY in wp-config.php.' ],
 			'claude-max' => [ 'label' => 'Claude Max subscription — experimental', 'class' => ClaudeMaxProvider::class, 'needsKey' => true,  'family' => 'anthropic', 'embeddings' => false, 'description' => 'Use your Claude Max subscription. Experimental.',                       'keyHint' => 'Paste your key, or define DJINN_API_KEY in wp-config.php.' ],
-			'proxy'      => [ 'label' => 'Djinn key',                              'class' => ProxyProvider::class,     'needsKey' => false, 'family' => 'openai',    'embeddings' => true,  'description' => 'Billed to your Djinn account. Registered automatically by site — no key to paste, no free wishes.', 'keyHint' => '' ],
+			'proxy'      => [ 'label' => 'Djinn key',                              'class' => ProxyProvider::class,     'needsKey' => false, 'family' => 'openai',    'embeddings' => true,  'description' => 'Managed by Djinn — registered automatically by site, no key to paste. Prepaid credit via Polar.', 'keyHint' => '' ],
 		];
 	}
 
