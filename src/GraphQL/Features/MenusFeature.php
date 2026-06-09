@@ -19,104 +19,172 @@ class MenusFeature implements Feature {
 
 	public function register( Registry $r ): void {
 		$item = new ObjectType(
-			[
+			array(
 				'name'        => 'NavMenuItem',
 				'description' => 'An entry in a navigation menu.',
-				'fields'      => [
-					'id'       => [ 'type' => Type::id() ],
-					'title'    => [ 'type' => Type::string() ],
-					'url'      => [ 'type' => Type::string() ],
-					'type'     => [ 'type' => Type::string(), 'description' => 'custom, post_type, or taxonomy.' ],
-					'object'   => [ 'type' => Type::string(), 'description' => 'e.g. page, category — the linked object kind.' ],
-					'objectId' => [ 'type' => Type::id(), 'description' => 'ID of the linked post/term, when not a custom link.' ],
-					'parentId' => [ 'type' => Type::id(), 'description' => 'Parent menu-item id (for sub-items), or null.' ],
-					'order'    => [ 'type' => Type::int() ],
-				],
-			]
+				'fields'      => array(
+					'id'       => array( 'type' => Type::id() ),
+					'title'    => array( 'type' => Type::string() ),
+					'url'      => array( 'type' => Type::string() ),
+					'type'     => array(
+						'type'        => Type::string(),
+						'description' => 'custom, post_type, or taxonomy.',
+					),
+					'object'   => array(
+						'type'        => Type::string(),
+						'description' => 'e.g. page, category — the linked object kind.',
+					),
+					'objectId' => array(
+						'type'        => Type::id(),
+						'description' => 'ID of the linked post/term, when not a custom link.',
+					),
+					'parentId' => array(
+						'type'        => Type::id(),
+						'description' => 'Parent menu-item id (for sub-items), or null.',
+					),
+					'order'    => array( 'type' => Type::int() ),
+				),
+			)
 		);
 		$r->setType( 'NavMenuItem', $item );
 
 		$menu = new ObjectType(
-			[
+			array(
 				'name'        => 'NavMenu',
 				'description' => 'A navigation menu.',
-				'fields'      => [
-					'id'        => [ 'type' => Type::id() ],
-					'name'      => [ 'type' => Type::string() ],
-					'slug'      => [ 'type' => Type::string() ],
-					'count'     => [ 'type' => Type::int(), 'description' => 'Number of items in the menu.' ],
-					'locations' => [ 'type' => Type::listOf( Type::string() ), 'description' => 'Theme location slugs this menu is assigned to.' ],
-				],
-			]
+				'fields'      => array(
+					'id'        => array( 'type' => Type::id() ),
+					'name'      => array( 'type' => Type::string() ),
+					'slug'      => array( 'type' => Type::string() ),
+					'count'     => array(
+						'type'        => Type::int(),
+						'description' => 'Number of items in the menu.',
+					),
+					'locations' => array(
+						'type'        => Type::listOf( Type::string() ),
+						'description' => 'Theme location slugs this menu is assigned to.',
+					),
+				),
+			)
 		);
 		$r->setType( 'NavMenu', $menu );
 
 		$location = new ObjectType(
-			[
+			array(
 				'name'        => 'MenuLocation',
 				'description' => 'A theme-registered navigation location a menu can be assigned to.',
-				'fields'      => [
-					'location'       => [ 'type' => Type::string(), 'description' => 'The location slug (pass to assignMenuLocation).' ],
-					'description'    => [ 'type' => Type::string() ],
-					'assignedMenuId' => [ 'type' => Type::id(), 'description' => 'The menu currently in this location, or null.' ],
-				],
-			]
+				'fields'      => array(
+					'location'       => array(
+						'type'        => Type::string(),
+						'description' => 'The location slug (pass to assignMenuLocation).',
+					),
+					'description'    => array( 'type' => Type::string() ),
+					'assignedMenuId' => array(
+						'type'        => Type::id(),
+						'description' => 'The menu currently in this location, or null.',
+					),
+				),
+			)
 		);
 		$r->setType( 'MenuLocation', $location );
 
-		$r->addQuery( 'navMenus', [
-			'type'        => Type::listOf( $menu ),
-			'description' => 'List the site\'s navigation menus, or pass a theme location (e.g. "primary", "footer") to get the menu assigned there.',
-			'args'        => [ 'location' => [ 'type' => Type::string(), 'description' => 'A theme location slug; returns only the menu assigned to it (empty if none).' ] ],
-			'resolve'     => [ $this, 'navMenus' ],
-		] );
-		$r->addQuery( 'navMenuItems', [
-			'type'        => Type::listOf( $item ),
-			'description' => 'List the items in a navigation menu (by id, slug, or name).',
-			'args'        => [ 'menu' => [ 'type' => Type::nonNull( Type::string() ) ] ],
-			'resolve'     => [ $this, 'navMenuItems' ],
-		] );
-		$r->addQuery( 'menuLocations', [
-			'type'        => Type::listOf( $location ),
-			'description' => 'List the theme\'s registered menu locations and which menu fills each.',
-			'resolve'     => [ $this, 'menuLocations' ],
-		] );
+		$r->addQuery(
+			'navMenus',
+			array(
+				'type'        => Type::listOf( $menu ),
+				'description' => 'List the site\'s navigation menus, or pass a theme location (e.g. "primary", "footer") to get the menu assigned there.',
+				'args'        => array(
+					'location' => array(
+						'type'        => Type::string(),
+						'description' => 'A theme location slug; returns only the menu assigned to it (empty if none).',
+					),
+				),
+				'resolve'     => array( $this, 'navMenus' ),
+			)
+		);
+		$r->addQuery(
+			'navMenuItems',
+			array(
+				'type'        => Type::listOf( $item ),
+				'description' => 'List the items in a navigation menu (by id, slug, or name).',
+				'args'        => array( 'menu' => array( 'type' => Type::nonNull( Type::string() ) ) ),
+				'resolve'     => array( $this, 'navMenuItems' ),
+			)
+		);
+		$r->addQuery(
+			'menuLocations',
+			array(
+				'type'        => Type::listOf( $location ),
+				'description' => 'List the theme\'s registered menu locations and which menu fills each.',
+				'resolve'     => array( $this, 'menuLocations' ),
+			)
+		);
 
-		$r->addMutation( 'createNavMenu', [
-			'type'        => $menu,
-			'description' => 'Create a new (empty) navigation menu.',
-			'args'        => [ 'name' => [ 'type' => Type::nonNull( Type::string() ) ] ],
-			'resolve'     => [ $this, 'createNavMenu' ],
-		] );
-		$r->addMutation( 'addNavMenuItem', [
-			'type'        => $item,
-			'description' => 'Add an item to a menu. For a custom link pass url; to link a post/page/term pass type+object+objectId.',
-			'args'        => [
-				'menu'     => [ 'type' => Type::nonNull( Type::string() ), 'description' => 'Target menu id, slug, or name.' ],
-				'title'    => [ 'type' => Type::nonNull( Type::string() ) ],
-				'url'      => [ 'type' => Type::string(), 'description' => 'For a custom link.' ],
-				'type'     => [ 'type' => Type::string(), 'description' => 'custom (default), post_type, or taxonomy.' ],
-				'object'   => [ 'type' => Type::string(), 'description' => 'e.g. page or category, when linking an object.' ],
-				'objectId' => [ 'type' => Type::id(), 'description' => 'The linked post/term id, when type is post_type/taxonomy.' ],
-				'parentId' => [ 'type' => Type::id(), 'description' => 'Parent menu-item id, for a sub-item.' ],
-			],
-			'resolve'     => [ $this, 'addNavMenuItem' ],
-		] );
-		$r->addMutation( 'deleteNavMenuItem', [
-			'type'        => Type::boolean(),
-			'description' => 'Remove a single item from a menu by its menu-item id.',
-			'args'        => [ 'itemId' => [ 'type' => Type::nonNull( Type::id() ) ] ],
-			'resolve'     => [ $this, 'deleteNavMenuItem' ],
-		] );
-		$r->addMutation( 'assignMenuLocation', [
-			'type'        => Type::boolean(),
-			'description' => 'Assign a menu to a theme location (e.g. "primary").',
-			'args'        => [
-				'menu'     => [ 'type' => Type::nonNull( Type::string() ) ],
-				'location' => [ 'type' => Type::nonNull( Type::string() ) ],
-			],
-			'resolve'     => [ $this, 'assignMenuLocation' ],
-		] );
+		$r->addMutation(
+			'createNavMenu',
+			array(
+				'type'        => $menu,
+				'description' => 'Create a new (empty) navigation menu.',
+				'args'        => array( 'name' => array( 'type' => Type::nonNull( Type::string() ) ) ),
+				'resolve'     => array( $this, 'createNavMenu' ),
+			)
+		);
+		$r->addMutation(
+			'addNavMenuItem',
+			array(
+				'type'        => $item,
+				'description' => 'Add an item to a menu. For a custom link pass url; to link a post/page/term pass type+object+objectId.',
+				'args'        => array(
+					'menu'     => array(
+						'type'        => Type::nonNull( Type::string() ),
+						'description' => 'Target menu id, slug, or name.',
+					),
+					'title'    => array( 'type' => Type::nonNull( Type::string() ) ),
+					'url'      => array(
+						'type'        => Type::string(),
+						'description' => 'For a custom link.',
+					),
+					'type'     => array(
+						'type'        => Type::string(),
+						'description' => 'custom (default), post_type, or taxonomy.',
+					),
+					'object'   => array(
+						'type'        => Type::string(),
+						'description' => 'e.g. page or category, when linking an object.',
+					),
+					'objectId' => array(
+						'type'        => Type::id(),
+						'description' => 'The linked post/term id, when type is post_type/taxonomy.',
+					),
+					'parentId' => array(
+						'type'        => Type::id(),
+						'description' => 'Parent menu-item id, for a sub-item.',
+					),
+				),
+				'resolve'     => array( $this, 'addNavMenuItem' ),
+			)
+		);
+		$r->addMutation(
+			'deleteNavMenuItem',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Remove a single item from a menu by its menu-item id.',
+				'args'        => array( 'itemId' => array( 'type' => Type::nonNull( Type::id() ) ) ),
+				'resolve'     => array( $this, 'deleteNavMenuItem' ),
+			)
+		);
+		$r->addMutation(
+			'assignMenuLocation',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Assign a menu to a theme location (e.g. "primary").',
+				'args'        => array(
+					'menu'     => array( 'type' => Type::nonNull( Type::string() ) ),
+					'location' => array( 'type' => Type::nonNull( Type::string() ) ),
+				),
+				'resolve'     => array( $this, 'assignMenuLocation' ),
+			)
+		);
 	}
 
 	private function gate(): void {
@@ -127,24 +195,24 @@ class MenusFeature implements Feature {
 
 	/** @param \WP_Term $m */
 	private function shapeMenu( $m ): array {
-		$locations = [];
+		$locations = array();
 		foreach ( get_nav_menu_locations() as $loc => $menuId ) {
 			if ( (int) $menuId === (int) $m->term_id ) {
 				$locations[] = (string) $loc;
 			}
 		}
-		return [
+		return array(
 			'id'        => (string) $m->term_id,
 			'name'      => $m->name,
 			'slug'      => $m->slug,
 			'count'     => (int) $m->count,
 			'locations' => $locations,
-		];
+		);
 	}
 
 	/** @param \WP_Post $i */
 	private function shapeItem( $i ): array {
-		return [
+		return array(
 			'id'       => (string) $i->ID,
 			'title'    => $i->title,
 			'url'      => $i->url,
@@ -153,7 +221,7 @@ class MenusFeature implements Feature {
 			'objectId' => $i->object_id ? (string) $i->object_id : null,
 			'parentId' => $i->menu_item_parent ? (string) $i->menu_item_parent : null,
 			'order'    => (int) $i->menu_order,
-		];
+		);
 	}
 
 	private function menuOrFail( string $ref ): \WP_Term {
@@ -168,15 +236,15 @@ class MenusFeature implements Feature {
 	 * @param array<string,mixed> $args
 	 * @return array<int,array<string,mixed>>
 	 */
-	public function navMenus( $root = null, array $args = [] ): array {
+	public function navMenus( $root = null, array $args = array() ): array {
 		$this->gate();
 		$location = isset( $args['location'] ) ? (string) $args['location'] : '';
 		if ( $location !== '' ) {
 			$menuId = get_nav_menu_locations()[ $location ] ?? 0;
 			$menu   = $menuId ? wp_get_nav_menu_object( (int) $menuId ) : false;
-			return $menu ? [ $this->shapeMenu( $menu ) ] : [];
+			return $menu ? array( $this->shapeMenu( $menu ) ) : array();
 		}
-		return array_map( [ $this, 'shapeMenu' ], wp_get_nav_menus() );
+		return array_map( array( $this, 'shapeMenu' ), wp_get_nav_menus() );
 	}
 
 	/**
@@ -187,20 +255,20 @@ class MenusFeature implements Feature {
 		$this->gate();
 		$menu  = $this->menuOrFail( (string) $args['menu'] );
 		$items = wp_get_nav_menu_items( $menu->term_id );
-		return array_map( [ $this, 'shapeItem' ], $items ?: [] );
+		return array_map( array( $this, 'shapeItem' ), $items ?: array() );
 	}
 
 	/** @return array<int,array<string,mixed>> */
 	public function menuLocations(): array {
 		$this->gate();
 		$assigned = get_nav_menu_locations();
-		$out      = [];
+		$out      = array();
 		foreach ( get_registered_nav_menus() as $loc => $description ) {
-			$out[] = [
+			$out[] = array(
 				'location'       => (string) $loc,
 				'description'    => (string) $description,
 				'assignedMenuId' => ! empty( $assigned[ $loc ] ) ? (string) $assigned[ $loc ] : null,
-			];
+			);
 		}
 		return $out;
 	}
@@ -221,12 +289,12 @@ class MenusFeature implements Feature {
 		$menu = $this->menuOrFail( (string) $args['menu'] );
 		$type = (string) ( $args['type'] ?? 'custom' );
 
-		$itemArgs = [
+		$itemArgs = array(
 			'menu-item-title'     => (string) $args['title'],
 			'menu-item-type'      => $type,
 			'menu-item-status'    => 'publish',
 			'menu-item-parent-id' => isset( $args['parentId'] ) ? (int) $args['parentId'] : 0,
-		];
+		);
 		if ( $type === 'custom' ) {
 			$itemArgs['menu-item-url'] = (string) ( $args['url'] ?? '' );
 		} else {
@@ -239,7 +307,7 @@ class MenusFeature implements Feature {
 			throw new UserError( $itemId->get_error_message() );
 		}
 		$items = wp_get_nav_menu_items( $menu->term_id );
-		foreach ( $items ?: [] as $i ) {
+		foreach ( $items ?: array() as $i ) {
 			if ( (int) $i->ID === (int) $itemId ) {
 				return $this->shapeItem( $i );
 			}
@@ -265,8 +333,8 @@ class MenusFeature implements Feature {
 			throw new UserError( "No registered menu location '$location'." );
 		}
 		$menu      = $this->menuOrFail( (string) $args['menu'] );
-		$locations = get_theme_mod( 'nav_menu_locations', [] );
-		$locations = is_array( $locations ) ? $locations : [];
+		$locations = get_theme_mod( 'nav_menu_locations', array() );
+		$locations = is_array( $locations ) ? $locations : array();
 
 		$locations[ $location ] = $menu->term_id;
 		set_theme_mod( 'nav_menu_locations', $locations );

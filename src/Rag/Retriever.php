@@ -23,17 +23,17 @@ class Retriever {
 			return "Schema index is empty; returning the full schema.\n\n" . SchemaPrinter::doPrint( SchemaFactory::build() );
 		}
 
-		$needle = ProviderFactory::make()->embed( [ $query ] )[0] ?? [];
+		$needle = ProviderFactory::make()->embed( array( $query ) )[0] ?? array();
 		if ( empty( $needle ) ) {
 			return SchemaPrinter::doPrint( SchemaFactory::build() );
 		}
 
-		$scored = [];
+		$scored = array();
 		foreach ( $chunks as $chunk ) {
-			$scored[] = [
+			$scored[] = array(
 				'score'    => self::cosine( $needle, $chunk['embedding'] ),
 				'fragment' => $chunk['fragment'],
-			];
+			);
 		}
 		usort( $scored, static fn( $a, $b ) => $b['score'] <=> $a['score'] );
 

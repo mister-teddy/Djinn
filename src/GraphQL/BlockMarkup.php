@@ -67,7 +67,7 @@ class BlockMarkup {
 
 	/** Wrap markup in begin/end provenance markers naming its editable source. */
 	public static function region( string $kind, string $id, string $title, string $inner ): string {
-		$safe = static fn( string $s ): string => str_replace( [ '"', '-->' ], [ "'", '--&gt;' ], $s );
+		$safe = static fn( string $s ): string => str_replace( array( '"', '-->' ), array( "'", '--&gt;' ), $s );
 		return sprintf(
 			"<!-- djinn:region source=\"%s\" id=\"%s\" title=\"%s\" -->\n%s\n<!-- /djinn:region -->",
 			$safe( $kind ),
@@ -80,14 +80,18 @@ class BlockMarkup {
 	/** The editable sources named by region markers in a resolved tree, de-duplicated, in order. */
 	public static function sources( string $markup ): array {
 		preg_match_all( '#<!-- djinn:region source="([^"]+)" id="([^"]+)" title="([^"]*)" -->#', $markup, $matches, PREG_SET_ORDER );
-		$seen = [];
-		$out  = [];
+		$seen = array();
+		$out  = array();
 		foreach ( $matches as $m ) {
 			if ( isset( $seen[ $m[2] ] ) ) {
 				continue;
 			}
 			$seen[ $m[2] ] = true;
-			$out[]         = [ 'kind' => $m[1], 'id' => $m[2], 'title' => $m[3] ];
+			$out[]         = array(
+				'kind'  => $m[1],
+				'id'    => $m[2],
+				'title' => $m[3],
+			);
 		}
 		return $out;
 	}
@@ -96,7 +100,7 @@ class BlockMarkup {
 		if ( ! function_exists( 'get_block_templates' ) ) {
 			return null;
 		}
-		$parts = get_block_templates( [ 'slug__in' => [ $slug ] ], 'wp_template_part' );
+		$parts = get_block_templates( array( 'slug__in' => array( $slug ) ), 'wp_template_part' );
 		return $parts[0] ?? null;
 	}
 }

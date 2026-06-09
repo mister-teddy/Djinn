@@ -32,7 +32,7 @@ class SystemPrompt {
 		}
 		$prompt = '';
 		try {
-			$data   = ProxyClient::call( 'query { systemPrompt }', [], Settings::siteToken(), 8 );
+			$data   = ProxyClient::call( 'query { systemPrompt }', array(), Settings::siteToken(), 8 );
 			$prompt = isset( $data['systemPrompt'] ) ? (string) $data['systemPrompt'] : '';
 		} catch ( ProxyException $e ) {
 			$prompt = '';
@@ -70,14 +70,14 @@ class SystemPrompt {
 			? 'Act with `run_graphql` (a full document plus variables) or `rest_call`.'
 			: 'Act with `run_graphql` (a full document plus variables).';
 
-		$reads = $pro
+		$reads  = $pro
 			? 'Reads (`query`, `GET`) run at once and never need permission, so run them instead of offering to.'
 			: 'Reads (`query`) run at once and never need permission, so run them instead of offering to.';
 		$writes = $pro
 			? 'Writes (`mutation`, and `POST`/`PUT`/`PATCH`/`DELETE`) pause for the user to Grant or Refuse, so give'
 			: 'Writes (`mutation`) pause for the user to Grant or Refuse, so give';
 
-		$restRung = $pro ? "\n3. A REST endpoint: find it with the `restRoutes` query, then call it with `rest_call`." : '';
+		$restRung  = $pro ? "\n3. A REST endpoint: find it with the `restRoutes` query, then call it with `rest_call`." : '';
 		$rungCount = $pro ? 'three rungs' : 'rungs';
 
 		return <<<PROMPT
@@ -148,13 +148,13 @@ PROMPT;
 			$shape = $isBlock
 				? "{$themeName}, a block (FSE) theme. To find or change anything a visitor sees on a page, "
 					. "call `renderedPage` (by view/pageId/postId/url): it composes the page's whole block "
-					. "tree and names the editable source — a template, a template part, or a post — for each "
-					. "region, so you edit the right one. Header, footer, and other regions are template parts "
-					. "(`siteTemplateParts`); their navigation is a Navigation block backed by a `wp_navigation` "
-					. "post (read via `posts` with that postType). Classic `navMenus` and widget `sidebars` are "
-					. "empty on this site — read appearance from the block side."
+					. 'tree and names the editable source — a template, a template part, or a post — for each '
+					. 'region, so you edit the right one. Header, footer, and other regions are template parts '
+					. '(`siteTemplateParts`); their navigation is a Navigation block backed by a `wp_navigation` '
+					. 'post (read via `posts` with that postType). Classic `navMenus` and widget `sidebars` are '
+					. 'empty on this site — read appearance from the block side.'
 				: "{$themeName}, a classic theme. Navigation lives in `navMenus` and menu locations; footer and "
-					. "sidebar content lives in widget `sidebars`. The block Site Editor is unavailable here.";
+					. 'sidebar content lives in widget `sidebars`. The block Site Editor is unavailable here.';
 		} else {
 			$shape = $isBlock ? "{$themeName}, a block (FSE) theme." : "{$themeName}, a classic theme.";
 		}

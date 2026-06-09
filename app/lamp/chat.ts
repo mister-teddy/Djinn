@@ -73,40 +73,64 @@ const MESSAGE_FIELDS = {
 } as const;
 
 export async function loadChats(): Promise<ChatSummary[]> {
-	const d = await gql.query( { chats: { id: true, title: true, createdAt: true } } );
+	const d = await gql.query({
+		chats: { id: true, title: true, createdAt: true },
+	});
 	return d.chats as ChatSummary[];
 }
 
-export async function loadTranscript( id: number ): Promise<ChatDetail> {
-	const d = await gql.query( {
+export async function loadTranscript(id: number): Promise<ChatDetail> {
+	const d = await gql.query({
 		chat: {
 			__args: { id },
 			chatId: true,
 			messages: MESSAGE_FIELDS,
-			usage: { prompt: true, completion: true, tokens: true, cost: true, calls: true },
+			usage: {
+				prompt: true,
+				completion: true,
+				tokens: true,
+				cost: true,
+				calls: true,
+			},
 		},
-	} );
+	});
 	return d.chat as unknown as ChatDetail;
 }
 
-export async function deleteChat( id: number ): Promise<void> {
-	await gql.mutation( { deleteChat: { __args: { id } } } );
+export async function deleteChat(id: number): Promise<void> {
+	await gql.mutation({ deleteChat: { __args: { id } } });
 }
 
 export async function loadIndexStatus(): Promise<IndexStatusData> {
-	const d = await gql.query( {
+	const d = await gql.query({
 		indexStatus: {
 			configured: true,
 			embeds: true,
 			model: true,
 			countLive: true,
-			estimate: { chunks: true, tokens: true, cost: true, free: true, unpriced: true },
+			estimate: {
+				chunks: true,
+				tokens: true,
+				cost: true,
+				free: true,
+				unpriced: true,
+			},
 		},
-	} );
+	});
 	return d.indexStatus as IndexStatusData;
 }
 
-export async function reindex(): Promise<{ status: string; chunks: number | null; message: string | null }> {
-	const d = await gql.mutation( { reindex: { status: true, chunks: true, message: true } } );
-	return d.reindex as { status: string; chunks: number | null; message: string | null };
+export async function reindex(): Promise<{
+	status: string;
+	chunks: number | null;
+	message: string | null;
+}> {
+	const d = await gql.mutation({
+		reindex: { status: true, chunks: true, message: true },
+	});
+	return d.reindex as {
+		status: string;
+		chunks: number | null;
+		message: string | null;
+	};
 }

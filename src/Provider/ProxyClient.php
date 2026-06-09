@@ -21,18 +21,23 @@ class ProxyClient {
 	 * @return array<string,mixed>
 	 * @throws ProxyException on transport failure or a GraphQL error.
 	 */
-	public static function call( string $query, array $variables = [], ?string $token = null, int $timeout = 20 ): array {
-		$headers = [ 'content-type' => 'application/json' ];
+	public static function call( string $query, array $variables = array(), ?string $token = null, int $timeout = 20 ): array {
+		$headers = array( 'content-type' => 'application/json' );
 		if ( $token !== null && $token !== '' ) {
 			$headers['Authorization'] = 'Bearer ' . $token;
 		}
 		$res = wp_remote_post(
 			Settings::proxyUrl() . '/graphql',
-			[
+			array(
 				'timeout' => $timeout,
 				'headers' => $headers,
-				'body'    => wp_json_encode( [ 'query' => $query, 'variables' => (object) $variables ] ),
-			]
+				'body'    => wp_json_encode(
+					array(
+						'query'     => $query,
+						'variables' => (object) $variables,
+					)
+				),
+			)
 		);
 		if ( is_wp_error( $res ) ) {
 			throw new ProxyException( 'Could not reach the Djinn service.', true );
@@ -45,6 +50,6 @@ class ProxyClient {
 			$msg = $json['errors'][0]['message'] ?? 'The Djinn service returned an error.';
 			throw new ProxyException( (string) $msg );
 		}
-		return is_array( $json['data'] ?? null ) ? $json['data'] : [];
+		return is_array( $json['data'] ?? null ) ? $json['data'] : array();
 	}
 }

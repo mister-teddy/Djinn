@@ -20,60 +20,88 @@ class ToolsFeature implements Feature {
 
 	public function register( Registry $r ): void {
 		$download = new ObjectType(
-			[
+			array(
 				'name'        => 'DownloadFile',
 				'description' => 'A generated file. Download it via GET djinn/v1/download?token=…&_wpnonce=… (the UI builds this link).',
-				'fields'      => [
-					'token'    => [ 'type' => Type::id(), 'description' => 'Short-lived download token.' ],
-					'filename' => [ 'type' => Type::string() ],
-					'bytes'    => [ 'type' => Type::int() ],
-				],
-			]
+				'fields'      => array(
+					'token'    => array(
+						'type'        => Type::id(),
+						'description' => 'Short-lived download token.',
+					),
+					'filename' => array( 'type' => Type::string() ),
+					'bytes'    => array( 'type' => Type::int() ),
+				),
+			)
 		);
 		$r->setType( 'DownloadFile', $download );
 		$health = new ObjectType(
-			[
+			array(
 				'name'        => 'SiteHealth',
 				'description' => 'A snapshot of the site\'s environment and pending maintenance.',
-				'fields'      => [
-					'phpVersion'      => [ 'type' => Type::string() ],
-					'wpVersion'       => [ 'type' => Type::string() ],
-					'dbVersion'       => [ 'type' => Type::string() ],
-					'httpsEnabled'    => [ 'type' => Type::boolean() ],
-					'debugMode'       => [ 'type' => Type::boolean() ],
-					'memoryLimit'     => [ 'type' => Type::string() ],
-					'maxUploadSize'   => [ 'type' => Type::string() ],
-					'activeTheme'     => [ 'type' => Type::string() ],
-					'isBlockTheme'    => [ 'type' => Type::boolean() ],
-					'pendingUpdates'  => [ 'type' => Type::int(), 'description' => 'Plugins + themes with available updates (from cached data).' ],
-					'multisite'       => [ 'type' => Type::boolean() ],
-				],
-			]
+				'fields'      => array(
+					'phpVersion'     => array( 'type' => Type::string() ),
+					'wpVersion'      => array( 'type' => Type::string() ),
+					'dbVersion'      => array( 'type' => Type::string() ),
+					'httpsEnabled'   => array( 'type' => Type::boolean() ),
+					'debugMode'      => array( 'type' => Type::boolean() ),
+					'memoryLimit'    => array( 'type' => Type::string() ),
+					'maxUploadSize'  => array( 'type' => Type::string() ),
+					'activeTheme'    => array( 'type' => Type::string() ),
+					'isBlockTheme'   => array( 'type' => Type::boolean() ),
+					'pendingUpdates' => array(
+						'type'        => Type::int(),
+						'description' => 'Plugins + themes with available updates (from cached data).',
+					),
+					'multisite'      => array( 'type' => Type::boolean() ),
+				),
+			)
 		);
 		$r->setType( 'SiteHealth', $health );
 
-		$r->addQuery( 'siteHealth', [
-			'type'        => $health,
-			'description' => 'Site environment and maintenance snapshot (PHP/WP/DB versions, HTTPS, debug, pending updates).',
-			'resolve'     => [ $this, 'siteHealth' ],
-		] );
-		$r->addQuery( 'exportContent', [
-			'type'        => $download,
-			'description' => 'Generate a WordPress content export (WXR) file and return a download token. Optionally limit to one post type.',
-			'args'        => [ 'postType' => [ 'type' => Type::string(), 'description' => 'A post type, or "all" (default).' ] ],
-			'resolve'     => [ $this, 'exportContent' ],
-		] );
-		$r->addQuery( 'exportDatabase', [
-			'type'        => $download,
-			'description' => 'Dump the full WordPress database to a .sql file and return a download token (for backup). Download-only — there is no restore.',
-			'resolve'     => [ $this, 'exportDatabase' ],
-		] );
-		$r->addMutation( 'importWxr', [
-			'type'        => Type::string(),
-			'description' => 'Import a WordPress content (WXR/XML) export the user attached in chat — posts, pages, custom types with their categories/tags. Pass its upload token. (Attachments are skipped.)',
-			'args'        => [ 'token' => [ 'type' => Type::nonNull( Type::id() ), 'description' => 'The upload token from an attached file.' ] ],
-			'resolve'     => [ $this, 'importWxr' ],
-		] );
+		$r->addQuery(
+			'siteHealth',
+			array(
+				'type'        => $health,
+				'description' => 'Site environment and maintenance snapshot (PHP/WP/DB versions, HTTPS, debug, pending updates).',
+				'resolve'     => array( $this, 'siteHealth' ),
+			)
+		);
+		$r->addQuery(
+			'exportContent',
+			array(
+				'type'        => $download,
+				'description' => 'Generate a WordPress content export (WXR) file and return a download token. Optionally limit to one post type.',
+				'args'        => array(
+					'postType' => array(
+						'type'        => Type::string(),
+						'description' => 'A post type, or "all" (default).',
+					),
+				),
+				'resolve'     => array( $this, 'exportContent' ),
+			)
+		);
+		$r->addQuery(
+			'exportDatabase',
+			array(
+				'type'        => $download,
+				'description' => 'Dump the full WordPress database to a .sql file and return a download token (for backup). Download-only — there is no restore.',
+				'resolve'     => array( $this, 'exportDatabase' ),
+			)
+		);
+		$r->addMutation(
+			'importWxr',
+			array(
+				'type'        => Type::string(),
+				'description' => 'Import a WordPress content (WXR/XML) export the user attached in chat — posts, pages, custom types with their categories/tags. Pass its upload token. (Attachments are skipped.)',
+				'args'        => array(
+					'token' => array(
+						'type'        => Type::nonNull( Type::id() ),
+						'description' => 'The upload token from an attached file.',
+					),
+				),
+				'resolve'     => array( $this, 'importWxr' ),
+			)
+		);
 	}
 
 	private function gate(): void {
@@ -92,7 +120,7 @@ class ToolsFeature implements Feature {
 		$pending       = ( isset( $pluginUpdates->response ) ? count( (array) $pluginUpdates->response ) : 0 )
 			+ ( isset( $themeUpdates->response ) ? count( (array) $themeUpdates->response ) : 0 );
 
-		return [
+		return array(
 			'phpVersion'     => PHP_VERSION,
 			'wpVersion'      => get_bloginfo( 'version' ),
 			'dbVersion'      => $wpdb->db_version(),
@@ -104,7 +132,7 @@ class ToolsFeature implements Feature {
 			'isBlockTheme'   => function_exists( 'wp_is_block_theme' ) && wp_is_block_theme(),
 			'pendingUpdates' => $pending,
 			'multisite'      => is_multisite(),
-		];
+		);
 	}
 
 	/**
@@ -118,7 +146,7 @@ class ToolsFeature implements Feature {
 		$content = isset( $args['postType'] ) && $args['postType'] !== '' ? (string) $args['postType'] : 'all';
 
 		ob_start();
-		export_wp( [ 'content' => $content ] );
+		export_wp( array( 'content' => $content ) );
 		$xml = (string) ob_get_clean();
 		if ( $xml === '' ) {
 			throw new UserError( 'The export produced no data.' );
@@ -146,7 +174,7 @@ class ToolsFeature implements Feature {
 		if ( ! $fh ) {
 			throw new UserError( 'Could not open the dump file for writing.' );
 		}
-		fwrite( $fh, "-- Djinn database export — " . gmdate( 'c' ) . "\nSET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n" );
+		fwrite( $fh, '-- Djinn database export — ' . gmdate( 'c' ) . "\nSET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n" );
 
 		foreach ( (array) $wpdb->get_col( 'SHOW TABLES' ) as $table ) {
 			$create = $wpdb->get_row( "SHOW CREATE TABLE `$table`", ARRAY_N );
@@ -158,10 +186,13 @@ class ToolsFeature implements Feature {
 				$rows = $wpdb->get_results( "SELECT * FROM `$table` LIMIT $batch OFFSET $offset", ARRAY_A );
 				foreach ( $rows as $row ) {
 					$cols = implode( ',', array_map( static fn( $c ) => "`$c`", array_keys( $row ) ) );
-					$vals = implode( ',', array_map(
-						static fn( $v ) => $v === null ? 'NULL' : $wpdb->prepare( '%s', $v ),
-						array_values( $row )
-					) );
+					$vals = implode(
+						',',
+						array_map(
+							static fn( $v ) => $v === null ? 'NULL' : $wpdb->prepare( '%s', $v ),
+							array_values( $row )
+						)
+					);
 					fwrite( $fh, "INSERT INTO `$table` ($cols) VALUES ($vals);\n" );
 				}
 				$offset += $batch;
@@ -203,7 +234,7 @@ class ToolsFeature implements Feature {
 			$wp   = $item->children( 'wp', true );
 			$type = (string) $wp->post_type ?: 'post';
 			if ( $type === 'attachment' ) {
-				$skipped++;
+				++$skipped;
 				continue;
 			}
 			$status  = (string) $wp->status;
@@ -211,22 +242,25 @@ class ToolsFeature implements Feature {
 			$content = $item->children( 'content', true )->encoded;
 			$excerpt = $item->children( 'excerpt', true )->encoded;
 
-			$id = wp_insert_post( [
-				'post_title'   => (string) $item->title,
-				'post_content' => (string) $content,
-				'post_excerpt' => (string) $excerpt,
-				'post_name'    => (string) $wp->post_name,
-				'post_status'  => in_array( $status, [ 'publish', 'draft', 'pending', 'private', 'future' ], true ) ? $status : 'draft',
-				'post_type'    => post_type_exists( $type ) ? $type : 'post',
-				'post_date'    => ( $date && $date !== '0000-00-00 00:00:00' ) ? $date : '',
-			], true );
+			$id = wp_insert_post(
+				array(
+					'post_title'   => (string) $item->title,
+					'post_content' => (string) $content,
+					'post_excerpt' => (string) $excerpt,
+					'post_name'    => (string) $wp->post_name,
+					'post_status'  => in_array( $status, array( 'publish', 'draft', 'pending', 'private', 'future' ), true ) ? $status : 'draft',
+					'post_type'    => post_type_exists( $type ) ? $type : 'post',
+					'post_date'    => ( $date && $date !== '0000-00-00 00:00:00' ) ? $date : '',
+				),
+				true
+			);
 			if ( is_wp_error( $id ) ) {
-				$skipped++;
+				++$skipped;
 				continue;
 			}
 
-			$cats = [];
-			$tags = [];
+			$cats = array();
+			$tags = array();
 			foreach ( $item->category as $c ) {
 				$name = trim( (string) $c );
 				if ( $name === '' ) {
@@ -244,7 +278,7 @@ class ToolsFeature implements Feature {
 			if ( $tags ) {
 				wp_set_object_terms( $id, $tags, 'post_tag' );
 			}
-			$created++;
+			++$created;
 		}
 
 		return "Imported {$created} item(s)" . ( $skipped ? ", skipped {$skipped} (attachments or invalid)" : '' ) . '.';
@@ -261,10 +295,10 @@ class ToolsFeature implements Feature {
 	 */
 	private function result( string $path, string $mime ): array {
 		$filename = basename( $path );
-		return [
+		return array(
 			'token'    => Downloads::register( $path, $filename, $mime ),
 			'filename' => $filename,
 			'bytes'    => (int) filesize( $path ),
-		];
+		);
 	}
 }

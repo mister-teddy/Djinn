@@ -122,11 +122,11 @@ class Repository {
 		global $wpdb;
 		$wpdb->insert(
 			$wpdb->prefix . 'djinn_chats',
-			[
+			array(
 				'user_id'    => $userId,
 				'title'      => mb_substr( $title, 0, 200 ),
 				'created_at' => current_time( 'mysql', true ),
-			]
+			)
 		);
 		return (int) $wpdb->insert_id;
 	}
@@ -139,7 +139,7 @@ class Repository {
 			$wpdb->prepare( "SELECT id, title, created_at FROM $table WHERE user_id = %d ORDER BY id DESC LIMIT 50", $userId ),
 			ARRAY_A
 		);
-		return $rows ?: [];
+		return $rows ?: array();
 	}
 
 	public static function chatOwner( int $chatId ): ?int {
@@ -151,10 +151,10 @@ class Repository {
 
 	public static function deleteChat( int $chatId ): void {
 		global $wpdb;
-		foreach ( [ 'djinn_messages', 'djinn_pending', 'djinn_usage' ] as $t ) {
-			$wpdb->delete( $wpdb->prefix . $t, [ 'chat_id' => $chatId ] );
+		foreach ( array( 'djinn_messages', 'djinn_pending', 'djinn_usage' ) as $t ) {
+			$wpdb->delete( $wpdb->prefix . $t, array( 'chat_id' => $chatId ) );
 		}
-		$wpdb->delete( $wpdb->prefix . 'djinn_chats', [ 'id' => $chatId ] );
+		$wpdb->delete( $wpdb->prefix . 'djinn_chats', array( 'id' => $chatId ) );
 	}
 
 	// ---- Messages ----------------------------------------------------------
@@ -164,12 +164,12 @@ class Repository {
 		global $wpdb;
 		$wpdb->insert(
 			$wpdb->prefix . 'djinn_messages',
-			[
+			array(
 				'chat_id'    => $chatId,
 				'role'       => (string) ( $entry['role'] ?? 'assistant' ),
 				'content'    => wp_json_encode( $entry ),
 				'created_at' => current_time( 'mysql', true ),
-			]
+			)
 		);
 	}
 
@@ -182,8 +182,8 @@ class Repository {
 			ARRAY_A
 		);
 		return array_map(
-			static fn( $r ) => json_decode( $r['content'], true ) ?: [],
-			$rows ?: []
+			static fn( $r ) => json_decode( $r['content'], true ) ?: array(),
+			$rows ?: array()
 		);
 	}
 
@@ -198,7 +198,7 @@ class Repository {
 		global $wpdb;
 		$wpdb->insert(
 			$wpdb->prefix . 'djinn_pending',
-			[
+			array(
 				'chat_id'      => $chatId,
 				'tool_call_id' => $toolCallId,
 				'kind'         => $kind,
@@ -207,7 +207,7 @@ class Repository {
 				'summary'      => $summary,
 				'status'       => 'pending',
 				'created_at'   => current_time( 'mysql', true ),
-			]
+			)
 		);
 		return (int) $wpdb->insert_id;
 	}
@@ -220,13 +220,13 @@ class Repository {
 		if ( ! $row ) {
 			return null;
 		}
-		$row['variables'] = json_decode( $row['variables'], true ) ?: [];
+		$row['variables'] = json_decode( $row['variables'], true ) ?: array();
 		return $row;
 	}
 
 	public static function setPendingStatus( int $id, string $status ): void {
 		global $wpdb;
-		$wpdb->update( $wpdb->prefix . 'djinn_pending', [ 'status' => $status ], [ 'id' => $id ] );
+		$wpdb->update( $wpdb->prefix . 'djinn_pending', array( 'status' => $status ), array( 'id' => $id ) );
 	}
 
 	/**
@@ -257,13 +257,13 @@ class Repository {
 		foreach ( $chunks as $chunk ) {
 			$wpdb->insert(
 				$table,
-				[
+				array(
 					'name'       => mb_substr( $chunk['name'], 0, 190 ),
 					'fragment'   => $chunk['fragment'],
 					'embedding'  => wp_json_encode( $chunk['embedding'] ),
 					'model'      => $model,
 					'updated_at' => $now,
-				]
+				)
 			);
 		}
 	}
@@ -274,12 +274,12 @@ class Repository {
 		$table = $wpdb->prefix . 'djinn_schema_chunks';
 		$rows  = $wpdb->get_results( "SELECT name, fragment, embedding FROM $table", ARRAY_A );
 		return array_map(
-			static fn( $r ) => [
+			static fn( $r ) => array(
 				'name'      => $r['name'],
 				'fragment'  => $r['fragment'],
-				'embedding' => json_decode( $r['embedding'], true ) ?: [],
-			],
-			$rows ?: []
+				'embedding' => json_decode( $r['embedding'], true ) ?: array(),
+			),
+			$rows ?: array()
 		);
 	}
 
@@ -299,7 +299,7 @@ class Repository {
 		global $wpdb;
 		$wpdb->insert(
 			$wpdb->prefix . 'djinn_usage',
-			[
+			array(
 				'user_id'           => (int) $row['user_id'],
 				'chat_id'           => (int) ( $row['chat_id'] ?? 0 ),
 				'provider'          => (string) $row['provider'],
@@ -310,8 +310,8 @@ class Repository {
 				'estimated'         => (int) $row['estimated'],
 				'cost'              => (float) $row['cost'],
 				'created_at'        => current_time( 'mysql', true ),
-			],
-			[ '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%f', '%s' ]
+			),
+			array( '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%f', '%s' )
 		);
 	}
 
@@ -322,8 +322,8 @@ class Repository {
 	 */
 	public static function chatUsage( int $chatId ): array {
 		global $wpdb;
-		$table = $wpdb->prefix . 'djinn_usage';
-		$row   = $wpdb->get_row(
+		$table      = $wpdb->prefix . 'djinn_usage';
+		$row        = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT COUNT(*) AS calls,
 				        COALESCE(SUM(prompt_tokens),0) AS prompt,
@@ -333,16 +333,16 @@ class Repository {
 				$chatId
 			),
 			ARRAY_A
-		) ?: [];
+		) ?: array();
 		$prompt     = (int) ( $row['prompt'] ?? 0 );
 		$completion = (int) ( $row['completion'] ?? 0 );
-		return [
+		return array(
 			'prompt'     => $prompt,
 			'completion' => $completion,
 			'tokens'     => $prompt + $completion,
 			'cost'       => (float) ( $row['cost'] ?? 0 ),
 			'calls'      => (int) ( $row['calls'] ?? 0 ),
-		];
+		);
 	}
 
 	/**
@@ -363,7 +363,7 @@ class Repository {
 			        COALESCE(MAX(estimated),0) AS has_estimates
 			   FROM $table",
 			ARRAY_A
-		) ?: [];
+		) ?: array();
 
 		$byModel = $wpdb->get_results(
 			"SELECT provider, model, kind,
@@ -376,7 +376,7 @@ class Repository {
 			  GROUP BY provider, model, kind
 			  ORDER BY cost DESC, calls DESC",
 			ARRAY_A
-		) ?: [];
+		) ?: array();
 
 		$byDay = $wpdb->get_results(
 			$wpdb->prepare(
@@ -390,7 +390,7 @@ class Repository {
 				$days - 1
 			),
 			ARRAY_A
-		) ?: [];
+		) ?: array();
 
 		$recentRows = $wpdb->get_results(
 			$wpdb->prepare(
@@ -401,20 +401,20 @@ class Repository {
 				$recent
 			),
 			ARRAY_A
-		) ?: [];
+		) ?: array();
 
-		return [
-			'totals' => [
+		return array(
+			'totals'   => array(
 				'calls'         => (int) ( $totals['calls'] ?? 0 ),
 				'prompt'        => (int) ( $totals['prompt'] ?? 0 ),
 				'completion'    => (int) ( $totals['completion'] ?? 0 ),
 				'cost'          => (float) ( $totals['cost'] ?? 0 ),
 				'has_estimates' => (bool) ( $totals['has_estimates'] ?? 0 ),
-			],
+			),
 			'by_model' => $byModel,
 			'by_day'   => $byDay,
 			'recent'   => $recentRows,
-		];
+		);
 	}
 
 	public static function clearUsage(): void {

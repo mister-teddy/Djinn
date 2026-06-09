@@ -4,4 +4,4 @@ import '../styles/chrome.css';
 import { mount } from '@shared/mount';
 import { Cave } from './Cave';
 
-mount( 'djinn-cave-root', <Cave /> );
+mount('djinn-cave-root', <Cave />);

@@ -34,7 +34,7 @@ class UsageRecorder {
 		try {
 			$cost = $costOverride ?? Pricing::cost( $model, max( 0, $promptTokens ), max( 0, $completionTokens ) );
 			Repository::recordUsage(
-				[
+				array(
 					'user_id'           => function_exists( 'get_current_user_id' ) ? get_current_user_id() : 0,
 					'chat_id'           => self::$chatId,
 					'provider'          => $provider,
@@ -44,7 +44,7 @@ class UsageRecorder {
 					'completion_tokens' => max( 0, $completionTokens ),
 					'estimated'         => $estimated ? 1 : 0,
 					'cost'              => $cost,
-				]
+				)
 			);
 		} catch ( Throwable $e ) {
 			// Telemetry should never block the lamp.

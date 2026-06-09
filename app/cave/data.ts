@@ -73,7 +73,13 @@ export interface UsageRecentRow {
 	cost: number;
 }
 export interface UsageData {
-	totals: { calls: number; prompt: number; completion: number; cost: number; hasEstimates: boolean };
+	totals: {
+		calls: number;
+		prompt: number;
+		completion: number;
+		cost: number;
+		hasEstimates: boolean;
+	};
 	byModel: UsageRow[];
 	byDay: { day: string; calls: number; cost: number }[];
 	recent: UsageRecentRow[];
@@ -114,64 +120,116 @@ const MODELS_FIELDS = {
 	error: true,
 } as const;
 
-export async function loadAccountSettings(): Promise<{ settings: SettingsData; account: AccountData }> {
-	const d = await gql.query( { settings: SETTINGS_FIELDS, account: ACCOUNT_FIELDS } );
-	return { settings: d.settings as SettingsData, account: d.account as AccountData };
+export async function loadAccountSettings(): Promise<{
+	settings: SettingsData;
+	account: AccountData;
+}> {
+	const d = await gql.query({
+		settings: SETTINGS_FIELDS,
+		account: ACCOUNT_FIELDS,
+	});
+	return {
+		settings: d.settings as SettingsData,
+		account: d.account as AccountData,
+	};
 }
 
-export async function loadModels( provider: string ): Promise<ModelsData> {
-	const d = await gql.query( { models: { __args: { provider }, ...MODELS_FIELDS } } );
+export async function loadModels(provider: string): Promise<ModelsData> {
+	const d = await gql.query({
+		models: { __args: { provider }, ...MODELS_FIELDS },
+	});
 	return d.models as unknown as ModelsData;
 }
 
-export async function saveSettings( input: SettingsInput ): Promise<SettingsData> {
-	const d = await gql.mutation( { saveSettings: { __args: { input }, ...SETTINGS_FIELDS } } );
+export async function saveSettings(
+	input: SettingsInput,
+): Promise<SettingsData> {
+	const d = await gql.mutation({
+		saveSettings: { __args: { input }, ...SETTINGS_FIELDS },
+	});
 	return d.saveSettings as SettingsData;
 }
 
 export async function connect(): Promise<AccountData> {
-	const d = await gql.mutation( { connect: ACCOUNT_FIELDS } );
+	const d = await gql.mutation({ connect: ACCOUNT_FIELDS });
 	return d.connect as AccountData;
 }
 
-export async function activateLicense( key: string ): Promise<SettingsData> {
-	const d = await gql.mutation( { activateLicense: { __args: { key }, ...SETTINGS_FIELDS } } );
+export async function activateLicense(key: string): Promise<SettingsData> {
+	const d = await gql.mutation({
+		activateLicense: { __args: { key }, ...SETTINGS_FIELDS },
+	});
 	return d.activateLicense as SettingsData;
 }
 
 export async function deactivateLicense(): Promise<SettingsData> {
-	const d = await gql.mutation( { deactivateLicense: SETTINGS_FIELDS } );
+	const d = await gql.mutation({ deactivateLicense: SETTINGS_FIELDS });
 	return d.deactivateLicense as SettingsData;
 }
 
 export async function loadOperations(): Promise<OperationsData> {
-	const d = await gql.query( {
+	const d = await gql.query({
 		operations: {
-			operations: { domain: true, name: true, kind: true, description: true, args: { name: true, type: true, required: true }, returns: true },
+			operations: {
+				domain: true,
+				name: true,
+				kind: true,
+				description: true,
+				args: { name: true, type: true, required: true },
+				returns: true,
+			},
 			unindexed: true,
 			outdated: true,
 		},
-	} );
+	});
 	return d.operations as OperationsData;
 }
 
 export async function loadUsage(): Promise<UsageData> {
-	const d = await gql.query( {
+	const d = await gql.query({
 		usage: {
-			totals: { calls: true, prompt: true, completion: true, cost: true, hasEstimates: true },
-			byModel: { provider: true, model: true, kind: true, calls: true, prompt: true, completion: true, cost: true, estimated: true },
+			totals: {
+				calls: true,
+				prompt: true,
+				completion: true,
+				cost: true,
+				hasEstimates: true,
+			},
+			byModel: {
+				provider: true,
+				model: true,
+				kind: true,
+				calls: true,
+				prompt: true,
+				completion: true,
+				cost: true,
+				estimated: true,
+			},
 			byDay: { day: true, calls: true, cost: true },
-			recent: { createdAt: true, provider: true, model: true, kind: true, promptTokens: true, completionTokens: true, estimated: true, cost: true },
+			recent: {
+				createdAt: true,
+				provider: true,
+				model: true,
+				kind: true,
+				promptTokens: true,
+				completionTokens: true,
+				estimated: true,
+				cost: true,
+			},
 		},
-	} );
+	});
 	return d.usage as UsageData;
 }
 
 export async function resetUsage(): Promise<void> {
-	await gql.mutation( { resetUsage: true } );
+	await gql.mutation({ resetUsage: true });
 }
 
-export async function billingCheckout( kind: 'credit' | 'subscription' ): Promise<string> {
-	const d = await gql.mutation( { billingCheckout: { __args: { kind }, url: true } } );
-	return ( d.billingCheckout as { url: string } ).url;
+export async function billingCheckout(
+	kind: 'credit' | 'subscription',
+): Promise<string> {
+	const d = await gql.mutation({
+		billingCheckout: { __args: { kind }, url: true },
+	});
+	return (d.billingCheckout as { url: string }).url;
 }

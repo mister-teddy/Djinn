@@ -14,16 +14,16 @@ use GraphQL\Type\Definition\Type;
 class Registry {
 
 	/** @var array<string,array<string,mixed>> */
-	private array $queries = [];
+	private array $queries = array();
 
 	/** @var array<string,array<string,mixed>> */
-	private array $mutations = [];
+	private array $mutations = array();
 
 	/** @var array<string,Type> Shared object/input types, by name, for features that reuse them. */
-	private array $types = [];
+	private array $types = array();
 
 	/** @var array<string,string> Capability domain per "kind:name", for the admin Capabilities view. */
-	private array $domains = [];
+	private array $domains = array();
 
 	/** The domain operations are filed under until changed — set per feature by SchemaFactory. */
 	private string $currentDomain = 'Core';
@@ -34,7 +34,7 @@ class Registry {
 
 	/** @param array<string,mixed> $config A graphql-php field definition. */
 	public function addQuery( string $name, array $config ): void {
-		$this->queries[ $name ]           = $config;
+		$this->queries[ $name ]            = $config;
 		$this->domains[ 'query:' . $name ] = $this->currentDomain;
 	}
 
@@ -70,17 +70,20 @@ class Registry {
 	 * @return array<int,array<string,mixed>>
 	 */
 	public function operations(): array {
-		$out = [];
-		foreach ( [ 'query' => $this->queries, 'mutation' => $this->mutations ] as $kind => $fields ) {
+		$out = array();
+		foreach ( array(
+			'query'    => $this->queries,
+			'mutation' => $this->mutations,
+		) as $kind => $fields ) {
 			foreach ( $fields as $name => $config ) {
-				$out[] = [
+				$out[] = array(
 					'domain'      => $this->domains[ $kind . ':' . $name ] ?? 'Core',
 					'name'        => $name,
 					'kind'        => $kind,
 					'description' => (string) ( $config['description'] ?? '' ),
-					'args'        => self::describeArgs( $config['args'] ?? [] ),
+					'args'        => self::describeArgs( $config['args'] ?? array() ),
 					'returns'     => isset( $config['type'] ) ? (string) $config['type'] : '',
-				];
+				);
 			}
 		}
 		return $out;
@@ -91,14 +94,14 @@ class Registry {
 	 * @return array<int,array<string,string|bool>>
 	 */
 	private static function describeArgs( array $args ): array {
-		$out = [];
+		$out = array();
 		foreach ( $args as $argName => $arg ) {
-			$type = isset( $arg['type'] ) ? (string) $arg['type'] : '';
-			$out[] = [
+			$type  = isset( $arg['type'] ) ? (string) $arg['type'] : '';
+			$out[] = array(
 				'name'     => (string) $argName,
 				'type'     => $type,
 				'required' => str_ends_with( $type, '!' ),
-			];
+			);
 		}
 		return $out;
 	}

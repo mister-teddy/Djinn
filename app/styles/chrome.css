@@ -4,7 +4,7 @@
 
 /* ---- Lamp ---- */
 body.toplevel_page_djinn {
-	background: var( --djinn-midnight );
+	background: var(--djinn-midnight);
 	overscroll-behavior: none;
 }
 body.toplevel_page_djinn #wpcontent {
@@ -27,17 +27,17 @@ body.toplevel_page_djinn .update-nag {
 	margin: 0;
 	padding: 0;
 	max-width: none;
-	height: calc( 100vh - 32px );
+	height: calc(100vh - 32px);
 	overflow: hidden;
 }
-@media screen and ( max-width: 782px ) {
+@media screen and (max-width: 782px) {
 	.djinn-wrap {
-		height: calc( 100vh - 46px );
+		height: calc(100vh - 46px);
 	}
 }
 #djinn-root {
 	height: 100%;
-	color: var( --djinn-ivory );
+	color: var(--djinn-ivory);
 	font-size: 16px;
 }
 

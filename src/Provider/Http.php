@@ -19,11 +19,11 @@ trait Http {
 	protected function postJson( string $url, array $headers, array $body ): array {
 		$response = wp_remote_post(
 			$url,
-			[
+			array(
 				'timeout' => 60,
-				'headers' => array_merge( [ 'Content-Type' => 'application/json' ], $headers ),
+				'headers' => array_merge( array( 'Content-Type' => 'application/json' ), $headers ),
 				'body'    => wp_json_encode( $body ),
-			]
+			)
 		);
 
 		if ( is_wp_error( $response ) ) {
@@ -60,22 +60,25 @@ trait Http {
 		if ( ! function_exists( 'curl_init' ) ) {
 			throw new RuntimeException( 'Streaming requires the cURL PHP extension.' );
 		}
-		$hdr = [ 'Content-Type: application/json' ];
+		$hdr = array( 'Content-Type: application/json' );
 		foreach ( $headers as $k => $v ) {
 			$hdr[] = $k . ': ' . $v;
 		}
 		$ch = curl_init( $url );
-		curl_setopt_array( $ch, [
-			CURLOPT_POST           => true,
-			CURLOPT_POSTFIELDS     => wp_json_encode( $body ),
-			CURLOPT_HTTPHEADER     => $hdr,
-			CURLOPT_RETURNTRANSFER => false,
-			CURLOPT_TIMEOUT        => 120,
-			CURLOPT_WRITEFUNCTION  => static function ( $ch, $data ) use ( $onChunk ) {
-				$onChunk( $data );
-				return strlen( $data );
-			},
-		] );
+		curl_setopt_array(
+			$ch,
+			array(
+				CURLOPT_POST           => true,
+				CURLOPT_POSTFIELDS     => wp_json_encode( $body ),
+				CURLOPT_HTTPHEADER     => $hdr,
+				CURLOPT_RETURNTRANSFER => false,
+				CURLOPT_TIMEOUT        => 120,
+				CURLOPT_WRITEFUNCTION  => static function ( $ch, $data ) use ( $onChunk ) {
+					$onChunk( $data );
+					return strlen( $data );
+				},
+			)
+		);
 		$ok   = curl_exec( $ch );
 		$err  = curl_error( $ch );
 		$code = (int) curl_getinfo( $ch, CURLINFO_HTTP_CODE );

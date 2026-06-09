@@ -32,37 +32,51 @@ class PairingSchema {
 			return self::$schema;
 		}
 
-		$result = new ObjectType( [
-			'name'   => 'ClaimResult',
-			'fields' => [
-				'nonce'   => Type::nonNull( Type::string() ),
-				'claimed' => Type::nonNull( Type::boolean() ),
-			],
-		] );
+		$result = new ObjectType(
+			array(
+				'name'   => 'ClaimResult',
+				'fields' => array(
+					'nonce'   => Type::nonNull( Type::string() ),
+					'claimed' => Type::nonNull( Type::boolean() ),
+				),
+			)
+		);
 
-		$query = new ObjectType( [
-			'name'   => 'Query',
-			'fields' => [
-				// GraphQL requires a non-empty Query type; doubles as a liveness ping.
-				'ping' => [ 'type' => Type::nonNull( Type::boolean() ), 'resolve' => static fn() => true ],
-			],
-		] );
+		$query = new ObjectType(
+			array(
+				'name'   => 'Query',
+				'fields' => array(
+					// GraphQL requires a non-empty Query type; doubles as a liveness ping.
+					'ping' => array(
+						'type'    => Type::nonNull( Type::boolean() ),
+						'resolve' => static fn() => true,
+					),
+				),
+			)
+		);
 
-		$mutation = new ObjectType( [
-			'name'   => 'Mutation',
-			'fields' => [
-				'claim' => [
-					'type'    => Type::nonNull( $result ),
-					'args'    => [
-						'nonce' => Type::nonNull( Type::string() ),
-						'token' => Type::nonNull( Type::string() ),
-					],
-					'resolve' => static fn( $root, $args ) => self::claim( (string) $args['nonce'], (string) $args['token'] ),
-				],
-			],
-		] );
+		$mutation = new ObjectType(
+			array(
+				'name'   => 'Mutation',
+				'fields' => array(
+					'claim' => array(
+						'type'    => Type::nonNull( $result ),
+						'args'    => array(
+							'nonce' => Type::nonNull( Type::string() ),
+							'token' => Type::nonNull( Type::string() ),
+						),
+						'resolve' => static fn( $root, $args ) => self::claim( (string) $args['nonce'], (string) $args['token'] ),
+					),
+				),
+			)
+		);
 
-		return self::$schema = new Schema( [ 'query' => $query, 'mutation' => $mutation ] );
+		return self::$schema = new Schema(
+			array(
+				'query'    => $query,
+				'mutation' => $mutation,
+			)
+		);
 	}
 
 	/**
@@ -80,6 +94,9 @@ class PairingSchema {
 			delete_transient( self::PENDING );
 			$claimed = true;
 		}
-		return [ 'nonce' => $nonce, 'claimed' => $claimed ];
+		return array(
+			'nonce'   => $nonce,
+			'claimed' => $claimed,
+		);
 	}
 }

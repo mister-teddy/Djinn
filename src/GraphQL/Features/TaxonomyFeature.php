@@ -18,70 +18,94 @@ class TaxonomyFeature implements Feature {
 
 	public function register( Registry $r ): void {
 		$term = new ObjectType(
-			[
+			array(
 				'name'        => 'Term',
 				'description' => 'A taxonomy term (category, tag, …).',
-				'fields'      => [
-					'id'          => [ 'type' => Type::id() ],
-					'name'        => [ 'type' => Type::string() ],
-					'slug'        => [ 'type' => Type::string() ],
-					'taxonomy'    => [ 'type' => Type::string() ],
-					'count'       => [ 'type' => Type::int(), 'description' => 'Number of objects with this term.' ],
-					'description' => [ 'type' => Type::string() ],
-					'parentId'    => [ 'type' => Type::id() ],
-				],
-			]
+				'fields'      => array(
+					'id'          => array( 'type' => Type::id() ),
+					'name'        => array( 'type' => Type::string() ),
+					'slug'        => array( 'type' => Type::string() ),
+					'taxonomy'    => array( 'type' => Type::string() ),
+					'count'       => array(
+						'type'        => Type::int(),
+						'description' => 'Number of objects with this term.',
+					),
+					'description' => array( 'type' => Type::string() ),
+					'parentId'    => array( 'type' => Type::id() ),
+				),
+			)
 		);
 		$r->setType( 'Term', $term );
 
-		$r->addQuery( 'terms', [
-			'type'        => Type::listOf( $term ),
-			'description' => 'List terms in a taxonomy (default "category").',
-			'args'        => [
-				'taxonomy' => [ 'type' => Type::string(), 'defaultValue' => 'category' ],
-				'search'   => [ 'type' => Type::string() ],
-				'first'    => [ 'type' => Type::int(), 'defaultValue' => 50 ],
-			],
-			'resolve'     => [ $this, 'terms' ],
-		] );
+		$r->addQuery(
+			'terms',
+			array(
+				'type'        => Type::listOf( $term ),
+				'description' => 'List terms in a taxonomy (default "category").',
+				'args'        => array(
+					'taxonomy' => array(
+						'type'         => Type::string(),
+						'defaultValue' => 'category',
+					),
+					'search'   => array( 'type' => Type::string() ),
+					'first'    => array(
+						'type'         => Type::int(),
+						'defaultValue' => 50,
+					),
+				),
+				'resolve'     => array( $this, 'terms' ),
+			)
+		);
 
-		$r->addMutation( 'createTerm', [
-			'type'        => $term,
-			'description' => 'Create a term in a taxonomy.',
-			'args'        => [
-				'taxonomy'    => [ 'type' => Type::nonNull( Type::string() ) ],
-				'name'        => [ 'type' => Type::nonNull( Type::string() ) ],
-				'slug'        => [ 'type' => Type::string() ],
-				'description' => [ 'type' => Type::string() ],
-				'parentId'    => [ 'type' => Type::id() ],
-			],
-			'resolve'     => [ $this, 'createTerm' ],
-		] );
+		$r->addMutation(
+			'createTerm',
+			array(
+				'type'        => $term,
+				'description' => 'Create a term in a taxonomy.',
+				'args'        => array(
+					'taxonomy'    => array( 'type' => Type::nonNull( Type::string() ) ),
+					'name'        => array( 'type' => Type::nonNull( Type::string() ) ),
+					'slug'        => array( 'type' => Type::string() ),
+					'description' => array( 'type' => Type::string() ),
+					'parentId'    => array( 'type' => Type::id() ),
+				),
+				'resolve'     => array( $this, 'createTerm' ),
+			)
+		);
 
-		$r->addMutation( 'deleteTerm', [
-			'type'        => Type::boolean(),
-			'args'        => [
-				'id'       => [ 'type' => Type::nonNull( Type::id() ) ],
-				'taxonomy' => [ 'type' => Type::nonNull( Type::string() ) ],
-			],
-			'resolve'     => [ $this, 'deleteTerm' ],
-		] );
+		$r->addMutation(
+			'deleteTerm',
+			array(
+				'type'    => Type::boolean(),
+				'args'    => array(
+					'id'       => array( 'type' => Type::nonNull( Type::id() ) ),
+					'taxonomy' => array( 'type' => Type::nonNull( Type::string() ) ),
+				),
+				'resolve' => array( $this, 'deleteTerm' ),
+			)
+		);
 
-		$r->addMutation( 'assignTerms', [
-			'type'        => Type::boolean(),
-			'description' => 'Set (or append) a post\'s terms in a taxonomy. Pass term IDs.',
-			'args'        => [
-				'postId'   => [ 'type' => Type::nonNull( Type::id() ) ],
-				'taxonomy' => [ 'type' => Type::nonNull( Type::string() ) ],
-				'termIds'  => [ 'type' => Type::nonNull( Type::listOf( Type::id() ) ) ],
-				'append'   => [ 'type' => Type::boolean(), 'defaultValue' => false ],
-			],
-			'resolve'     => [ $this, 'assignTerms' ],
-		] );
+		$r->addMutation(
+			'assignTerms',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Set (or append) a post\'s terms in a taxonomy. Pass term IDs.',
+				'args'        => array(
+					'postId'   => array( 'type' => Type::nonNull( Type::id() ) ),
+					'taxonomy' => array( 'type' => Type::nonNull( Type::string() ) ),
+					'termIds'  => array( 'type' => Type::nonNull( Type::listOf( Type::id() ) ) ),
+					'append'   => array(
+						'type'         => Type::boolean(),
+						'defaultValue' => false,
+					),
+				),
+				'resolve'     => array( $this, 'assignTerms' ),
+			)
+		);
 	}
 
 	private function shape( \WP_Term $t ): array {
-		return [
+		return array(
 			'id'          => (string) $t->term_id,
 			'name'        => $t->name,
 			'slug'        => $t->slug,
@@ -89,7 +113,7 @@ class TaxonomyFeature implements Feature {
 			'count'       => (int) $t->count,
 			'description' => $t->description,
 			'parentId'    => $t->parent ? (string) $t->parent : null,
-		];
+		);
 	}
 
 	private function taxOrFail( string $taxonomy ): \WP_Taxonomy {
@@ -107,17 +131,17 @@ class TaxonomyFeature implements Feature {
 			throw new UserError( 'You do not have permission to view these terms.' );
 		}
 		$terms = get_terms(
-			[
+			array(
 				'taxonomy'   => $tax->name,
 				'hide_empty' => false,
 				'search'     => $args['search'] ?? '',
 				'number'     => min( max( (int) ( $args['first'] ?? 50 ), 1 ), 200 ),
-			]
+			)
 		);
 		if ( is_wp_error( $terms ) ) {
 			throw new UserError( $terms->get_error_message() );
 		}
-		return array_map( [ $this, 'shape' ], $terms );
+		return array_map( array( $this, 'shape' ), $terms );
 	}
 
 	/** @param array<string,mixed> $args */
@@ -130,11 +154,11 @@ class TaxonomyFeature implements Feature {
 			(string) $args['name'],
 			$tax->name,
 			array_filter(
-				[
+				array(
 					'slug'        => $args['slug'] ?? null,
 					'description' => $args['description'] ?? null,
 					'parent'      => isset( $args['parentId'] ) ? (int) $args['parentId'] : null,
-				],
+				),
 				static fn( $v ) => $v !== null
 			)
 		);

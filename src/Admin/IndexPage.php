@@ -17,7 +17,7 @@ class IndexPage {
 	private const ACTION = 'djinn_reindex_now';
 
 	public function register(): void {
-		add_action( 'admin_post_' . self::ACTION, [ $this, 'handleReindex' ] );
+		add_action( 'admin_post_' . self::ACTION, array( $this, 'handleReindex' ) );
 	}
 
 	public function handleReindex(): void {
@@ -26,7 +26,7 @@ class IndexPage {
 		}
 		check_admin_referer( self::ACTION );
 
-		$args = [ 'page' => self::CAVE ];
+		$args = array( 'page' => self::CAVE );
 		try {
 			$count        = Indexer::reindex();
 			$args['done'] = $count;
@@ -36,5 +36,4 @@ class IndexPage {
 		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
 		exit;
 	}
-
 }

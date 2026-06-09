@@ -18,47 +18,62 @@ class CustomizerFeature implements Feature {
 
 	public function register( Registry $r ): void {
 		$identity = new ObjectType(
-			[
+			array(
 				'name'        => 'SiteIdentity',
 				'description' => 'The site logo, icon, title, and tagline.',
-				'fields'      => [
-					'title'       => [ 'type' => Type::string() ],
-					'tagline'     => [ 'type' => Type::string() ],
-					'logoMediaId' => [ 'type' => Type::id() ],
-					'logoUrl'     => [ 'type' => Type::string() ],
-					'iconMediaId' => [ 'type' => Type::id() ],
-					'iconUrl'     => [ 'type' => Type::string() ],
-				],
-			]
+				'fields'      => array(
+					'title'       => array( 'type' => Type::string() ),
+					'tagline'     => array( 'type' => Type::string() ),
+					'logoMediaId' => array( 'type' => Type::id() ),
+					'logoUrl'     => array( 'type' => Type::string() ),
+					'iconMediaId' => array( 'type' => Type::id() ),
+					'iconUrl'     => array( 'type' => Type::string() ),
+				),
+			)
 		);
 		$r->setType( 'SiteIdentity', $identity );
 
-		$r->addQuery( 'siteIdentity', [
-			'type'        => $identity,
-			'description' => 'The site logo, icon, title, and tagline.',
-			'resolve'     => [ $this, 'siteIdentity' ],
-		] );
+		$r->addQuery(
+			'siteIdentity',
+			array(
+				'type'        => $identity,
+				'description' => 'The site logo, icon, title, and tagline.',
+				'resolve'     => array( $this, 'siteIdentity' ),
+			)
+		);
 
-		$r->addMutation( 'setSiteLogo', [
-			'type'        => Type::boolean(),
-			'description' => 'Set the site logo to a media item.',
-			'args'        => [ 'mediaId' => [ 'type' => Type::nonNull( Type::id() ) ] ],
-			'resolve'     => [ $this, 'setSiteLogo' ],
-		] );
-		$r->addMutation( 'setSiteIcon', [
-			'type'        => Type::boolean(),
-			'description' => 'Set the site icon (favicon) to a media item — ideally a square image at least 512×512.',
-			'args'        => [ 'mediaId' => [ 'type' => Type::nonNull( Type::id() ) ] ],
-			'resolve'     => [ $this, 'setSiteIcon' ],
-		] );
-		$r->addMutation( 'removeSiteLogo', [
-			'type'        => Type::boolean(),
-			'resolve'     => [ $this, 'removeSiteLogo' ],
-		] );
-		$r->addMutation( 'removeSiteIcon', [
-			'type'        => Type::boolean(),
-			'resolve'     => [ $this, 'removeSiteIcon' ],
-		] );
+		$r->addMutation(
+			'setSiteLogo',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Set the site logo to a media item.',
+				'args'        => array( 'mediaId' => array( 'type' => Type::nonNull( Type::id() ) ) ),
+				'resolve'     => array( $this, 'setSiteLogo' ),
+			)
+		);
+		$r->addMutation(
+			'setSiteIcon',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Set the site icon (favicon) to a media item — ideally a square image at least 512×512.',
+				'args'        => array( 'mediaId' => array( 'type' => Type::nonNull( Type::id() ) ) ),
+				'resolve'     => array( $this, 'setSiteIcon' ),
+			)
+		);
+		$r->addMutation(
+			'removeSiteLogo',
+			array(
+				'type'    => Type::boolean(),
+				'resolve' => array( $this, 'removeSiteLogo' ),
+			)
+		);
+		$r->addMutation(
+			'removeSiteIcon',
+			array(
+				'type'    => Type::boolean(),
+				'resolve' => array( $this, 'removeSiteIcon' ),
+			)
+		);
 	}
 
 	private function gate(): void {
@@ -78,14 +93,14 @@ class CustomizerFeature implements Feature {
 		$this->gate();
 		$logo = (int) get_theme_mod( 'custom_logo' );
 		$icon = (int) get_option( 'site_icon' );
-		return [
+		return array(
 			'title'       => get_option( 'blogname' ),
 			'tagline'     => get_option( 'blogdescription' ),
 			'logoMediaId' => $logo ? (string) $logo : null,
 			'logoUrl'     => $logo ? (string) wp_get_attachment_url( $logo ) : null,
 			'iconMediaId' => $icon ? (string) $icon : null,
 			'iconUrl'     => $icon ? (string) wp_get_attachment_url( $icon ) : null,
-		];
+		);
 	}
 
 	/** @param array<string,mixed> $args */

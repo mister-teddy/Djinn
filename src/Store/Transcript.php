@@ -19,7 +19,7 @@ class Transcript {
 
 	/** @return array<int,array<string,mixed>> */
 	public static function of( int $chatId ): array {
-		$out      = [];
+		$out      = array();
 		$awaiting = -1; // index in $out of a run_graphql action awaiting its result; -2 = ignore (search_schema)
 
 		foreach ( Repository::getMessages( $chatId ) as $entry ) {
@@ -27,9 +27,12 @@ class Transcript {
 
 			if ( $role === 'user' ) {
 				$content     = (string) ( $entry['content'] ?? '' );
-				$attachments = $entry['attachments'] ?? [];
+				$attachments = $entry['attachments'] ?? array();
 				if ( $content !== '' || $attachments ) {
-					$msg = [ 'role' => 'user', 'content' => $content ];
+					$msg = array(
+						'role'    => 'user',
+						'content' => $content,
+					);
 					if ( $attachments ) {
 						$msg['attachments'] = $attachments;
 					}
@@ -51,9 +54,12 @@ class Transcript {
 			}
 
 			if ( ! empty( $entry['content'] ) ) {
-				$out[] = [ 'role' => 'assistant', 'content' => (string) $entry['content'] ];
+				$out[] = array(
+					'role'    => 'assistant',
+					'content' => (string) $entry['content'],
+				);
 			}
-			foreach ( $entry['tool_calls'] ?? [] as $call ) {
+			foreach ( $entry['tool_calls'] ?? array() as $call ) {
 				$name = $call['name'] ?? '';
 				if ( $name === 'run_graphql' ) {
 					$out[]    = self::baseAction( $call );
@@ -66,15 +72,15 @@ class Transcript {
 
 		// A run_graphql action that never received a result is a mutation still awaiting a grant.
 		if ( $awaiting >= 0 ) {
-			$open   = Repository::openPending( $chatId );
-			$action = $out[ $awaiting ];
-			$out[ $awaiting ] = [
+			$open             = Repository::openPending( $chatId );
+			$action           = $out[ $awaiting ];
+			$out[ $awaiting ] = array(
 				'role'       => 'pending',
 				'pending_id' => $open ? (int) $open['id'] : 0,
 				'summary'    => $action['summary'] ?? ( $open['summary'] ?? '' ),
 				'operation'  => $action['operation'],
 				'variables'  => $action['variables'],
-			];
+			);
 		}
 
 		return $out;
@@ -88,7 +94,7 @@ class Transcript {
 	 * @return array<string,mixed>
 	 */
 	private static function baseAction( array $call ): array {
-		$args      = $call['arguments'] ?? [];
+		$args      = $call['arguments'] ?? array();
 		$operation = (string) ( $args['operation'] ?? '' );
 
 		try {
@@ -97,13 +103,13 @@ class Transcript {
 			$kind = 'query';
 		}
 
-		$entry = [
+		$entry = array(
 			'role'      => 'action',
 			'kind'      => $kind,
 			'status'    => $kind === 'mutation' ? 'granted' : 'ok', // refined once the result arrives
 			'operation' => $operation,
-			'variables' => (array) ( $args['variables'] ?? [] ),
-		];
+			'variables' => (array) ( $args['variables'] ?? array() ),
+		);
 		if ( ! empty( $args['summary'] ) ) {
 			$entry['summary'] = (string) $args['summary'];
 		}

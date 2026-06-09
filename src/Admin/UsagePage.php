@@ -16,7 +16,7 @@ class UsagePage {
 	private const ACTION = 'djinn_reset_usage';
 
 	public function register(): void {
-		add_action( 'admin_post_' . self::ACTION, [ $this, 'handleReset' ] );
+		add_action( 'admin_post_' . self::ACTION, array( $this, 'handleReset' ) );
 	}
 
 	public function handleReset(): void {
@@ -25,8 +25,15 @@ class UsagePage {
 		}
 		check_admin_referer( self::ACTION );
 		Repository::clearUsage();
-		wp_safe_redirect( add_query_arg( [ 'page' => self::CAVE, 'reset' => '1' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'  => self::CAVE,
+					'reset' => '1',
+				),
+				admin_url( 'admin.php' )
+			)
+		);
 		exit;
 	}
-
 }

@@ -30,15 +30,15 @@ class Settings {
 
 	/** @return array{provider:string,api_key:string,site_token:string,chat_model:string,embedding_model:string} */
 	public static function all(): array {
-		$defaults = [
+		$defaults = array(
 			'provider'        => 'openai',
 			'api_key'         => '',
 			'site_token'      => '',
 			'chat_model'      => '',
 			'embedding_model' => '',
-		];
-		$stored = get_option( self::OPTION, [] );
-		return array_merge( $defaults, is_array( $stored ) ? $stored : [] );
+		);
+		$stored   = get_option( self::OPTION, array() );
+		return array_merge( $defaults, is_array( $stored ) ? $stored : array() );
 	}
 
 	/** The effective provider (default openai; 'proxy' routes through the hosted gateway). */
@@ -73,8 +73,8 @@ class Settings {
 
 	/** Persist the per-site proxy token (used by automatic ORG site registration). */
 	public static function storeSiteToken( string $token ): void {
-		$stored = get_option( self::OPTION, [] );
-		$stored = is_array( $stored ) ? $stored : [];
+		$stored               = get_option( self::OPTION, array() );
+		$stored               = is_array( $stored ) ? $stored : array();
 		$stored['site_token'] = $token;
 		update_option( self::OPTION, $stored );
 	}
@@ -125,17 +125,17 @@ class Settings {
 		register_setting(
 			'djinn',
 			self::OPTION,
-			[
+			array(
 				'type'              => 'array',
-				'sanitize_callback' => [ self::class, 'sanitize' ],
-				'default'           => [],
-			]
+				'sanitize_callback' => array( self::class, 'sanitize' ),
+				'default'           => array(),
+			)
 		);
 	}
 
 	/** @param mixed $input */
 	public static function sanitize( $input ): array {
-		$input   = is_array( $input ) ? $input : [];
+		$input   = is_array( $input ) ? $input : array();
 		$current = self::all();
 
 		$provider = isset( $input['provider'] ) && is_string( $input['provider'] ) && Providers::has( $input['provider'] )
@@ -151,12 +151,12 @@ class Settings {
 			? trim( (string) $input['site_token'] )
 			: $current['site_token'];
 
-		return [
+		return array(
 			'provider'        => $provider,
 			'api_key'         => $api_key,
 			'site_token'      => $site_token,
 			'chat_model'      => isset( $input['chat_model'] ) ? sanitize_text_field( (string) $input['chat_model'] ) : '',
 			'embedding_model' => isset( $input['embedding_model'] ) ? sanitize_text_field( (string) $input['embedding_model'] ) : '',
-		];
+		);
 	}
 }

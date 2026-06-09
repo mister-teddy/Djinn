@@ -20,9 +20,9 @@ class AdminPage {
 	private const CAVE_SLUG = 'djinn-cave';
 
 	public function register(): void {
-		add_action( 'admin_menu', [ $this, 'menu' ] );
-		add_action( 'admin_init', [ Settings::class, 'register' ] );
-		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue' ] );
+		add_action( 'admin_menu', array( $this, 'menu' ) );
+		add_action( 'admin_init', array( Settings::class, 'register' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 	}
 
 	public function menu(): void {
@@ -31,12 +31,12 @@ class AdminPage {
 			'Djinn' . IndexStatus::menuBubble(),
 			'manage_options',
 			self::SLUG,
-			[ $this, 'renderApp' ],
+			array( $this, 'renderApp' ),
 			self::menuIcon(),
 			58
 		);
-		add_submenu_page( self::SLUG, 'Djinn', 'Lamp', 'manage_options', self::SLUG, [ $this, 'renderApp' ] );
-		add_submenu_page( self::SLUG, 'Cave of Wonders', 'Cave of Wonders', 'manage_options', self::CAVE_SLUG, [ $this, 'renderCave' ] );
+		add_submenu_page( self::SLUG, 'Djinn', 'Lamp', 'manage_options', self::SLUG, array( $this, 'renderApp' ) );
+		add_submenu_page( self::SLUG, 'Cave of Wonders', 'Cave of Wonders', 'manage_options', self::CAVE_SLUG, array( $this, 'renderCave' ) );
 	}
 
 	public function renderApp(): void {
@@ -70,9 +70,12 @@ class AdminPage {
 		if ( is_readable( DJINN_DIR . 'build/lamp.asset.php' ) ) {
 			return true;
 		}
-		add_action( 'admin_notices', static function () {
-			echo '<div class="notice notice-error"><p><strong>Djinn:</strong> the front-end is not built. Run <code>npm install &amp;&amp; npm run build</code> in the plugin directory.</p></div>';
-		} );
+		add_action(
+			'admin_notices',
+			static function () {
+				echo '<div class="notice notice-error"><p><strong>Djinn:</strong> the front-end is not built. Run <code>npm install &amp;&amp; npm run build</code> in the plugin directory.</p></div>';
+			}
+		);
 		return false;
 	}
 
@@ -81,7 +84,7 @@ class AdminPage {
 		wp_register_style(
 			'djinn-cardo',
 			'https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&display=swap',
-			[],
+			array(),
 			null
 		);
 	}
@@ -94,7 +97,7 @@ class AdminPage {
 		$asset  = require DJINN_DIR . "build/{$entry}.asset.php";
 		$handle = "djinn-{$entry}";
 		wp_enqueue_script( $handle, DJINN_URL . "build/{$entry}.js", $asset['dependencies'], $asset['version'], true );
-		wp_enqueue_style( $handle, DJINN_URL . "build/{$entry}.css", [ 'djinn-cardo' ], $asset['version'] );
+		wp_enqueue_style( $handle, DJINN_URL . "build/{$entry}.css", array( 'djinn-cardo' ), $asset['version'] );
 		wp_style_add_data( $handle, 'rtl', 'replace' );
 		return $handle;
 	}
@@ -109,7 +112,7 @@ class AdminPage {
 		wp_localize_script(
 			$handle,
 			'DjinnCave',
-			[
+			array(
 				'restUrl'      => esc_url_raw( rest_url( 'djinn/v1' ) ),
 				'gqlUrl'       => esc_url_raw( rest_url( 'djinn/v1/graphql' ) ),
 				'nonce'        => wp_create_nonce( 'wp_rest' ),
@@ -121,7 +124,7 @@ class AdminPage {
 				'providers'    => Providers::forClient(),
 				'privacyUrl'   => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
 				'proUrl'       => esc_url_raw( Settings::proUrl() ),
-			]
+			)
 		);
 		if ( Settings::usesProxy() ) {
 			$this->enqueueBilling();
@@ -138,7 +141,7 @@ class AdminPage {
 		wp_localize_script(
 			$handle,
 			'Djinn',
-			[
+			array(
 				'restUrl'     => esc_url_raw( rest_url( 'djinn/v1' ) ),
 				'gqlUrl'      => esc_url_raw( rest_url( 'djinn/v1/graphql' ) ),
 				'nonce'       => wp_create_nonce( 'wp_rest' ),
@@ -150,18 +153,17 @@ class AdminPage {
 				'indexUrl'    => admin_url( 'admin.php?page=' . self::CAVE_SLUG ),
 				'siteName'    => get_option( 'blogname' ),
 				'privacyUrl'  => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
-			]
+			)
 		);
 	}
 
 	/** Load Polar's embed SDK so the Cave's payment block can open checkout (it drives it directly). */
 	private function enqueueBilling(): void {
-		wp_enqueue_script( 'polar-embed', 'https://cdn.jsdelivr.net/npm/@polar-sh/checkout@latest/dist/embed.global.js', [], null, true );
+		wp_enqueue_script( 'polar-embed', 'https://cdn.jsdelivr.net/npm/@polar-sh/checkout@latest/dist/embed.global.js', array(), null, true );
 	}
 
 	/** The Cave of Wonders — Account · Capabilities · Spend, mounted by the cave bundle. */
 	public function renderCave(): void {
 		echo '<div class="wrap djinn-wrap djinn-cave-wrap djinn-app"><div id="djinn-cave-root"></div></div>';
 	}
-
 }

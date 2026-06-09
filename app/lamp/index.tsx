@@ -4,4 +4,4 @@ import '../styles/chrome.css';
 import { mount } from '@shared/mount';
 import { App } from './App';
 
-mount( 'djinn-root', <App /> );
+mount('djinn-root', <App />);

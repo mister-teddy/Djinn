@@ -20,7 +20,7 @@ WP := $(WPENV) run cli wp
 # wp-env mounts this directory as a plugin under its folder name (case-sensitive).
 SLUG := $(notdir $(CURDIR))
 
-.PHONY: up start restart check activate seed lamp cli logs down destroy open docs dist release build watch schema
+.PHONY: up start restart check activate seed lamp cli logs down destroy open docs dist release build watch schema fmt
 
 up: start activate seed
 	@echo ""
@@ -107,6 +107,14 @@ open:
 # phones (→ djinn-docs-compact.pdf).
 docs:
 	bash bin/build-docs.sh "$(or $(SIZE),$(filter-out docs,$(MAKECMDGOALS)))"
+
+# Format everything the repo owns, in one shot: the proxy's Rust via `cargo fmt` (when the proxy is
+# checked out alongside the plugin, as in this monorepo — same reach as `make docs`), the front-end
+# via Prettier, and PHP via phpcbf (WordPress Coding Standards).
+fmt:
+	@if [ -f ../Cargo.toml ]; then echo "→ cargo fmt (proxy)"; ( cd .. && cargo fmt ); else echo "→ proxy not present; skipping cargo fmt"; fi
+	@echo "→ prettier (front-end)"; npm run format --if-present
+	@if [ -x vendor/bin/phpcbf ]; then echo "→ phpcbf (PHP)"; vendor/bin/phpcbf || true; else echo "→ phpcbf not installed (run: composer install)"; fi
 
 # Build an installable plugin ZIP (excludes the proxy, dev tooling, build artifacts).
 # `make dist pro` or `make dist EDITION=pro` for the paid build; default is the free WordPress.org build.

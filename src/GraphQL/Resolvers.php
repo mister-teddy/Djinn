@@ -15,7 +15,7 @@ class Resolvers {
 
 	/** @param \WP_Post $post */
 	private function shapePost( $post ): array {
-		return [
+		return array(
 			'id'       => (string) $post->ID,
 			'title'    => get_the_title( $post ),
 			'content'  => $post->post_content,
@@ -27,31 +27,31 @@ class Resolvers {
 			'editUrl'  => (string) get_edit_post_link( $post->ID, 'raw' ),
 			'date'     => $post->post_date_gmt,
 			'authorId' => (string) $post->post_author,
-		];
+		);
 	}
 
 	public function siteInfo(): array {
-		return [
+		return array(
 			'title'       => get_option( 'blogname' ),
 			'description' => get_option( 'blogdescription' ),
 			'url'         => home_url(),
 			'adminEmail'  => current_user_can( 'manage_options' ) ? get_option( 'admin_email' ) : null,
 			'language'    => get_bloginfo( 'language' ),
-		];
+		);
 	}
 
 	/** @param array<string,mixed> $args */
 	public function posts( $root, array $args ): array {
 		$query = new \WP_Query(
-			[
+			array(
 				'post_type'      => $args['postType'] ?? 'post',
 				'post_status'    => $args['status'] ?? 'any',
 				's'              => $args['search'] ?? '',
 				'posts_per_page' => min( max( (int) ( $args['first'] ?? 10 ), 1 ), 100 ),
 				'no_found_rows'  => true,
-			]
+			)
 		);
-		return array_map( [ $this, 'shapePost' ], $query->posts );
+		return array_map( array( $this, 'shapePost' ), $query->posts );
 	}
 
 	/** @param array<string,mixed> $args */
@@ -72,18 +72,18 @@ class Resolvers {
 			throw new UserError( 'You do not have permission to list users.' );
 		}
 		$users = get_users(
-			[
+			array(
 				'number' => min( max( (int) ( $args['first'] ?? 10 ), 1 ), 100 ),
 				'search' => isset( $args['search'] ) ? '*' . $args['search'] . '*' : '',
-			]
+			)
 		);
 		return array_map(
-			static fn( $u ) => [
+			static fn( $u ) => array(
 				'id'          => (string) $u->ID,
 				'displayName' => $u->display_name,
 				'email'       => $u->user_email,
 				'roles'       => $u->roles,
-			],
+			),
 			$users
 		);
 	}
@@ -109,13 +109,13 @@ class Resolvers {
 			throw new UserError( "You do not have permission to create '$postType' entries." );
 		}
 		$id = wp_insert_post(
-			[
+			array(
 				'post_type'    => $postType,
 				'post_title'   => $input['title'] ?? '',
 				'post_content' => $input['content'] ?? '',
 				'post_excerpt' => $input['excerpt'] ?? '',
 				'post_status'  => $input['status'] ?? 'draft',
-			],
+			),
 			true
 		);
 		if ( is_wp_error( $id ) ) {
@@ -134,8 +134,13 @@ class Resolvers {
 			throw new UserError( 'You do not have permission to edit this post.' );
 		}
 		$input  = $args['input'];
-		$update = [ 'ID' => $id ];
-		foreach ( [ 'title' => 'post_title', 'content' => 'post_content', 'excerpt' => 'post_excerpt', 'status' => 'post_status' ] as $in => $col ) {
+		$update = array( 'ID' => $id );
+		foreach ( array(
+			'title'   => 'post_title',
+			'content' => 'post_content',
+			'excerpt' => 'post_excerpt',
+			'status'  => 'post_status',
+		) as $in => $col ) {
 			if ( isset( $input[ $in ] ) ) {
 				$update[ $col ] = $input[ $in ];
 			}

@@ -22,63 +22,100 @@ class SiteEditorFeature implements Feature {
 
 	public function register( Registry $r ): void {
 		$template = new ObjectType(
-			[
+			array(
 				'name'        => 'SiteTemplate',
 				'description' => 'A block-theme template or template part.',
-				'fields'      => [
-					'id'          => [ 'type' => Type::id(), 'description' => 'e.g. "twentytwentyfour//home" — pass to update.' ],
-					'slug'        => [ 'type' => Type::string() ],
-					'title'       => [ 'type' => Type::string() ],
-					'description' => [ 'type' => Type::string() ],
-					'type'        => [ 'type' => Type::string(), 'description' => 'wp_template or wp_template_part.' ],
-					'source'      => [ 'type' => Type::string(), 'description' => 'theme (from files) or custom (edited).' ],
-					'content'     => [ 'type' => Type::string(), 'description' => 'Stored block markup. Often just a `wp:pattern` reference — select resolvedContent to see what it renders.' ],
-					'resolvedContent' => [
+				'fields'      => array(
+					'id'              => array(
+						'type'        => Type::id(),
+						'description' => 'e.g. "twentytwentyfour//home" — pass to update.',
+					),
+					'slug'            => array( 'type' => Type::string() ),
+					'title'           => array( 'type' => Type::string() ),
+					'description'     => array( 'type' => Type::string() ),
+					'type'            => array(
+						'type'        => Type::string(),
+						'description' => 'wp_template or wp_template_part.',
+					),
+					'source'          => array(
+						'type'        => Type::string(),
+						'description' => 'theme (from files) or custom (edited).',
+					),
+					'content'         => array(
+						'type'        => Type::string(),
+						'description' => 'Stored block markup. Often just a `wp:pattern` reference — select resolvedContent to see what it renders.',
+					),
+					'resolvedContent' => array(
 						'type'        => Type::string(),
 						'description' => 'Block markup with every `wp:pattern` reference expanded inline — the real contents (links, text, images). Read this to answer "what is in" a part, or edit it and pass the result back to updateSiteTemplatePart.',
 						'resolve'     => fn( array $parent ): string => BlockMarkup::expandPatterns( (string) ( $parent['content'] ?? '' ) ),
-					],
-				],
-			]
+					),
+				),
+			)
 		);
 		$r->setType( 'SiteTemplate', $template );
 
-		$r->addQuery( 'siteTemplates', [
-			'type'        => Type::listOf( $template ),
-			'description' => 'List block-theme templates (home, single, archive, 404, …).',
-			'args'        => [ 'slug' => [ 'type' => Type::string(), 'description' => 'Filter to one template by slug, e.g. "home".' ] ],
-			'resolve'     => fn( $root, array $args ) => $this->templates( 'wp_template', $args['slug'] ?? null ),
-		] );
-		$r->addQuery( 'siteTemplateParts', [
-			'type'        => Type::listOf( $template ),
-			'description' => 'List block-theme template parts (header, footer, sidebar, …).',
-			'args'        => [ 'slug' => [ 'type' => Type::string(), 'description' => 'Filter to one part by slug, e.g. "footer".' ] ],
-			'resolve'     => fn( $root, array $args ) => $this->templates( 'wp_template_part', $args['slug'] ?? null ),
-		] );
-		$r->addQuery( 'globalStylesCss', [
-			'type'        => Type::string(),
-			'description' => "The active block theme's generated global styles CSS (theme.json output).",
-			'resolve'     => [ $this, 'globalStylesCss' ],
-		] );
+		$r->addQuery(
+			'siteTemplates',
+			array(
+				'type'        => Type::listOf( $template ),
+				'description' => 'List block-theme templates (home, single, archive, 404, …).',
+				'args'        => array(
+					'slug' => array(
+						'type'        => Type::string(),
+						'description' => 'Filter to one template by slug, e.g. "home".',
+					),
+				),
+				'resolve'     => fn( $root, array $args ) => $this->templates( 'wp_template', $args['slug'] ?? null ),
+			)
+		);
+		$r->addQuery(
+			'siteTemplateParts',
+			array(
+				'type'        => Type::listOf( $template ),
+				'description' => 'List block-theme template parts (header, footer, sidebar, …).',
+				'args'        => array(
+					'slug' => array(
+						'type'        => Type::string(),
+						'description' => 'Filter to one part by slug, e.g. "footer".',
+					),
+				),
+				'resolve'     => fn( $root, array $args ) => $this->templates( 'wp_template_part', $args['slug'] ?? null ),
+			)
+		);
+		$r->addQuery(
+			'globalStylesCss',
+			array(
+				'type'        => Type::string(),
+				'description' => "The active block theme's generated global styles CSS (theme.json output).",
+				'resolve'     => array( $this, 'globalStylesCss' ),
+			)
+		);
 
-		$r->addMutation( 'updateSiteTemplate', [
-			'type'        => Type::boolean(),
-			'description' => 'Replace a template\'s block markup. Pass the id from siteTemplates and the full new content.',
-			'args'        => [
-				'id'      => [ 'type' => Type::nonNull( Type::id() ) ],
-				'content' => [ 'type' => Type::nonNull( Type::string() ) ],
-			],
-			'resolve'     => fn( $root, array $args ) => $this->updateTemplate( 'wp_template', (string) $args['id'], (string) $args['content'] ),
-		] );
-		$r->addMutation( 'updateSiteTemplatePart', [
-			'type'        => Type::boolean(),
-			'description' => 'Replace a template part\'s block markup (e.g. the header or footer). To edit a part that is only a `wp:pattern` reference, read its resolvedContent, change that, and pass the whole result here — it saves as a custom override.',
-			'args'        => [
-				'id'      => [ 'type' => Type::nonNull( Type::id() ) ],
-				'content' => [ 'type' => Type::nonNull( Type::string() ) ],
-			],
-			'resolve'     => fn( $root, array $args ) => $this->updateTemplate( 'wp_template_part', (string) $args['id'], (string) $args['content'] ),
-		] );
+		$r->addMutation(
+			'updateSiteTemplate',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Replace a template\'s block markup. Pass the id from siteTemplates and the full new content.',
+				'args'        => array(
+					'id'      => array( 'type' => Type::nonNull( Type::id() ) ),
+					'content' => array( 'type' => Type::nonNull( Type::string() ) ),
+				),
+				'resolve'     => fn( $root, array $args ) => $this->updateTemplate( 'wp_template', (string) $args['id'], (string) $args['content'] ),
+			)
+		);
+		$r->addMutation(
+			'updateSiteTemplatePart',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Replace a template part\'s block markup (e.g. the header or footer). To edit a part that is only a `wp:pattern` reference, read its resolvedContent, change that, and pass the whole result here — it saves as a custom override.',
+				'args'        => array(
+					'id'      => array( 'type' => Type::nonNull( Type::id() ) ),
+					'content' => array( 'type' => Type::nonNull( Type::string() ) ),
+				),
+				'resolve'     => fn( $root, array $args ) => $this->updateTemplate( 'wp_template_part', (string) $args['id'], (string) $args['content'] ),
+			)
+		);
 	}
 
 	private function gate(): void {
@@ -91,12 +128,12 @@ class SiteEditorFeature implements Feature {
 	private function templates( string $type, ?string $slug = null ): array {
 		$this->gate();
 		if ( ! function_exists( 'get_block_templates' ) ) {
-			return [];
+			return array();
 		}
-		$query = null !== $slug && '' !== $slug ? [ 'slug__in' => [ $slug ] ] : [];
-		$out   = [];
+		$query = null !== $slug && '' !== $slug ? array( 'slug__in' => array( $slug ) ) : array();
+		$out   = array();
 		foreach ( get_block_templates( $query, $type ) as $t ) {
-			$out[] = [
+			$out[] = array(
 				'id'          => $t->id,
 				'slug'        => $t->slug,
 				'title'       => is_string( $t->title ) ? $t->title : ( $t->slug ),
@@ -104,7 +141,7 @@ class SiteEditorFeature implements Feature {
 				'type'        => $t->type,
 				'source'      => $t->source,
 				'content'     => $t->content,
-			];
+			);
 		}
 		return $out;
 	}
@@ -118,7 +155,7 @@ class SiteEditorFeature implements Feature {
 		$this->gate();
 		$endpoint = $type === 'wp_template_part' ? '/wp/v2/template-parts/' : '/wp/v2/templates/';
 		$request  = new \WP_REST_Request( 'POST', $endpoint . $id );
-		$request->set_body_params( [ 'content' => $content ] );
+		$request->set_body_params( array( 'content' => $content ) );
 		$response = rest_do_request( $request );
 		if ( $response->is_error() ) {
 			throw new UserError( $response->as_error()->get_error_message() );

@@ -20,7 +20,7 @@ use GraphQL\Type\Schema;
  */
 class SchemaFactory {
 
-	private static ?Schema $schema = null;
+	private static ?Schema $schema     = null;
 	private static ?Registry $registry = null;
 
 	public static function build(): Schema {
@@ -29,64 +29,100 @@ class SchemaFactory {
 		}
 
 		$post = new ObjectType(
-			[
+			array(
 				'name'        => 'Post',
 				'description' => 'A post, page, or any post-type entry.',
-				'fields'      => [
-					'id'       => [ 'type' => Type::id(), 'description' => 'The post ID.' ],
-					'title'    => [ 'type' => Type::string(), 'description' => 'The post title.' ],
-					'content'  => [ 'type' => Type::string(), 'description' => 'The raw post content (HTML/blocks).' ],
-					'excerpt'  => [ 'type' => Type::string() ],
-					'status'   => [ 'type' => Type::string(), 'description' => 'publish, draft, pending, private, etc.' ],
-					'type'     => [ 'type' => Type::string(), 'description' => 'The post type (post, page, ...).' ],
-					'slug'     => [ 'type' => Type::string() ],
-					'link'     => [ 'type' => Type::string(), 'description' => 'The public permalink (to view).' ],
-					'editUrl'  => [ 'type' => Type::string(), 'description' => 'The wp-admin edit URL.' ],
-					'date'     => [ 'type' => Type::string(), 'description' => 'Publish date (GMT, ISO-ish).' ],
-					'authorId' => [ 'type' => Type::id() ],
-				],
-			]
+				'fields'      => array(
+					'id'       => array(
+						'type'        => Type::id(),
+						'description' => 'The post ID.',
+					),
+					'title'    => array(
+						'type'        => Type::string(),
+						'description' => 'The post title.',
+					),
+					'content'  => array(
+						'type'        => Type::string(),
+						'description' => 'The raw post content (HTML/blocks).',
+					),
+					'excerpt'  => array( 'type' => Type::string() ),
+					'status'   => array(
+						'type'        => Type::string(),
+						'description' => 'publish, draft, pending, private, etc.',
+					),
+					'type'     => array(
+						'type'        => Type::string(),
+						'description' => 'The post type (post, page, ...).',
+					),
+					'slug'     => array( 'type' => Type::string() ),
+					'link'     => array(
+						'type'        => Type::string(),
+						'description' => 'The public permalink (to view).',
+					),
+					'editUrl'  => array(
+						'type'        => Type::string(),
+						'description' => 'The wp-admin edit URL.',
+					),
+					'date'     => array(
+						'type'        => Type::string(),
+						'description' => 'Publish date (GMT, ISO-ish).',
+					),
+					'authorId' => array( 'type' => Type::id() ),
+				),
+			)
 		);
 
 		$user = new ObjectType(
-			[
+			array(
 				'name'        => 'User',
 				'description' => 'A WordPress user.',
-				'fields'      => [
-					'id'          => [ 'type' => Type::id() ],
-					'displayName' => [ 'type' => Type::string() ],
-					'email'       => [ 'type' => Type::string() ],
-					'roles'       => [ 'type' => Type::listOf( Type::string() ) ],
-				],
-			]
+				'fields'      => array(
+					'id'          => array( 'type' => Type::id() ),
+					'displayName' => array( 'type' => Type::string() ),
+					'email'       => array( 'type' => Type::string() ),
+					'roles'       => array( 'type' => Type::listOf( Type::string() ) ),
+				),
+			)
 		);
 
 		$siteInfo = new ObjectType(
-			[
+			array(
 				'name'        => 'SiteInfo',
 				'description' => 'Top-level site settings.',
-				'fields'      => [
-					'title'       => [ 'type' => Type::string(), 'description' => 'Site title (blogname).' ],
-					'description' => [ 'type' => Type::string(), 'description' => 'Tagline (blogdescription).' ],
-					'url'         => [ 'type' => Type::string() ],
-					'adminEmail'  => [ 'type' => Type::string() ],
-					'language'    => [ 'type' => Type::string() ],
-				],
-			]
+				'fields'      => array(
+					'title'       => array(
+						'type'        => Type::string(),
+						'description' => 'Site title (blogname).',
+					),
+					'description' => array(
+						'type'        => Type::string(),
+						'description' => 'Tagline (blogdescription).',
+					),
+					'url'         => array( 'type' => Type::string() ),
+					'adminEmail'  => array( 'type' => Type::string() ),
+					'language'    => array( 'type' => Type::string() ),
+				),
+			)
 		);
 
 		$postInput = new InputObjectType(
-			[
+			array(
 				'name'        => 'PostInput',
 				'description' => 'Fields for creating or updating a post/page.',
-				'fields'      => [
-					'title'    => [ 'type' => Type::string() ],
-					'content'  => [ 'type' => Type::string() ],
-					'excerpt'  => [ 'type' => Type::string() ],
-					'status'   => [ 'type' => Type::string(), 'description' => 'publish, draft (default), pending, private.' ],
-					'postType' => [ 'type' => Type::string(), 'description' => 'post (default) or page or a registered type.' ],
-				],
-			]
+				'fields'      => array(
+					'title'    => array( 'type' => Type::string() ),
+					'content'  => array( 'type' => Type::string() ),
+					'excerpt'  => array( 'type' => Type::string() ),
+					'status'   => array(
+						'type'        => Type::string(),
+						'description' => 'publish, draft (default), pending, private.',
+					),
+					'postType' => array(
+						'type'        => Type::string(),
+						'description' => 'post (default) or page or a registered type.',
+					),
+				),
+			)
 		);
 
 		$res = new Resolvers();
@@ -98,77 +134,122 @@ class SchemaFactory {
 
 		// --- Core content/site fields -------------------------------------
 		$reg->setCurrentDomain( 'Core' );
-		$reg->addQuery( 'siteInfo', [ 'type' => $siteInfo, 'resolve' => [ $res, 'siteInfo' ] ] );
-		$reg->addQuery( 'posts', [
-			'type'    => Type::listOf( $post ),
-			'args'    => [
-				'first'    => [ 'type' => Type::int(), 'defaultValue' => 10 ],
-				'postType' => [ 'type' => Type::string(), 'defaultValue' => 'post' ],
-				'status'   => [ 'type' => Type::string() ],
-				'search'   => [ 'type' => Type::string() ],
-			],
-			'resolve' => [ $res, 'posts' ],
-		] );
-		$reg->addQuery( 'post', [
-			'type'    => $post,
-			'args'    => [ 'id' => [ 'type' => Type::nonNull( Type::id() ) ] ],
-			'resolve' => [ $res, 'post' ],
-		] );
-		$reg->addQuery( 'users', [
-			'type'    => Type::listOf( $user ),
-			'args'    => [
-				'first'  => [ 'type' => Type::int(), 'defaultValue' => 10 ],
-				'search' => [ 'type' => Type::string() ],
-			],
-			'resolve' => [ $res, 'users' ],
-		] );
-		$reg->addQuery( 'option', [
-			'type'        => Type::string(),
-			'description' => 'Read a wp_options value by name. Returns the value as a string (JSON-encoded if not scalar).',
-			'args'        => [ 'name' => [ 'type' => Type::nonNull( Type::string() ) ] ],
-			'resolve'     => [ $res, 'option' ],
-		] );
+		$reg->addQuery(
+			'siteInfo',
+			array(
+				'type'    => $siteInfo,
+				'resolve' => array( $res, 'siteInfo' ),
+			)
+		);
+		$reg->addQuery(
+			'posts',
+			array(
+				'type'    => Type::listOf( $post ),
+				'args'    => array(
+					'first'    => array(
+						'type'         => Type::int(),
+						'defaultValue' => 10,
+					),
+					'postType' => array(
+						'type'         => Type::string(),
+						'defaultValue' => 'post',
+					),
+					'status'   => array( 'type' => Type::string() ),
+					'search'   => array( 'type' => Type::string() ),
+				),
+				'resolve' => array( $res, 'posts' ),
+			)
+		);
+		$reg->addQuery(
+			'post',
+			array(
+				'type'    => $post,
+				'args'    => array( 'id' => array( 'type' => Type::nonNull( Type::id() ) ) ),
+				'resolve' => array( $res, 'post' ),
+			)
+		);
+		$reg->addQuery(
+			'users',
+			array(
+				'type'    => Type::listOf( $user ),
+				'args'    => array(
+					'first'  => array(
+						'type'         => Type::int(),
+						'defaultValue' => 10,
+					),
+					'search' => array( 'type' => Type::string() ),
+				),
+				'resolve' => array( $res, 'users' ),
+			)
+		);
+		$reg->addQuery(
+			'option',
+			array(
+				'type'        => Type::string(),
+				'description' => 'Read a wp_options value by name. Returns the value as a string (JSON-encoded if not scalar).',
+				'args'        => array( 'name' => array( 'type' => Type::nonNull( Type::string() ) ) ),
+				'resolve'     => array( $res, 'option' ),
+			)
+		);
 
-		$reg->addMutation( 'createPost', [
-			'type'    => $post,
-			'args'    => [ 'input' => [ 'type' => Type::nonNull( $postInput ) ] ],
-			'resolve' => [ $res, 'createPost' ],
-		] );
-		$reg->addMutation( 'updatePost', [
-			'type'    => $post,
-			'args'    => [
-				'id'    => [ 'type' => Type::nonNull( Type::id() ) ],
-				'input' => [ 'type' => Type::nonNull( $postInput ) ],
-			],
-			'resolve' => [ $res, 'updatePost' ],
-		] );
-		$reg->addMutation( 'deletePost', [
-			'type'    => Type::boolean(),
-			'args'    => [
-				'id'    => [ 'type' => Type::nonNull( Type::id() ) ],
-				'force' => [ 'type' => Type::boolean(), 'defaultValue' => false ],
-			],
-			'resolve' => [ $res, 'deletePost' ],
-		] );
+		$reg->addMutation(
+			'createPost',
+			array(
+				'type'    => $post,
+				'args'    => array( 'input' => array( 'type' => Type::nonNull( $postInput ) ) ),
+				'resolve' => array( $res, 'createPost' ),
+			)
+		);
+		$reg->addMutation(
+			'updatePost',
+			array(
+				'type'    => $post,
+				'args'    => array(
+					'id'    => array( 'type' => Type::nonNull( Type::id() ) ),
+					'input' => array( 'type' => Type::nonNull( $postInput ) ),
+				),
+				'resolve' => array( $res, 'updatePost' ),
+			)
+		);
+		$reg->addMutation(
+			'deletePost',
+			array(
+				'type'    => Type::boolean(),
+				'args'    => array(
+					'id'    => array( 'type' => Type::nonNull( Type::id() ) ),
+					'force' => array(
+						'type'         => Type::boolean(),
+						'defaultValue' => false,
+					),
+				),
+				'resolve' => array( $res, 'deletePost' ),
+			)
+		);
 		// Site-settings writes are Pro: Free can read options/site info but changes only content.
 		if ( Settings::isPro() ) {
-			$reg->addMutation( 'updateOption', [
-				'type'        => Type::boolean(),
-				'description' => 'Set a wp_options value. Value is a string (use JSON for non-scalar values).',
-				'args'        => [
-					'name'  => [ 'type' => Type::nonNull( Type::string() ) ],
-					'value' => [ 'type' => Type::nonNull( Type::string() ) ],
-				],
-				'resolve'     => [ $res, 'updateOption' ],
-			] );
-			$reg->addMutation( 'updateSiteInfo', [
-				'type'    => Type::boolean(),
-				'args'    => [
-					'title'       => [ 'type' => Type::string() ],
-					'description' => [ 'type' => Type::string() ],
-				],
-				'resolve' => [ $res, 'updateSiteInfo' ],
-			] );
+			$reg->addMutation(
+				'updateOption',
+				array(
+					'type'        => Type::boolean(),
+					'description' => 'Set a wp_options value. Value is a string (use JSON for non-scalar values).',
+					'args'        => array(
+						'name'  => array( 'type' => Type::nonNull( Type::string() ) ),
+						'value' => array( 'type' => Type::nonNull( Type::string() ) ),
+					),
+					'resolve'     => array( $res, 'updateOption' ),
+				)
+			);
+			$reg->addMutation(
+				'updateSiteInfo',
+				array(
+					'type'    => Type::boolean(),
+					'args'    => array(
+						'title'       => array( 'type' => Type::string() ),
+						'description' => array( 'type' => Type::string() ),
+					),
+					'resolve' => array( $res, 'updateSiteInfo' ),
+				)
+			);
 		}
 
 		// --- Built-in feature domains -------------------------------------
@@ -185,10 +266,20 @@ class SchemaFactory {
 
 		self::$registry = $reg;
 		self::$schema   = new Schema(
-			[
-				'query'    => new ObjectType( [ 'name' => 'Query', 'fields' => $reg->queries() ] ),
-				'mutation' => new ObjectType( [ 'name' => 'Mutation', 'fields' => $reg->mutations() ] ),
-			]
+			array(
+				'query'    => new ObjectType(
+					array(
+						'name'   => 'Query',
+						'fields' => $reg->queries(),
+					)
+				),
+				'mutation' => new ObjectType(
+					array(
+						'name'   => 'Mutation',
+						'fields' => $reg->mutations(),
+					)
+				),
+			)
 		);
 		return self::$schema;
 	}
@@ -196,7 +287,7 @@ class SchemaFactory {
 	/** Every supported operation, grouped by capability domain — for the admin Capabilities view. */
 	public static function operations(): array {
 		self::build(); // populates the registry
-		return self::$registry ? self::$registry->operations() : [];
+		return self::$registry ? self::$registry->operations() : array();
 	}
 
 	/** Human domain label from a Feature class, e.g. SiteEditorFeature → "Site Editor". */
@@ -210,11 +301,11 @@ class SchemaFactory {
 	 * The Free edition's content-only feature set. Everything else is Pro — a newly added Feature is
 	 * Pro by default until it is listed here, which is the safe direction for a new capability.
 	 */
-	private const FREE_FEATURES = [
+	private const FREE_FEATURES = array(
 		Features\MediaFeature::class,
 		Features\TaxonomyFeature::class,
 		Features\CommentsFeature::class,
-	];
+	);
 
 	/**
 	 * Built-in capability domains, in menu-ish order. Add a class here to grow the schema. Free
@@ -224,7 +315,7 @@ class SchemaFactory {
 	 * @return array<int,Feature>
 	 */
 	private static function features(): array {
-		$features = [
+		$features = array(
 			new Features\MetaFeature(),
 			new Features\AppearanceFeature(),
 			new Features\MenusFeature(),
@@ -241,7 +332,7 @@ class SchemaFactory {
 			new Features\ToolsFeature(),
 			new Features\CronFeature(),
 			new Features\RestFeature(),
-		];
+		);
 
 		// Curated per-plugin domains, registered only when their plugin is active — so their types
 		// (and therefore their RAG chunks) never appear on sites that don't have the plugin.
@@ -250,10 +341,12 @@ class SchemaFactory {
 		}
 
 		if ( ! Settings::isPro() ) {
-			$features = array_values( array_filter(
-				$features,
-				static fn( Feature $f ) => in_array( get_class( $f ), self::FREE_FEATURES, true )
-			) );
+			$features = array_values(
+				array_filter(
+					$features,
+					static fn( Feature $f ) => in_array( get_class( $f ), self::FREE_FEATURES, true )
+				)
+			);
 		}
 
 		return $features;

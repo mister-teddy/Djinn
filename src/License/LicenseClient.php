@@ -34,12 +34,12 @@ class LicenseClient {
 
 	/** @return array{key:string,activation_id:string} */
 	private static function stored(): array {
-		$o = get_option( self::OPTION, [] );
-		$o = is_array( $o ) ? $o : [];
-		return [
+		$o = get_option( self::OPTION, array() );
+		$o = is_array( $o ) ? $o : array();
+		return array(
 			'key'           => (string) ( $o['key'] ?? '' ),
 			'activation_id' => (string) ( $o['activation_id'] ?? '' ),
-		];
+		);
 	}
 
 	public static function key(): string {
@@ -56,11 +56,14 @@ class LicenseClient {
 		if ( $cached !== false ) {
 			return $cached === '1';
 		}
-		$res = self::post( '/v1/customer-portal/license-keys/validate', [
-			'key'             => $s['key'],
-			'organization_id' => self::orgId(),
-			'activation_id'   => $s['activation_id'],
-		] );
+		$res = self::post(
+			'/v1/customer-portal/license-keys/validate',
+			array(
+				'key'             => $s['key'],
+				'organization_id' => self::orgId(),
+				'activation_id'   => $s['activation_id'],
+			)
+		);
 		if ( $res === null ) {
 			// Polar unreachable: grant a short grace so an outage doesn't downgrade a paying site.
 			set_transient( self::CACHE, '1', HOUR_IN_SECONDS );
@@ -77,16 +80,25 @@ class LicenseClient {
 		if ( $key === '' ) {
 			return false;
 		}
-		$res = self::post( '/v1/customer-portal/license-keys/activate', [
-			'key'             => $key,
-			'organization_id' => self::orgId(),
-			'label'           => home_url(),
-		] );
+		$res          = self::post(
+			'/v1/customer-portal/license-keys/activate',
+			array(
+				'key'             => $key,
+				'organization_id' => self::orgId(),
+				'label'           => home_url(),
+			)
+		);
 		$activationId = is_array( $res ) ? (string) ( $res['id'] ?? '' ) : '';
 		if ( $activationId === '' ) {
 			return false;
 		}
-		update_option( self::OPTION, [ 'key' => $key, 'activation_id' => $activationId ] );
+		update_option(
+			self::OPTION,
+			array(
+				'key'           => $key,
+				'activation_id' => $activationId,
+			)
+		);
 		set_transient( self::CACHE, '1', DAY_IN_SECONDS );
 		return true;
 	}
@@ -95,11 +107,14 @@ class LicenseClient {
 	public static function deactivate(): void {
 		$s = self::stored();
 		if ( $s['key'] !== '' && $s['activation_id'] !== '' ) {
-			self::post( '/v1/customer-portal/license-keys/deactivate', [
-				'key'             => $s['key'],
-				'organization_id' => self::orgId(),
-				'activation_id'   => $s['activation_id'],
-			] );
+			self::post(
+				'/v1/customer-portal/license-keys/deactivate',
+				array(
+					'key'             => $s['key'],
+					'organization_id' => self::orgId(),
+					'activation_id'   => $s['activation_id'],
+				)
+			);
 		}
 		delete_option( self::OPTION );
 		delete_transient( self::CACHE );
@@ -113,11 +128,14 @@ class LicenseClient {
 	 * @return array<string,mixed>|null
 	 */
 	private static function post( string $path, array $body ): ?array {
-		$res = wp_remote_post( self::base() . $path, [
-			'timeout' => 15,
-			'headers' => [ 'content-type' => 'application/json' ],
-			'body'    => wp_json_encode( $body ),
-		] );
+		$res = wp_remote_post(
+			self::base() . $path,
+			array(
+				'timeout' => 15,
+				'headers' => array( 'content-type' => 'application/json' ),
+				'body'    => wp_json_encode( $body ),
+			)
+		);
 		if ( is_wp_error( $res ) || (int) wp_remote_retrieve_response_code( $res ) >= 300 ) {
 			return null;
 		}

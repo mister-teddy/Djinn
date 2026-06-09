@@ -41,7 +41,7 @@ if ( ! is_readable( $djinn_autoload ) ) {
 }
 require $djinn_autoload;
 
-register_activation_hook( __FILE__, [ \Djinn\Store\Repository::class, 'install' ] );
+register_activation_hook( __FILE__, array( \Djinn\Store\Repository::class, 'install' ) );
 
 add_action(
 	'plugins_loaded',

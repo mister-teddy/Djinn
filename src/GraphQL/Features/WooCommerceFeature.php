@@ -25,106 +25,148 @@ class WooCommerceFeature implements Feature {
 
 	public function register( Registry $r ): void {
 		// Tell the RAG indexer we own these so it skips the generic synthetic chunks for them.
-		add_filter( 'djinn_curated_post_types', static fn( array $t ): array => array_merge( $t, [ 'product', 'shop_order' ] ) );
+		add_filter( 'djinn_curated_post_types', static fn( array $t ): array => array_merge( $t, array( 'product', 'shop_order' ) ) );
 
 		$product = new ObjectType(
-			[
+			array(
 				'name'        => 'Product',
 				'description' => 'A WooCommerce product.',
-				'fields'      => [
-					'id'            => [ 'type' => Type::id() ],
-					'name'          => [ 'type' => Type::string() ],
-					'sku'           => [ 'type' => Type::string() ],
-					'price'         => [ 'type' => Type::string(), 'description' => 'Active price (sale price if on sale, else regular).' ],
-					'regularPrice'  => [ 'type' => Type::string() ],
-					'salePrice'     => [ 'type' => Type::string() ],
-					'status'        => [ 'type' => Type::string(), 'description' => 'publish, draft, …' ],
-					'type'          => [ 'type' => Type::string(), 'description' => 'simple, variable, …' ],
-					'stockStatus'   => [ 'type' => Type::string(), 'description' => 'instock, outofstock, onbackorder.' ],
-					'stockQuantity' => [ 'type' => Type::int() ],
-					'permalink'     => [ 'type' => Type::string() ],
-				],
-			]
+				'fields'      => array(
+					'id'            => array( 'type' => Type::id() ),
+					'name'          => array( 'type' => Type::string() ),
+					'sku'           => array( 'type' => Type::string() ),
+					'price'         => array(
+						'type'        => Type::string(),
+						'description' => 'Active price (sale price if on sale, else regular).',
+					),
+					'regularPrice'  => array( 'type' => Type::string() ),
+					'salePrice'     => array( 'type' => Type::string() ),
+					'status'        => array(
+						'type'        => Type::string(),
+						'description' => 'publish, draft, …',
+					),
+					'type'          => array(
+						'type'        => Type::string(),
+						'description' => 'simple, variable, …',
+					),
+					'stockStatus'   => array(
+						'type'        => Type::string(),
+						'description' => 'instock, outofstock, onbackorder.',
+					),
+					'stockQuantity' => array( 'type' => Type::int() ),
+					'permalink'     => array( 'type' => Type::string() ),
+				),
+			)
 		);
 		$r->setType( 'Product', $product );
 
 		$order = new ObjectType(
-			[
+			array(
 				'name'        => 'Order',
 				'description' => 'A WooCommerce order (read-only).',
-				'fields'      => [
-					'id'           => [ 'type' => Type::id() ],
-					'status'       => [ 'type' => Type::string() ],
-					'total'        => [ 'type' => Type::string() ],
-					'currency'     => [ 'type' => Type::string() ],
-					'dateCreated'  => [ 'type' => Type::string() ],
-					'customerId'   => [ 'type' => Type::id() ],
-					'billingEmail' => [ 'type' => Type::string() ],
-					'itemCount'    => [ 'type' => Type::int() ],
-				],
-			]
+				'fields'      => array(
+					'id'           => array( 'type' => Type::id() ),
+					'status'       => array( 'type' => Type::string() ),
+					'total'        => array( 'type' => Type::string() ),
+					'currency'     => array( 'type' => Type::string() ),
+					'dateCreated'  => array( 'type' => Type::string() ),
+					'customerId'   => array( 'type' => Type::id() ),
+					'billingEmail' => array( 'type' => Type::string() ),
+					'itemCount'    => array( 'type' => Type::int() ),
+				),
+			)
 		);
 		$r->setType( 'Order', $order );
 
-		$r->addQuery( 'products', [
-			'type'        => Type::listOf( $product ),
-			'description' => 'List WooCommerce products.',
-			'args'        => [
-				'search' => [ 'type' => Type::string() ],
-				'status' => [ 'type' => Type::string(), 'description' => 'publish (default), draft, …' ],
-				'first'  => [ 'type' => Type::int(), 'defaultValue' => 20 ],
-			],
-			'resolve'     => [ $this, 'products' ],
-		] );
+		$r->addQuery(
+			'products',
+			array(
+				'type'        => Type::listOf( $product ),
+				'description' => 'List WooCommerce products.',
+				'args'        => array(
+					'search' => array( 'type' => Type::string() ),
+					'status' => array(
+						'type'        => Type::string(),
+						'description' => 'publish (default), draft, …',
+					),
+					'first'  => array(
+						'type'         => Type::int(),
+						'defaultValue' => 20,
+					),
+				),
+				'resolve'     => array( $this, 'products' ),
+			)
+		);
 
-		$r->addQuery( 'product', [
-			'type'        => $product,
-			'args'        => [ 'id' => [ 'type' => Type::nonNull( Type::id() ) ] ],
-			'resolve'     => [ $this, 'product' ],
-		] );
+		$r->addQuery(
+			'product',
+			array(
+				'type'    => $product,
+				'args'    => array( 'id' => array( 'type' => Type::nonNull( Type::id() ) ) ),
+				'resolve' => array( $this, 'product' ),
+			)
+		);
 
-		$r->addQuery( 'orders', [
-			'type'        => Type::listOf( $order ),
-			'description' => 'List recent WooCommerce orders.',
-			'args'        => [
-				'status' => [ 'type' => Type::string(), 'description' => 'e.g. processing, completed, refunded.' ],
-				'first'  => [ 'type' => Type::int(), 'defaultValue' => 20 ],
-			],
-			'resolve'     => [ $this, 'orders' ],
-		] );
+		$r->addQuery(
+			'orders',
+			array(
+				'type'        => Type::listOf( $order ),
+				'description' => 'List recent WooCommerce orders.',
+				'args'        => array(
+					'status' => array(
+						'type'        => Type::string(),
+						'description' => 'e.g. processing, completed, refunded.',
+					),
+					'first'  => array(
+						'type'         => Type::int(),
+						'defaultValue' => 20,
+					),
+				),
+				'resolve'     => array( $this, 'orders' ),
+			)
+		);
 
-		$r->addMutation( 'createProduct', [
-			'type'        => $product,
-			'description' => 'Create a WooCommerce (simple) product.',
-			'args'        => [
-				'name'          => [ 'type' => Type::nonNull( Type::string() ) ],
-				'regularPrice'  => [ 'type' => Type::string() ],
-				'sku'           => [ 'type' => Type::string() ],
-				'description'   => [ 'type' => Type::string() ],
-				'status'        => [ 'type' => Type::string(), 'description' => 'draft (default) or publish.' ],
-				'stockQuantity' => [ 'type' => Type::int() ],
-			],
-			'resolve'     => [ $this, 'createProduct' ],
-		] );
+		$r->addMutation(
+			'createProduct',
+			array(
+				'type'        => $product,
+				'description' => 'Create a WooCommerce (simple) product.',
+				'args'        => array(
+					'name'          => array( 'type' => Type::nonNull( Type::string() ) ),
+					'regularPrice'  => array( 'type' => Type::string() ),
+					'sku'           => array( 'type' => Type::string() ),
+					'description'   => array( 'type' => Type::string() ),
+					'status'        => array(
+						'type'        => Type::string(),
+						'description' => 'draft (default) or publish.',
+					),
+					'stockQuantity' => array( 'type' => Type::int() ),
+				),
+				'resolve'     => array( $this, 'createProduct' ),
+			)
+		);
 
-		$r->addMutation( 'updateProduct', [
-			'type'        => $product,
-			'args'        => [
-				'id'            => [ 'type' => Type::nonNull( Type::id() ) ],
-				'name'          => [ 'type' => Type::string() ],
-				'regularPrice'  => [ 'type' => Type::string() ],
-				'salePrice'     => [ 'type' => Type::string() ],
-				'sku'           => [ 'type' => Type::string() ],
-				'status'        => [ 'type' => Type::string() ],
-				'stockQuantity' => [ 'type' => Type::int() ],
-			],
-			'resolve'     => [ $this, 'updateProduct' ],
-		] );
+		$r->addMutation(
+			'updateProduct',
+			array(
+				'type'    => $product,
+				'args'    => array(
+					'id'            => array( 'type' => Type::nonNull( Type::id() ) ),
+					'name'          => array( 'type' => Type::string() ),
+					'regularPrice'  => array( 'type' => Type::string() ),
+					'salePrice'     => array( 'type' => Type::string() ),
+					'sku'           => array( 'type' => Type::string() ),
+					'status'        => array( 'type' => Type::string() ),
+					'stockQuantity' => array( 'type' => Type::int() ),
+				),
+				'resolve' => array( $this, 'updateProduct' ),
+			)
+		);
 	}
 
 	/** @param \WC_Product $p */
 	private function shapeProduct( $p ): array {
-		return [
+		return array(
 			'id'            => (string) $p->get_id(),
 			'name'          => $p->get_name(),
 			'sku'           => $p->get_sku(),
@@ -136,7 +178,7 @@ class WooCommerceFeature implements Feature {
 			'stockStatus'   => $p->get_stock_status(),
 			'stockQuantity' => $p->get_stock_quantity() !== null ? (int) $p->get_stock_quantity() : null,
 			'permalink'     => $p->get_permalink(),
-		];
+		);
 	}
 
 	/** @param array<string,mixed> $args */
@@ -145,13 +187,13 @@ class WooCommerceFeature implements Feature {
 			throw new UserError( 'You do not have permission to manage products.' );
 		}
 		$products = wc_get_products(
-			[
+			array(
 				'limit'  => min( max( (int) ( $args['first'] ?? 20 ), 1 ), 100 ),
 				'status' => $args['status'] ?? 'publish',
 				's'      => $args['search'] ?? '',
-			]
+			)
 		);
-		return array_map( [ $this, 'shapeProduct' ], $products );
+		return array_map( array( $this, 'shapeProduct' ), $products );
 	}
 
 	/** @param array<string,mixed> $args */
@@ -169,14 +211,14 @@ class WooCommerceFeature implements Feature {
 			throw new UserError( 'You do not have permission to view orders.' );
 		}
 		$orders = wc_get_orders(
-			[
+			array(
 				'limit'  => min( max( (int) ( $args['first'] ?? 20 ), 1 ), 100 ),
 				'status' => isset( $args['status'] ) ? (string) $args['status'] : array_keys( wc_get_order_statuses() ),
-			]
+			)
 		);
 		return array_map(
 			static function ( $o ): array {
-				return [
+				return array(
 					'id'           => (string) $o->get_id(),
 					'status'       => $o->get_status(),
 					'total'        => $o->get_total(),
@@ -185,7 +227,7 @@ class WooCommerceFeature implements Feature {
 					'customerId'   => (string) $o->get_customer_id(),
 					'billingEmail' => $o->get_billing_email(),
 					'itemCount'    => $o->get_item_count(),
-				];
+				);
 			},
 			$orders
 		);

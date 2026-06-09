@@ -21,7 +21,7 @@ class ProxyAccount {
 		try {
 			$data = ProxyClient::call(
 				'query { account { balanceUsd spentUsd paid subscribed } }',
-				[],
+				array(),
 				$token,
 				15
 			);

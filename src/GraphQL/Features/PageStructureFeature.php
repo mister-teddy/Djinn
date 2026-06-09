@@ -24,45 +24,75 @@ class PageStructureFeature implements Feature {
 
 	public function register( Registry $r ): void {
 		$source = new ObjectType(
-			[
+			array(
 				'name'        => 'PageSource',
 				'description' => 'An editable source that contributes blocks to a rendered page.',
-				'fields'      => [
-					'kind'  => [ 'type' => Type::string(), 'description' => 'template, template_part, or post.' ],
-					'id'    => [ 'type' => Type::id(), 'description' => 'Edit via updateSiteTemplate (template), updateSiteTemplatePart (template_part), or updatePost (post).' ],
-					'title' => [ 'type' => Type::string() ],
-				],
-			]
+				'fields'      => array(
+					'kind'  => array(
+						'type'        => Type::string(),
+						'description' => 'template, template_part, or post.',
+					),
+					'id'    => array(
+						'type'        => Type::id(),
+						'description' => 'Edit via updateSiteTemplate (template), updateSiteTemplatePart (template_part), or updatePost (post).',
+					),
+					'title' => array( 'type' => Type::string() ),
+				),
+			)
 		);
 		$r->setType( 'PageSource', $source );
 
 		$page = new ObjectType(
-			[
+			array(
 				'name'        => 'RenderedPage',
 				'description' => 'The fully composed block tree for a front-end view, with provenance.',
-				'fields'      => [
-					'view'         => [ 'type' => Type::string(), 'description' => 'What resolved, in words.' ],
-					'templateId'   => [ 'type' => Type::id(), 'description' => 'The top template (edit via updateSiteTemplate).' ],
-					'templateSlug' => [ 'type' => Type::string() ],
-					'sources'      => [ 'type' => Type::listOf( $source ), 'description' => 'Every editable source in the page. Find a block in blocks, see which `djinn:region` encloses it, then edit that source.' ],
-					'blocks'       => [ 'type' => Type::string(), 'description' => 'Resolved block markup: template + parts + patterns inlined, post-content filled. `djinn:region` comments mark which source each region belongs to (the outermost is the template).' ],
-				],
-			]
+				'fields'      => array(
+					'view'         => array(
+						'type'        => Type::string(),
+						'description' => 'What resolved, in words.',
+					),
+					'templateId'   => array(
+						'type'        => Type::id(),
+						'description' => 'The top template (edit via updateSiteTemplate).',
+					),
+					'templateSlug' => array( 'type' => Type::string() ),
+					'sources'      => array(
+						'type'        => Type::listOf( $source ),
+						'description' => 'Every editable source in the page. Find a block in blocks, see which `djinn:region` encloses it, then edit that source.',
+					),
+					'blocks'       => array(
+						'type'        => Type::string(),
+						'description' => 'Resolved block markup: template + parts + patterns inlined, post-content filled. `djinn:region` comments mark which source each region belongs to (the outermost is the template).',
+					),
+				),
+			)
 		);
 		$r->setType( 'RenderedPage', $page );
 
-		$r->addQuery( 'renderedPage', [
-			'type'        => $page,
-			'description' => 'Resolve what renders at a view, to find or edit something a visitor sees. Pass one of: view ("home" or "front"), pageId, postId, templateSlug, or url.',
-			'args'        => [
-				'view'         => [ 'type' => Type::string(), 'description' => '"home" (blog posts index) or "front" (the front page).' ],
-				'pageId'       => [ 'type' => Type::id() ],
-				'postId'       => [ 'type' => Type::id() ],
-				'templateSlug' => [ 'type' => Type::string(), 'description' => 'A template slug, e.g. "single", "archive", "404".' ],
-				'url'          => [ 'type' => Type::string(), 'description' => 'A front-end URL on this site.' ],
-			],
-			'resolve'     => [ $this, 'renderedPage' ],
-		] );
+		$r->addQuery(
+			'renderedPage',
+			array(
+				'type'        => $page,
+				'description' => 'Resolve what renders at a view, to find or edit something a visitor sees. Pass one of: view ("home" or "front"), pageId, postId, templateSlug, or url.',
+				'args'        => array(
+					'view'         => array(
+						'type'        => Type::string(),
+						'description' => '"home" (blog posts index) or "front" (the front page).',
+					),
+					'pageId'       => array( 'type' => Type::id() ),
+					'postId'       => array( 'type' => Type::id() ),
+					'templateSlug' => array(
+						'type'        => Type::string(),
+						'description' => 'A template slug, e.g. "single", "archive", "404".',
+					),
+					'url'          => array(
+						'type'        => Type::string(),
+						'description' => 'A front-end URL on this site.',
+					),
+				),
+				'resolve'     => array( $this, 'renderedPage' ),
+			)
+		);
 	}
 
 	private function gate(): void {
@@ -96,13 +126,13 @@ class PageStructureFeature implements Feature {
 		$title  = is_string( $template->title ) && $template->title !== '' ? $template->title : (string) $template->slug;
 		$blocks = BlockMarkup::region( 'template', (string) $template->id, $title, BlockMarkup::expand( $markup ) );
 
-		return [
+		return array(
 			'view'         => "$desc → template '{$template->slug}'",
 			'templateId'   => (string) $template->id,
 			'templateSlug' => (string) $template->slug,
 			'sources'      => BlockMarkup::sources( $blocks ),
 			'blocks'       => $blocks,
-		];
+		);
 	}
 
 	/**
@@ -115,7 +145,7 @@ class PageStructureFeature implements Feature {
 	private function resolve( array $args ): array {
 		$templateSlug = trim( (string) ( $args['templateSlug'] ?? '' ) );
 		if ( $templateSlug !== '' ) {
-			return [ [ $templateSlug ], 0, "template '$templateSlug'" ];
+			return array( array( $templateSlug ), 0, "template '$templateSlug'" );
 		}
 
 		$postId = (int) ( $args['postId'] ?? 0 );
@@ -132,7 +162,7 @@ class PageStructureFeature implements Feature {
 				if ( $found ) {
 					$postId = $found;
 				} else {
-					return [ [ 'index' ], 0, "URL $url (could not map to a specific template; showing index)" ];
+					return array( array( 'index' ), 0, "URL $url (could not map to a specific template; showing index)" );
 				}
 			}
 		}
@@ -149,15 +179,15 @@ class PageStructureFeature implements Feature {
 			$slug = $post->post_name;
 			$type = $post->post_type;
 			if ( $type === 'page' ) {
-				$h = [];
+				$h = array();
 				if ( get_option( 'show_on_front' ) === 'page' && (int) get_option( 'page_on_front' ) === $postId ) {
 					$h[] = 'front-page';
 				}
-				$h = array_merge( $h, [ "page-$slug", "page-$postId", 'page', 'singular', 'index' ] );
-				return [ $h, $postId, "page '{$post->post_title}'" ];
+				$h = array_merge( $h, array( "page-$slug", "page-$postId", 'page', 'singular', 'index' ) );
+				return array( $h, $postId, "page '{$post->post_title}'" );
 			}
-			$h = [ "single-$type-$slug", "single-$type", 'single', 'singular', 'index' ];
-			return [ $h, $postId, ucfirst( $type ) . " '{$post->post_title}'" ];
+			$h = array( "single-$type-$slug", "single-$type", 'single', 'singular', 'index' );
+			return array( $h, $postId, ucfirst( $type ) . " '{$post->post_title}'" );
 		}
 
 		$showsPosts = get_option( 'show_on_front' ) !== 'page';
@@ -166,21 +196,21 @@ class PageStructureFeature implements Feature {
 			if ( ! $showsPosts ) {
 				$frontId = (int) get_option( 'page_on_front' );
 				if ( $frontId ) {
-					return $this->resolve( [ 'pageId' => $frontId ] );
+					return $this->resolve( array( 'pageId' => $frontId ) );
 				}
 			}
-			return [ [ 'front-page', 'home', 'index' ], 0, 'front page (latest posts)' ];
+			return array( array( 'front-page', 'home', 'index' ), 0, 'front page (latest posts)' );
 		}
 
 		// Default and view "home": the blog posts index. When posts are the front page, the
 		// front-page template wins first; when a static page is the front, the posts index is `home`.
-		$h = $showsPosts ? [ 'front-page', 'home', 'index' ] : [ 'home', 'index' ];
-		return [ $h, 0, 'blog home (latest posts)' ];
+		$h = $showsPosts ? array( 'front-page', 'home', 'index' ) : array( 'home', 'index' );
+		return array( $h, 0, 'blog home (latest posts)' );
 	}
 
 	/** First template whose slug matches the hierarchy; custom (DB) templates already override theme ones. */
 	private function pickTemplate( array $hierarchy ): ?\WP_Block_Template {
-		$all = get_block_templates( [], 'wp_template' );
+		$all = get_block_templates( array(), 'wp_template' );
 		foreach ( $hierarchy as $slug ) {
 			foreach ( $all as $t ) {
 				if ( $t->slug === $slug ) {

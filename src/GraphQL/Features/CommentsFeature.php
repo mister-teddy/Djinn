@@ -15,70 +15,94 @@ use GraphQL\Type\Definition\Type;
  */
 class CommentsFeature implements Feature {
 
-	private const STATUSES = [ 'approve', 'hold', 'spam', 'trash' ];
+	private const STATUSES = array( 'approve', 'hold', 'spam', 'trash' );
 
 	public function register( Registry $r ): void {
 		$comment = new ObjectType(
-			[
+			array(
 				'name'        => 'Comment',
 				'description' => 'A comment on a post.',
-				'fields'      => [
-					'id'       => [ 'type' => Type::id() ],
-					'postId'   => [ 'type' => Type::id() ],
-					'author'   => [ 'type' => Type::string() ],
-					'email'    => [ 'type' => Type::string() ],
-					'content'  => [ 'type' => Type::string() ],
-					'status'   => [ 'type' => Type::string(), 'description' => 'approved, hold, spam, or trash.' ],
-					'date'     => [ 'type' => Type::string() ],
-					'parentId' => [ 'type' => Type::id() ],
-				],
-			]
+				'fields'      => array(
+					'id'       => array( 'type' => Type::id() ),
+					'postId'   => array( 'type' => Type::id() ),
+					'author'   => array( 'type' => Type::string() ),
+					'email'    => array( 'type' => Type::string() ),
+					'content'  => array( 'type' => Type::string() ),
+					'status'   => array(
+						'type'        => Type::string(),
+						'description' => 'approved, hold, spam, or trash.',
+					),
+					'date'     => array( 'type' => Type::string() ),
+					'parentId' => array( 'type' => Type::id() ),
+				),
+			)
 		);
 		$r->setType( 'Comment', $comment );
 
-		$r->addQuery( 'comments', [
-			'type'        => Type::listOf( $comment ),
-			'description' => 'List comments, optionally filtered by post or status.',
-			'args'        => [
-				'postId' => [ 'type' => Type::id() ],
-				'status' => [ 'type' => Type::string(), 'description' => 'all (default), approve, hold, spam, trash.' ],
-				'first'  => [ 'type' => Type::int(), 'defaultValue' => 20 ],
-			],
-			'resolve'     => [ $this, 'comments' ],
-		] );
+		$r->addQuery(
+			'comments',
+			array(
+				'type'        => Type::listOf( $comment ),
+				'description' => 'List comments, optionally filtered by post or status.',
+				'args'        => array(
+					'postId' => array( 'type' => Type::id() ),
+					'status' => array(
+						'type'        => Type::string(),
+						'description' => 'all (default), approve, hold, spam, trash.',
+					),
+					'first'  => array(
+						'type'         => Type::int(),
+						'defaultValue' => 20,
+					),
+				),
+				'resolve'     => array( $this, 'comments' ),
+			)
+		);
 
-		$r->addMutation( 'moderateComment', [
-			'type'        => Type::boolean(),
-			'description' => 'Set a comment status: approve, hold, spam, or trash.',
-			'args'        => [
-				'id'     => [ 'type' => Type::nonNull( Type::id() ) ],
-				'status' => [ 'type' => Type::nonNull( Type::string() ) ],
-			],
-			'resolve'     => [ $this, 'moderateComment' ],
-		] );
+		$r->addMutation(
+			'moderateComment',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Set a comment status: approve, hold, spam, or trash.',
+				'args'        => array(
+					'id'     => array( 'type' => Type::nonNull( Type::id() ) ),
+					'status' => array( 'type' => Type::nonNull( Type::string() ) ),
+				),
+				'resolve'     => array( $this, 'moderateComment' ),
+			)
+		);
 
-		$r->addMutation( 'replyToComment', [
-			'type'        => $comment,
-			'description' => 'Reply to a comment as the current user.',
-			'args'        => [
-				'commentId' => [ 'type' => Type::nonNull( Type::id() ) ],
-				'content'   => [ 'type' => Type::nonNull( Type::string() ) ],
-			],
-			'resolve'     => [ $this, 'replyToComment' ],
-		] );
+		$r->addMutation(
+			'replyToComment',
+			array(
+				'type'        => $comment,
+				'description' => 'Reply to a comment as the current user.',
+				'args'        => array(
+					'commentId' => array( 'type' => Type::nonNull( Type::id() ) ),
+					'content'   => array( 'type' => Type::nonNull( Type::string() ) ),
+				),
+				'resolve'     => array( $this, 'replyToComment' ),
+			)
+		);
 
-		$r->addMutation( 'deleteComment', [
-			'type'        => Type::boolean(),
-			'args'        => [
-				'id'    => [ 'type' => Type::nonNull( Type::id() ) ],
-				'force' => [ 'type' => Type::boolean(), 'defaultValue' => false ],
-			],
-			'resolve'     => [ $this, 'deleteComment' ],
-		] );
+		$r->addMutation(
+			'deleteComment',
+			array(
+				'type'    => Type::boolean(),
+				'args'    => array(
+					'id'    => array( 'type' => Type::nonNull( Type::id() ) ),
+					'force' => array(
+						'type'         => Type::boolean(),
+						'defaultValue' => false,
+					),
+				),
+				'resolve' => array( $this, 'deleteComment' ),
+			)
+		);
 	}
 
 	private function shape( \WP_Comment $c ): array {
-		return [
+		return array(
 			'id'       => (string) $c->comment_ID,
 			'postId'   => (string) $c->comment_post_ID,
 			'author'   => $c->comment_author,
@@ -87,7 +111,7 @@ class CommentsFeature implements Feature {
 			'status'   => wp_get_comment_status( $c ) ?: 'unknown',
 			'date'     => $c->comment_date_gmt,
 			'parentId' => $c->comment_parent ? (string) $c->comment_parent : null,
-		];
+		);
 	}
 
 	/** @param array<string,mixed> $args */
@@ -96,13 +120,13 @@ class CommentsFeature implements Feature {
 			throw new UserError( 'You do not have permission to view comments.' );
 		}
 		$comments = get_comments(
-			[
+			array(
 				'post_id' => isset( $args['postId'] ) ? (int) $args['postId'] : 0,
 				'status'  => $args['status'] ?? 'all',
 				'number'  => min( max( (int) ( $args['first'] ?? 20 ), 1 ), 200 ),
-			]
+			)
 		);
-		return array_map( [ $this, 'shape' ], $comments );
+		return array_map( array( $this, 'shape' ), $comments );
 	}
 
 	/** @param array<string,mixed> $args */
@@ -129,7 +153,7 @@ class CommentsFeature implements Feature {
 		}
 		$user = wp_get_current_user();
 		$id   = wp_insert_comment(
-			[
+			array(
 				'comment_post_ID'      => (int) $parent->comment_post_ID,
 				'comment_parent'       => (int) $parent->comment_ID,
 				'comment_content'      => (string) $args['content'],
@@ -137,7 +161,7 @@ class CommentsFeature implements Feature {
 				'comment_author'       => $user->display_name,
 				'comment_author_email' => $user->user_email,
 				'comment_approved'     => 1,
-			]
+			)
 		);
 		if ( ! $id ) {
 			throw new UserError( 'Could not post the reply.' );

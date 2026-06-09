@@ -31,7 +31,7 @@ class IndexStatus {
 		if ( Repository::chunkCount() === 0 ) {
 			return self::$needsReindex = true; // never built
 		}
-		$meta = Indexer::meta();
+		$meta                      = Indexer::meta();
 		return self::$needsReindex = ( $meta['fingerprint'] ?? '' ) !== Indexer::fingerprint();
 	}
 
@@ -55,10 +55,10 @@ class IndexStatus {
 		$meta    = Indexer::meta();
 		$model   = Settings::embeddingModel();
 
-		$indexed   = Repository::chunkCount() > 0;
-		$upToDate  = $indexed && ( $meta['fingerprint'] ?? '' ) === Indexer::fingerprint();
+		$indexed  = Repository::chunkCount() > 0;
+		$upToDate = $indexed && ( $meta['fingerprint'] ?? '' ) === Indexer::fingerprint();
 
-		return [
+		return array(
 			'indexed'      => $indexed,
 			'up_to_date'   => $upToDate,
 			'model'        => $model,
@@ -68,12 +68,12 @@ class IndexStatus {
 			'count_live'   => count( $current ),
 			'estimate'     => self::estimate( $current, $model ),
 			'diff'         => self::diff( $current, $stored ),
-		];
+		);
 	}
 
 	/** @return array<string,string> */
 	private static function storedFragments(): array {
-		$out = [];
+		$out = array();
 		foreach ( Repository::getChunks() as $chunk ) {
 			$out[ $chunk['name'] ] = $chunk['fragment'];
 		}
@@ -88,19 +88,19 @@ class IndexStatus {
 	 * @return array{chunks:int,tokens:int,cost:float,free:bool,unpriced:bool}
 	 */
 	private static function estimate( array $current, string $model ): array {
-		$chars  = 0;
+		$chars = 0;
 		foreach ( $current as $fragment ) {
 			$chars += strlen( $fragment );
 		}
 		$tokens = (int) ceil( $chars / 4 );
 		$cost   = Pricing::cost( $model, $tokens, 0 );
-		return [
+		return array(
 			'chunks'   => count( $current ),
 			'tokens'   => $tokens,
 			'cost'     => $cost,
 			'free'     => Pricing::isKnown( $model ) && $cost === 0.0,
 			'unpriced' => ! Pricing::isKnown( $model ),
-		];
+		);
 	}
 
 	/**
@@ -113,7 +113,7 @@ class IndexStatus {
 	private static function diff( array $current, array $stored ): array {
 		$added   = array_values( array_diff( array_keys( $current ), array_keys( $stored ) ) );
 		$removed = array_values( array_diff( array_keys( $stored ), array_keys( $current ) ) );
-		$changed = [];
+		$changed = array();
 		foreach ( $current as $name => $fragment ) {
 			if ( isset( $stored[ $name ] ) && $stored[ $name ] !== $fragment ) {
 				$changed[] = $name;
@@ -122,6 +122,10 @@ class IndexStatus {
 		sort( $added );
 		sort( $removed );
 		sort( $changed );
-		return [ 'added' => $added, 'removed' => $removed, 'changed' => $changed ];
+		return array(
+			'added'   => $added,
+			'removed' => $removed,
+			'changed' => $changed,
+		);
 	}
 }

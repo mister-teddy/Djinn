@@ -18,80 +18,119 @@ class SettingsFeature implements Feature {
 
 	public function register( Registry $r ): void {
 		$settings = new ObjectType(
-			[
+			array(
 				'name'        => 'SiteSettings',
 				'description' => 'Common site settings.',
-				'fields'      => [
-					'title'                => [ 'type' => Type::string() ],
-					'tagline'              => [ 'type' => Type::string() ],
-					'adminEmail'           => [ 'type' => Type::string() ],
-					'timezone'             => [ 'type' => Type::string() ],
-					'dateFormat'           => [ 'type' => Type::string() ],
-					'timeFormat'           => [ 'type' => Type::string() ],
-					'startOfWeek'          => [ 'type' => Type::int() ],
-					'language'             => [ 'type' => Type::string() ],
-					'homepageMode'         => [ 'type' => Type::string(), 'description' => '"posts" (latest posts) or "page" (a static page).' ],
-					'homepagePageId'       => [ 'type' => Type::id() ],
-					'postsPageId'          => [ 'type' => Type::id() ],
-					'postsPerPage'         => [ 'type' => Type::int() ],
-					'searchEngineVisible'  => [ 'type' => Type::boolean(), 'description' => 'False when discouraging search engines (blog_public = 0).' ],
-					'defaultCommentStatus' => [ 'type' => Type::string() ],
-					'defaultCategoryId'    => [ 'type' => Type::id() ],
-					'permalinkStructure'   => [ 'type' => Type::string() ],
-				],
-			]
+				'fields'      => array(
+					'title'                => array( 'type' => Type::string() ),
+					'tagline'              => array( 'type' => Type::string() ),
+					'adminEmail'           => array( 'type' => Type::string() ),
+					'timezone'             => array( 'type' => Type::string() ),
+					'dateFormat'           => array( 'type' => Type::string() ),
+					'timeFormat'           => array( 'type' => Type::string() ),
+					'startOfWeek'          => array( 'type' => Type::int() ),
+					'language'             => array( 'type' => Type::string() ),
+					'homepageMode'         => array(
+						'type'        => Type::string(),
+						'description' => '"posts" (latest posts) or "page" (a static page).',
+					),
+					'homepagePageId'       => array( 'type' => Type::id() ),
+					'postsPageId'          => array( 'type' => Type::id() ),
+					'postsPerPage'         => array( 'type' => Type::int() ),
+					'searchEngineVisible'  => array(
+						'type'        => Type::boolean(),
+						'description' => 'False when discouraging search engines (blog_public = 0).',
+					),
+					'defaultCommentStatus' => array( 'type' => Type::string() ),
+					'defaultCategoryId'    => array( 'type' => Type::id() ),
+					'permalinkStructure'   => array( 'type' => Type::string() ),
+				),
+			)
 		);
 		$r->setType( 'SiteSettings', $settings );
 
-		$r->addQuery( 'settings', [
-			'type'        => $settings,
-			'description' => 'Read common site settings.',
-			'resolve'     => [ $this, 'settings' ],
-		] );
+		$r->addQuery(
+			'settings',
+			array(
+				'type'        => $settings,
+				'description' => 'Read common site settings.',
+				'resolve'     => array( $this, 'settings' ),
+			)
+		);
 
-		$r->addMutation( 'setHomepage', [
-			'type'        => Type::boolean(),
-			'description' => 'Set what the front page shows: latest posts, or a static page (with an optional separate posts page).',
-			'args'        => [
-				'mode'        => [ 'type' => Type::nonNull( Type::string() ), 'description' => '"posts" or "page".' ],
-				'pageId'      => [ 'type' => Type::id(), 'description' => 'Required when mode is "page": the front page.' ],
-				'postsPageId' => [ 'type' => Type::id(), 'description' => 'Optional page on which to show the blog posts.' ],
-			],
-			'resolve'     => [ $this, 'setHomepage' ],
-		] );
-		$r->addMutation( 'setPermalinkStructure', [
-			'type'        => Type::boolean(),
-			'description' => 'Set the permalink structure (e.g. "/%postname%/") and flush rewrite rules.',
-			'args'        => [ 'structure' => [ 'type' => Type::nonNull( Type::string() ) ] ],
-			'resolve'     => [ $this, 'setPermalinkStructure' ],
-		] );
-		$r->addMutation( 'updateReadingSettings', [
-			'type'        => Type::boolean(),
-			'args'        => [
-				'postsPerPage'        => [ 'type' => Type::int() ],
-				'searchEngineVisible' => [ 'type' => Type::boolean() ],
-			],
-			'resolve'     => [ $this, 'updateReadingSettings' ],
-		] );
-		$r->addMutation( 'updateGeneralSettings', [
-			'type'        => Type::boolean(),
-			'args'        => [
-				'timezone'    => [ 'type' => Type::string(), 'description' => 'A PHP timezone like "Europe/Berlin".' ],
-				'dateFormat'  => [ 'type' => Type::string() ],
-				'timeFormat'  => [ 'type' => Type::string() ],
-				'startOfWeek' => [ 'type' => Type::int() ],
-			],
-			'resolve'     => [ $this, 'updateGeneralSettings' ],
-		] );
-		$r->addMutation( 'updateDiscussionSettings', [
-			'type'        => Type::boolean(),
-			'args'        => [
-				'allowComments'       => [ 'type' => Type::boolean(), 'description' => 'Default comment status for new posts.' ],
-				'requireModeration'   => [ 'type' => Type::boolean() ],
-				'requireRegistration' => [ 'type' => Type::boolean() ],
-			],
-			'resolve'     => [ $this, 'updateDiscussionSettings' ],
-		] );
+		$r->addMutation(
+			'setHomepage',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Set what the front page shows: latest posts, or a static page (with an optional separate posts page).',
+				'args'        => array(
+					'mode'        => array(
+						'type'        => Type::nonNull( Type::string() ),
+						'description' => '"posts" or "page".',
+					),
+					'pageId'      => array(
+						'type'        => Type::id(),
+						'description' => 'Required when mode is "page": the front page.',
+					),
+					'postsPageId' => array(
+						'type'        => Type::id(),
+						'description' => 'Optional page on which to show the blog posts.',
+					),
+				),
+				'resolve'     => array( $this, 'setHomepage' ),
+			)
+		);
+		$r->addMutation(
+			'setPermalinkStructure',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Set the permalink structure (e.g. "/%postname%/") and flush rewrite rules.',
+				'args'        => array( 'structure' => array( 'type' => Type::nonNull( Type::string() ) ) ),
+				'resolve'     => array( $this, 'setPermalinkStructure' ),
+			)
+		);
+		$r->addMutation(
+			'updateReadingSettings',
+			array(
+				'type'    => Type::boolean(),
+				'args'    => array(
+					'postsPerPage'        => array( 'type' => Type::int() ),
+					'searchEngineVisible' => array( 'type' => Type::boolean() ),
+				),
+				'resolve' => array( $this, 'updateReadingSettings' ),
+			)
+		);
+		$r->addMutation(
+			'updateGeneralSettings',
+			array(
+				'type'    => Type::boolean(),
+				'args'    => array(
+					'timezone'    => array(
+						'type'        => Type::string(),
+						'description' => 'A PHP timezone like "Europe/Berlin".',
+					),
+					'dateFormat'  => array( 'type' => Type::string() ),
+					'timeFormat'  => array( 'type' => Type::string() ),
+					'startOfWeek' => array( 'type' => Type::int() ),
+				),
+				'resolve' => array( $this, 'updateGeneralSettings' ),
+			)
+		);
+		$r->addMutation(
+			'updateDiscussionSettings',
+			array(
+				'type'    => Type::boolean(),
+				'args'    => array(
+					'allowComments'       => array(
+						'type'        => Type::boolean(),
+						'description' => 'Default comment status for new posts.',
+					),
+					'requireModeration'   => array( 'type' => Type::boolean() ),
+					'requireRegistration' => array( 'type' => Type::boolean() ),
+				),
+				'resolve' => array( $this, 'updateDiscussionSettings' ),
+			)
+		);
 	}
 
 	private function gate(): void {
@@ -107,7 +146,7 @@ class SettingsFeature implements Feature {
 		$onFront  = (int) get_option( 'page_on_front' );
 		$forPosts = (int) get_option( 'page_for_posts' );
 		$defCat   = (int) get_option( 'default_category' );
-		return [
+		return array(
 			'title'                => get_option( 'blogname' ),
 			'tagline'              => get_option( 'blogdescription' ),
 			'adminEmail'           => get_option( 'admin_email' ),
@@ -124,7 +163,7 @@ class SettingsFeature implements Feature {
 			'defaultCommentStatus' => get_option( 'default_comment_status' ),
 			'defaultCategoryId'    => $defCat ? (string) $defCat : null,
 			'permalinkStructure'   => get_option( 'permalink_structure' ),
-		];
+		);
 	}
 
 	/** @param array<string,mixed> $args */

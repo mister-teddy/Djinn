@@ -27,7 +27,7 @@ class ProxyProvider extends OpenAIProvider {
 	}
 
 	protected function extraHeaders(): array {
-		$headers = [];
+		$headers = array();
 		if ( self::$conversationId !== '' ) {
 			$headers['X-Djinn-Conversation-Id'] = self::$conversationId;
 		}

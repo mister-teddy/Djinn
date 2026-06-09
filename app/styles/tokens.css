@@ -2,14 +2,14 @@
 	--djinn-midnight: #0f0a1e;
 	--djinn-midnight-2: #1a1230;
 	--djinn-violet: #2d1f4a;
-	--djinn-violet-soft: rgba( 139, 92, 246, 0.18 );
+	--djinn-violet-soft: rgba(139, 92, 246, 0.18);
 	--djinn-ivory: #f5e9d0;
 	--djinn-ivory-muted: #c4b89f;
 	--djinn-gold: #fbbf24;
 	--djinn-gold-deep: #f59e0b;
 	--djinn-gold-ember: #b45309;
-	--djinn-glow: 0 0 24px rgba( 251, 191, 36, 0.45 );
-	--djinn-divider: rgba( 251, 191, 36, 0.6 );
+	--djinn-glow: 0 0 24px rgba(251, 191, 36, 0.45);
+	--djinn-divider: rgba(251, 191, 36, 0.6);
 	--djinn-radius: 14px;
 	--djinn-control-radius: 10px;
 	--djinn-line: #dcdcde;

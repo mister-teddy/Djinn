@@ -36,7 +36,7 @@ class AgentLoop {
 	 *
 	 * @return array<string,mixed>
 	 */
-	public function run( int $chatId, string $userText, array $attachments = [] ): array {
+	public function run( int $chatId, string $userText, array $attachments = array() ): array {
 		Repository::addMessage( $chatId, $this->userEntry( $userText, $attachments ) );
 		return $this->attachUsage( $chatId, $this->loop( $chatId ) );
 	}
@@ -48,13 +48,19 @@ class AgentLoop {
 	 *
 	 * @param callable(string,array):void $emit
 	 */
-	public function streamRun( int $chatId, string $userText, callable $emit, array $attachments = [] ): void {
+	public function streamRun( int $chatId, string $userText, callable $emit, array $attachments = array() ): void {
 		Repository::addMessage( $chatId, $this->userEntry( $userText, $attachments ) );
 
 		try {
 			$result = $this->loop( $chatId, $emit );
 		} catch ( Throwable $e ) {
-			$emit( 'error', [ 'message' => $e->getMessage(), 'chat_id' => $chatId ] );
+			$emit(
+				'error',
+				array(
+					'message' => $e->getMessage(),
+					'chat_id' => $chatId,
+				)
+			);
 			return;
 		}
 		$result = $this->attachUsage( $chatId, $result );
@@ -91,10 +97,16 @@ class AgentLoop {
 	public function resume( int $chatId, int $pendingId, bool $confirmed ): array {
 		$pending = Repository::getPending( $pendingId );
 		if ( ! $pending || (int) $pending['chat_id'] !== $chatId ) {
-			return [ 'status' => 'error', 'message' => 'That wish is no longer pending.' ];
+			return array(
+				'status'  => 'error',
+				'message' => 'That wish is no longer pending.',
+			);
 		}
 		if ( $pending['status'] !== 'pending' ) {
-			return [ 'status' => 'error', 'message' => 'That wish was already resolved.' ];
+			return array(
+				'status'  => 'error',
+				'message' => 'That wish was already resolved.',
+			);
 		}
 
 		$isRest   = ( $pending['kind'] ?? 'graphql' ) === 'rest';
@@ -106,26 +118,29 @@ class AgentLoop {
 				$result = RestRunner::execute(
 					(string) $pending['operation'],
 					(string) ( $v['method'] ?? 'GET' ),
-					(array) ( $v['body'] ?? [] ),
-					(array) ( $v['params'] ?? [] )
+					(array) ( $v['body'] ?? array() ),
+					(array) ( $v['params'] ?? array() )
 				);
 			} else {
 				$result = $this->executeGraphql( (string) $pending['operation'], (array) $pending['variables'] );
 			}
 			Repository::setPendingStatus( $pendingId, 'confirmed' );
 		} else {
-			$result = [ 'refused' => true, 'message' => 'The user refused this wish; it was not granted.' ];
+			$result = array(
+				'refused' => true,
+				'message' => 'The user refused this wish; it was not granted.',
+			);
 			Repository::setPendingStatus( $pendingId, 'cancelled' );
 		}
 
 		Repository::addMessage(
 			$chatId,
-			[
+			array(
 				'role'         => 'tool',
 				'tool_call_id' => (string) $pending['tool_call_id'],
 				'name'         => $toolName,
 				'content'      => (string) wp_json_encode( $result ),
-			]
+			)
 		);
 
 		return $this->attachUsage( $chatId, $this->loop( $chatId ) );
@@ -156,7 +171,10 @@ class AgentLoop {
 	 * @return array<string,mixed>
 	 */
 	private function userEntry( string $userText, array $attachments ): array {
-		$entry = [ 'role' => 'user', 'content' => Guard::sanitize( $userText ) ];
+		$entry = array(
+			'role'    => 'user',
+			'content' => Guard::sanitize( $userText ),
+		);
 		if ( $attachments ) {
 			$entry['attachments'] = $attachments;
 		}
@@ -176,7 +194,7 @@ class AgentLoop {
 			if ( ( $entry['role'] ?? '' ) !== 'user' || empty( $entry['attachments'] ) ) {
 				continue;
 			}
-			$notes = [];
+			$notes = array();
 			foreach ( $entry['attachments'] as $a ) {
 				$token = (string) ( $a['token'] ?? '' );
 				if ( $token !== '' ) {
@@ -213,13 +231,17 @@ class AgentLoop {
 
 			try {
 				$turn = $emit
-					? $provider->chatStream( $system, $history, $tools, static fn( $d ) => $emit( 'delta', [ 'token' => $d ] ) )
+					? $provider->chatStream( $system, $history, $tools, static fn( $d ) => $emit( 'delta', array( 'token' => $d ) ) )
 					: $provider->chat( $system, $history, $tools );
 			} catch ( Throwable $e ) {
-				return [ 'status' => 'error', 'message' => $e->getMessage(), 'chat_id' => $chatId ];
+				return array(
+					'status'  => 'error',
+					'message' => $e->getMessage(),
+					'chat_id' => $chatId,
+				);
 			}
 
-			$calls = $turn['tool_calls'] ?? [];
+			$calls = $turn['tool_calls'] ?? array();
 
 			// No tool call → either the final reply, or a stalled empty turn to retry.
 			if ( empty( $calls ) ) {
@@ -232,54 +254,64 @@ class AgentLoop {
 					}
 					$text = 'The lamp flickered and the wish slipped away. Could you put it to me again?';
 				}
-				Repository::addMessage( $chatId, [ 'role' => 'assistant', 'content' => $text ] );
-				return [ 'status' => 'complete', 'message' => $text, 'chat_id' => $chatId ];
+				Repository::addMessage(
+					$chatId,
+					array(
+						'role'    => 'assistant',
+						'content' => $text,
+					)
+				);
+				return array(
+					'status'  => 'complete',
+					'message' => $text,
+					'chat_id' => $chatId,
+				);
 			}
 
 			// Handle exactly one tool call to keep the history consistent.
 			$call = $calls[0];
 			if ( $emit ) {
-				$emit( 'step', [ 'label' => $this->stepLabel( (string) $call['name'] ) ] );
+				$emit( 'step', array( 'label' => $this->stepLabel( (string) $call['name'] ) ) );
 			}
 			Repository::addMessage(
 				$chatId,
-				[
+				array(
 					'role'       => 'assistant',
 					'content'    => $turn['content'] ?? null,
-					'tool_calls' => [ $call ],
-				]
+					'tool_calls' => array( $call ),
+				)
 			);
 
 			if ( $call['name'] === 'search_schema' ) {
 				$fragments = Retriever::search( (string) ( $call['arguments']['query'] ?? '' ) );
-				$this->addToolResult( $chatId, $call, [ 'schema' => $fragments ] );
+				$this->addToolResult( $chatId, $call, array( 'schema' => $fragments ) );
 				continue;
 			}
 
 			if ( $call['name'] === 'run_graphql' ) {
 				$operation = (string) ( $call['arguments']['operation'] ?? '' );
-				$variables = (array) ( $call['arguments']['variables'] ?? [] );
+				$variables = (array) ( $call['arguments']['variables'] ?? array() );
 
 				try {
 					$type = Runner::operationType( $operation );
 				} catch ( Throwable $e ) {
-					$this->addToolResult( $chatId, $call, [ 'error' => 'Could not parse GraphQL: ' . $e->getMessage() ] );
+					$this->addToolResult( $chatId, $call, array( 'error' => 'Could not parse GraphQL: ' . $e->getMessage() ) );
 					continue;
 				}
 
 				if ( $type === 'mutation' ) {
-					$summary    = (string) ( $call['arguments']['summary'] ?? 'Grant a GraphQL mutation.' );
-					$pendingId  = Repository::createPending( $chatId, (string) $call['id'], 'graphql', $operation, $variables, $summary );
-					return [
+					$summary   = (string) ( $call['arguments']['summary'] ?? 'Grant a GraphQL mutation.' );
+					$pendingId = Repository::createPending( $chatId, (string) $call['id'], 'graphql', $operation, $variables, $summary );
+					return array(
 						'status'  => 'awaiting_confirmation',
 						'chat_id' => $chatId,
-						'pending' => [
+						'pending' => array(
 							'id'        => $pendingId,
 							'summary'   => $summary,
 							'operation' => $operation,
 							'variables' => $variables,
-						],
-					];
+						),
+					);
 				}
 
 				$result = $this->executeGraphql( $operation, $variables );
@@ -290,11 +322,11 @@ class AgentLoop {
 			if ( $call['name'] === 'rest_call' ) {
 				$method = strtoupper( (string) ( $call['arguments']['method'] ?? 'GET' ) );
 				$path   = (string) ( $call['arguments']['path'] ?? '' );
-				$body   = (array) ( $call['arguments']['body'] ?? [] );
-				$params = (array) ( $call['arguments']['params'] ?? [] );
+				$body   = (array) ( $call['arguments']['body'] ?? array() );
+				$params = (array) ( $call['arguments']['params'] ?? array() );
 
 				if ( $path === '' || $path[0] !== '/' ) {
-					$this->addToolResult( $chatId, $call, [ 'error' => 'path must be a REST route beginning with "/".' ] );
+					$this->addToolResult( $chatId, $call, array( 'error' => 'path must be a REST route beginning with "/".' ) );
 					continue;
 				}
 
@@ -307,19 +339,23 @@ class AgentLoop {
 						(string) $call['id'],
 						'rest',
 						$path,
-						[ 'method' => $method, 'body' => $body, 'params' => $params ],
+						array(
+							'method' => $method,
+							'body'   => $body,
+							'params' => $params,
+						),
 						$summary
 					);
-					return [
+					return array(
 						'status'  => 'awaiting_confirmation',
 						'chat_id' => $chatId,
-						'pending' => [
+						'pending' => array(
 							'id'        => $pendingId,
 							'summary'   => $summary,
 							'operation' => "$method $path",
 							'variables' => $body,
-						],
-					];
+						),
+					);
 				}
 
 				$result = RestRunner::execute( $path, $method, $body, $params );
@@ -328,12 +364,22 @@ class AgentLoop {
 			}
 
 			// Unknown tool — tell the model so it can recover.
-			$this->addToolResult( $chatId, $call, [ 'error' => 'Unknown tool: ' . $call['name'] ] );
+			$this->addToolResult( $chatId, $call, array( 'error' => 'Unknown tool: ' . $call['name'] ) );
 		}
 
 		$msg = 'The lamp grew dim before I could finish. Could you narrow the wish?';
-		Repository::addMessage( $chatId, [ 'role' => 'assistant', 'content' => $msg ] );
-		return [ 'status' => 'complete', 'message' => $msg, 'chat_id' => $chatId ];
+		Repository::addMessage(
+			$chatId,
+			array(
+				'role'    => 'assistant',
+				'content' => $msg,
+			)
+		);
+		return array(
+			'status'  => 'complete',
+			'message' => $msg,
+			'chat_id' => $chatId,
+		);
 	}
 
 	/**
@@ -343,12 +389,12 @@ class AgentLoop {
 	private function addToolResult( int $chatId, array $call, array $result ): void {
 		Repository::addMessage(
 			$chatId,
-			[
+			array(
 				'role'         => 'tool',
 				'tool_call_id' => (string) $call['id'],
 				'name'         => (string) $call['name'],
 				'content'      => (string) wp_json_encode( $result ),
-			]
+			)
 		);
 	}
 
@@ -360,7 +406,7 @@ class AgentLoop {
 		try {
 			return Runner::execute( $operation, $variables );
 		} catch ( Throwable $e ) {
-			return [ 'error' => $e->getMessage() ];
+			return array( 'error' => $e->getMessage() );
 		}
 	}
 }

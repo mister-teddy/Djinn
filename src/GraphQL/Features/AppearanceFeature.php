@@ -18,42 +18,63 @@ class AppearanceFeature implements Feature {
 
 	public function register( Registry $r ): void {
 		$theme = new ObjectType(
-			[
+			array(
 				'name'        => 'Theme',
 				'description' => 'An installed theme.',
-				'fields'      => [
-					'slug'    => [ 'type' => Type::id(), 'description' => 'The stylesheet directory (use this to activate).' ],
-					'name'    => [ 'type' => Type::string() ],
-					'version' => [ 'type' => Type::string() ],
-					'active'  => [ 'type' => Type::boolean(), 'description' => 'Whether this is the active theme.' ],
-					'parent'  => [ 'type' => Type::string(), 'description' => 'Parent theme slug, if a child theme.' ],
-				],
-			]
+				'fields'      => array(
+					'slug'    => array(
+						'type'        => Type::id(),
+						'description' => 'The stylesheet directory (use this to activate).',
+					),
+					'name'    => array( 'type' => Type::string() ),
+					'version' => array( 'type' => Type::string() ),
+					'active'  => array(
+						'type'        => Type::boolean(),
+						'description' => 'Whether this is the active theme.',
+					),
+					'parent'  => array(
+						'type'        => Type::string(),
+						'description' => 'Parent theme slug, if a child theme.',
+					),
+				),
+			)
 		);
 
-		$r->addQuery( 'themes', [
-			'type'        => Type::listOf( $theme ),
-			'description' => 'List installed themes.',
-			'resolve'     => [ $this, 'themes' ],
-		] );
-		$r->addQuery( 'additionalCss', [
-			'type'        => Type::string(),
-			'description' => "The active theme's Additional CSS (the Customizer's extra CSS).",
-			'resolve'     => [ $this, 'additionalCss' ],
-		] );
+		$r->addQuery(
+			'themes',
+			array(
+				'type'        => Type::listOf( $theme ),
+				'description' => 'List installed themes.',
+				'resolve'     => array( $this, 'themes' ),
+			)
+		);
+		$r->addQuery(
+			'additionalCss',
+			array(
+				'type'        => Type::string(),
+				'description' => "The active theme's Additional CSS (the Customizer's extra CSS).",
+				'resolve'     => array( $this, 'additionalCss' ),
+			)
+		);
 
-		$r->addMutation( 'activateTheme', [
-			'type'        => Type::boolean(),
-			'description' => 'Switch the active theme by slug.',
-			'args'        => [ 'slug' => [ 'type' => Type::nonNull( Type::id() ) ] ],
-			'resolve'     => [ $this, 'activateTheme' ],
-		] );
-		$r->addMutation( 'setAdditionalCss', [
-			'type'        => Type::boolean(),
-			'description' => "Replaces ALL of the active theme's Additional CSS — first read it with the additionalCss query and include any existing CSS you want to keep.",
-			'args'        => [ 'css' => [ 'type' => Type::nonNull( Type::string() ) ] ],
-			'resolve'     => [ $this, 'setAdditionalCss' ],
-		] );
+		$r->addMutation(
+			'activateTheme',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Switch the active theme by slug.',
+				'args'        => array( 'slug' => array( 'type' => Type::nonNull( Type::id() ) ) ),
+				'resolve'     => array( $this, 'activateTheme' ),
+			)
+		);
+		$r->addMutation(
+			'setAdditionalCss',
+			array(
+				'type'        => Type::boolean(),
+				'description' => "Replaces ALL of the active theme's Additional CSS — first read it with the additionalCss query and include any existing CSS you want to keep.",
+				'args'        => array( 'css' => array( 'type' => Type::nonNull( Type::string() ) ) ),
+				'resolve'     => array( $this, 'setAdditionalCss' ),
+			)
+		);
 	}
 
 	/** @return array<int,array<string,mixed>> */
@@ -62,16 +83,16 @@ class AppearanceFeature implements Feature {
 			throw new UserError( 'You do not have permission to view themes.' );
 		}
 		$active = get_stylesheet();
-		$out    = [];
+		$out    = array();
 		foreach ( wp_get_themes() as $slug => $theme ) {
 			$parent = $theme->parent();
-			$out[]  = [
+			$out[]  = array(
 				'slug'    => (string) $slug,
 				'name'    => $theme->get( 'Name' ),
 				'version' => $theme->get( 'Version' ),
 				'active'  => $slug === $active,
 				'parent'  => $parent ? $parent->get_stylesheet() : null,
-			];
+			);
 		}
 		return $out;
 	}

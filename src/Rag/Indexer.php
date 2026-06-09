@@ -30,7 +30,7 @@ class Indexer {
 	 * @return array<string,string> type name => SDL fragment, sorted by name.
 	 */
 	public static function chunks(): array {
-		$chunks = [];
+		$chunks = array();
 		// Build the schema first — this also registers features (e.g. WooCommerce) that claim
 		// post types via the djinn_curated_post_types filter siteChunks() reads below.
 		foreach ( SchemaFactory::build()->getTypeMap() as $name => $type ) {
@@ -64,15 +64,15 @@ class Indexer {
 	 * @return array<string,string>
 	 */
 	private static function siteChunks(): array {
-		$out          = [];
-		$curatedTypes = (array) apply_filters( 'djinn_curated_post_types', [] );
-		$curatedTax   = (array) apply_filters( 'djinn_curated_taxonomies', [] );
+		$out          = array();
+		$curatedTypes = (array) apply_filters( 'djinn_curated_post_types', array() );
+		$curatedTax   = (array) apply_filters( 'djinn_curated_taxonomies', array() );
 
-		foreach ( get_post_types( [ '_builtin' => false ], 'objects' ) as $pt ) {
+		foreach ( get_post_types( array( '_builtin' => false ), 'objects' ) as $pt ) {
 			if ( ( ! $pt->public && ! $pt->show_ui ) || in_array( $pt->name, $curatedTypes, true ) ) {
 				continue;
 			}
-			$taxes = get_object_taxonomies( $pt->name );
+			$taxes                          = get_object_taxonomies( $pt->name );
 			$out[ 'site:cpt:' . $pt->name ] = sprintf(
 				'Custom content type "%s" — post type `%s`%s. Work with it using the generic post '
 				. 'operations and this exact postType: list with posts(postType: "%1$s"), read with '
@@ -86,7 +86,7 @@ class Indexer {
 			);
 		}
 
-		foreach ( get_taxonomies( [ '_builtin' => false ], 'objects' ) as $tax ) {
+		foreach ( get_taxonomies( array( '_builtin' => false ), 'objects' ) as $tax ) {
 			if ( ( ! $tax->public && ! $tax->show_ui ) || in_array( $tax->name, $curatedTax, true ) ) {
 				continue;
 			}
@@ -108,7 +108,7 @@ class Indexer {
 	 * model-specific). reindex() stores it; needsReindex()/summary() compare against it.
 	 */
 	public static function fingerprint(): string {
-		$parts = [ 'embed:' . Settings::embeddingModel() ];
+		$parts = array( 'embed:' . Settings::embeddingModel() );
 		foreach ( self::chunks() as $name => $fragment ) {
 			$parts[] = $name . ':' . $fragment;
 		}
@@ -117,8 +117,8 @@ class Indexer {
 
 	/** @return array{fingerprint?:string,model?:string,count?:int,indexed_at?:string} */
 	public static function meta(): array {
-		$meta = get_option( self::META_OPTION, [] );
-		return is_array( $meta ) ? $meta : [];
+		$meta = get_option( self::META_OPTION, array() );
+		return is_array( $meta ) ? $meta : array();
 	}
 
 	/** @return int Number of chunks indexed. */
@@ -127,15 +127,15 @@ class Indexer {
 		$provider = ProviderFactory::make();
 		$vectors  = $provider->embed( array_values( $chunks ) );
 
-		$rows = [];
+		$rows = array();
 		$i    = 0;
 		foreach ( $chunks as $name => $fragment ) {
-			$rows[] = [
+			$rows[] = array(
 				'name'      => $name,
 				'fragment'  => $fragment,
-				'embedding' => $vectors[ $i ] ?? [],
-			];
-			$i++;
+				'embedding' => $vectors[ $i ] ?? array(),
+			);
+			++$i;
 		}
 
 		Repository::replaceChunks( $rows, $provider->embeddingModel() );
@@ -143,12 +143,12 @@ class Indexer {
 		// `model` is stored for display only; staleness is judged by `fingerprint` (see fingerprint()).
 		update_option(
 			self::META_OPTION,
-			[
+			array(
 				'fingerprint' => self::fingerprint(),
 				'model'       => Settings::embeddingModel(),
 				'count'       => count( $rows ),
 				'indexed_at'  => current_time( 'mysql', true ),
-			]
+			)
 		);
 		return count( $rows );
 	}

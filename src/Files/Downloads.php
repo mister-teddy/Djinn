@@ -29,7 +29,15 @@ class Downloads {
 	/** Register a written file; returns a token for the /download endpoint. */
 	public static function register( string $path, string $filename, string $mime = 'application/octet-stream' ): string {
 		$token = wp_generate_password( 40, false );
-		set_transient( self::PREFIX . $token, [ 'path' => $path, 'filename' => $filename, 'mime' => $mime ], self::TTL );
+		set_transient(
+			self::PREFIX . $token,
+			array(
+				'path'     => $path,
+				'filename' => $filename,
+				'mime'     => $mime,
+			),
+			self::TTL
+		);
 		return $token;
 	}
 

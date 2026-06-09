@@ -31,7 +31,7 @@ class AdminResolvers {
 	/** @return array<string,mixed> */
 	public static function settings(): array {
 		$s = Settings::all();
-		return [
+		return array(
 			'edition'        => Settings::edition(),
 			'isPro'          => Settings::isPro(),
 			'provider'       => Settings::provider(),
@@ -41,19 +41,19 @@ class AdminResolvers {
 			'hasSiteToken'   => Settings::siteToken() !== '',
 			'usesProxy'      => Settings::usesProxy(),
 			'configured'     => Settings::isConfigured(),
-		];
+		);
 	}
 
 	/** The hosted-proxy account (credit, payment status) + connection state. */
 	public static function account(): array {
-		$base = [
+		$base = array(
 			'usesProxy'  => Settings::usesProxy(),
 			'connected'  => null,
 			'balanceUsd' => null,
 			'spentUsd'   => null,
 			'paid'       => null,
 			'subscribed' => null,
-		];
+		);
 		if ( ! Settings::usesProxy() ) {
 			return $base;
 		}
@@ -62,7 +62,7 @@ class AdminResolvers {
 			$base['connected'] = Settings::siteToken() !== '';
 			return $base;
 		}
-		return array_merge( $base, $acct, [ 'connected' => true ] );
+		return array_merge( $base, $acct, array( 'connected' => true ) );
 	}
 
 	/** @return array<string,mixed> */
@@ -72,31 +72,47 @@ class AdminResolvers {
 			ModelCatalog::flush();
 		}
 		$catalog = ModelCatalog::forProvider( $provider, Settings::apiKey() );
-		return [
-			'chat'  => array_map( static fn( $m ) => [ 'id' => $m, 'tier' => ModelCatalog::chatTier( $m ), 'price' => Pricing::describe( $m ) ], $catalog['chat'] ),
-			'embed' => array_map( static fn( $m ) => [ 'id' => $m, 'price' => Pricing::describe( $m ) ], $catalog['embed'] ),
+		return array(
+			'chat'  => array_map(
+				static fn( $m ) => array(
+					'id'    => $m,
+					'tier'  => ModelCatalog::chatTier( $m ),
+					'price' => Pricing::describe( $m ),
+				),
+				$catalog['chat']
+			),
+			'embed' => array_map(
+				static fn( $m ) => array(
+					'id'    => $m,
+					'price' => Pricing::describe( $m ),
+				),
+				$catalog['embed']
+			),
 			'live'  => (bool) $catalog['live'],
 			'error' => $catalog['error'] ?: null,
-		];
+		);
 	}
 
 	/** @return array<string,mixed> */
 	public static function operations(): array {
-		$diff = [ 'added' => [], 'changed' => [] ];
+		$diff = array(
+			'added'   => array(),
+			'changed' => array(),
+		);
 		if ( Settings::isConfigured() ) {
 			$diff = IndexStatus::summary()['diff'];
 		}
-		return [
+		return array(
 			'operations' => SchemaFactory::operations(),
 			'unindexed'  => $diff['added'],
 			'outdated'   => $diff['changed'],
-		];
+		);
 	}
 
 	/** @return array<string,mixed> */
 	public static function indexStatus(): array {
 		$embeds = Providers::hasEmbeddings( Settings::provider() );
-		$base   = [
+		$base   = array(
 			'configured'  => Settings::isConfigured(),
 			'embeds'      => $embeds,
 			'indexed'     => null,
@@ -108,68 +124,87 @@ class AdminResolvers {
 			'countLive'   => null,
 			'estimate'    => null,
 			'diff'        => null,
-		];
+		);
 		if ( ! Settings::isConfigured() || ! $embeds ) {
 			return $base;
 		}
 		$s = IndexStatus::summary();
-		return array_merge( $base, [
-			'indexed'     => $s['indexed'],
-			'upToDate'    => $s['up_to_date'],
-			'model'       => $s['model'],
-			'storedModel' => $s['stored_model'],
-			'indexedAt'   => $s['indexed_at'],
-			'countStored' => $s['count_stored'],
-			'countLive'   => $s['count_live'],
-			'estimate'    => $s['estimate'],
-			'diff'        => [ 'added' => $s['diff']['added'], 'changed' => $s['diff']['changed'] ],
-		] );
+		return array_merge(
+			$base,
+			array(
+				'indexed'     => $s['indexed'],
+				'upToDate'    => $s['up_to_date'],
+				'model'       => $s['model'],
+				'storedModel' => $s['stored_model'],
+				'indexedAt'   => $s['indexed_at'],
+				'countStored' => $s['count_stored'],
+				'countLive'   => $s['count_live'],
+				'estimate'    => $s['estimate'],
+				'diff'        => array(
+					'added'   => $s['diff']['added'],
+					'changed' => $s['diff']['changed'],
+				),
+			)
+		);
 	}
 
 	/** @return array<string,mixed> */
 	public static function usage(): array {
 		$u = Repository::usageSummary();
-		return [
-			'totals'  => [
+		return array(
+			'totals'  => array(
 				'calls'        => (int) $u['totals']['calls'],
 				'prompt'       => (int) $u['totals']['prompt'],
 				'completion'   => (int) $u['totals']['completion'],
 				'cost'         => (float) $u['totals']['cost'],
 				'hasEstimates' => (bool) $u['totals']['has_estimates'],
-			],
-			'byModel' => array_map( static fn( $r ) => [
-				'provider'   => $r['provider'],
-				'model'      => $r['model'],
-				'kind'       => $r['kind'],
-				'calls'      => (int) $r['calls'],
-				'prompt'     => (int) $r['prompt'],
-				'completion' => (int) $r['completion'],
-				'cost'       => (float) $r['cost'],
-				'estimated'  => (bool) $r['estimated'],
-			], $u['by_model'] ),
-			'byDay'   => array_map( static fn( $r ) => [
-				'day'   => $r['day'],
-				'calls' => (int) $r['calls'],
-				'cost'  => (float) $r['cost'],
-			], $u['by_day'] ),
-			'recent'  => array_map( static fn( $r ) => [
-				'createdAt'        => $r['created_at'],
-				'provider'         => $r['provider'],
-				'model'            => $r['model'],
-				'kind'             => $r['kind'],
-				'promptTokens'     => (int) $r['prompt_tokens'],
-				'completionTokens' => (int) $r['completion_tokens'],
-				'estimated'        => (bool) $r['estimated'],
-				'cost'             => (float) $r['cost'],
-			], $u['recent'] ),
+			),
+			'byModel' => array_map(
+				static fn( $r ) => array(
+					'provider'   => $r['provider'],
+					'model'      => $r['model'],
+					'kind'       => $r['kind'],
+					'calls'      => (int) $r['calls'],
+					'prompt'     => (int) $r['prompt'],
+					'completion' => (int) $r['completion'],
+					'cost'       => (float) $r['cost'],
+					'estimated'  => (bool) $r['estimated'],
+				),
+				$u['by_model']
+			),
+			'byDay'   => array_map(
+				static fn( $r ) => array(
+					'day'   => $r['day'],
+					'calls' => (int) $r['calls'],
+					'cost'  => (float) $r['cost'],
+				),
+				$u['by_day']
+			),
+			'recent'  => array_map(
+				static fn( $r ) => array(
+					'createdAt'        => $r['created_at'],
+					'provider'         => $r['provider'],
+					'model'            => $r['model'],
+					'kind'             => $r['kind'],
+					'promptTokens'     => (int) $r['prompt_tokens'],
+					'completionTokens' => (int) $r['completion_tokens'],
+					'estimated'        => (bool) $r['estimated'],
+					'cost'             => (float) $r['cost'],
+				),
+				$u['recent']
+			),
 			'account' => Settings::usesProxy() ? self::account() : null,
-		];
+		);
 	}
 
 	/** @return array<int,array<string,mixed>> */
 	public static function chats(): array {
 		return array_map(
-			static fn( $r ) => [ 'id' => (int) $r['id'], 'title' => $r['title'], 'createdAt' => $r['created_at'] ],
+			static fn( $r ) => array(
+				'id'        => (int) $r['id'],
+				'title'     => $r['title'],
+				'createdAt' => $r['created_at'],
+			),
 			Repository::listChats( get_current_user_id() )
 		);
 	}
@@ -177,11 +212,11 @@ class AdminResolvers {
 	/** @return array<string,mixed> */
 	public static function chat( int $id ): array {
 		self::assertOwns( $id );
-		return [
+		return array(
 			'chatId'   => $id,
 			'messages' => Transcript::of( $id ),
 			'usage'    => Repository::chatUsage( $id ),
-		];
+		);
 	}
 
 	/**
@@ -189,14 +224,14 @@ class AdminResolvers {
 	 * @return array<string,mixed>
 	 */
 	public static function saveSettings( array $input ): array {
-		$map = [
-			'provider'        => 'provider',
-			'apiKey'          => 'api_key',
-			'chatModel'       => 'chat_model',
-			'embeddingModel'  => 'embedding_model',
-			'siteToken'       => 'site_token',
-		];
-		$update = [];
+		$map    = array(
+			'provider'       => 'provider',
+			'apiKey'         => 'api_key',
+			'chatModel'      => 'chat_model',
+			'embeddingModel' => 'embedding_model',
+			'siteToken'      => 'site_token',
+		);
+		$update = array();
 		foreach ( $map as $in => $key ) {
 			if ( array_key_exists( $in, $input ) && $input[ $in ] !== null ) {
 				$update[ $key ] = $input[ $in ];
@@ -233,11 +268,11 @@ class AdminResolvers {
 				'mutation ( $siteUrl: String!, $claimPath: String, $pairingNonce: String! ) {
 					register( siteUrl: $siteUrl, claimPath: $claimPath, pairingNonce: $pairingNonce ) { ok }
 				}',
-				[
+				array(
 					'siteUrl'      => home_url(),
 					'claimPath'    => wp_make_link_relative( rest_url( 'djinn/v1/claim' ) ),
 					'pairingNonce' => $nonce,
-				]
+				)
 			);
 		} catch ( ProxyException $e ) {
 			delete_transient( PairingSchema::PENDING );
@@ -255,9 +290,17 @@ class AdminResolvers {
 	/** @return array<string,mixed> */
 	public static function reindex(): array {
 		try {
-			return [ 'status' => 'ok', 'chunks' => Indexer::reindex(), 'message' => null ];
+			return array(
+				'status'  => 'ok',
+				'chunks'  => Indexer::reindex(),
+				'message' => null,
+			);
 		} catch ( Throwable $e ) {
-			return [ 'status' => 'error', 'chunks' => null, 'message' => $e->getMessage() ];
+			return array(
+				'status'  => 'error',
+				'chunks'  => null,
+				'message' => $e->getMessage(),
+			);
 		}
 	}
 
@@ -293,7 +336,7 @@ class AdminResolvers {
 		try {
 			$data = ProxyClient::call(
 				'mutation ( $kind: String! ) { billingCheckout( kind: $kind ) { url } }',
-				[ 'kind' => $kind ],
+				array( 'kind' => $kind ),
 				$token
 			);
 		} catch ( ProxyException $e ) {
@@ -303,7 +346,7 @@ class AdminResolvers {
 		if ( $url === '' ) {
 			throw new UserError( 'Billing is not available yet.' );
 		}
-		return [ 'url' => $url ];
+		return array( 'url' => $url );
 	}
 
 	public static function deleteChat( int $id ): bool {

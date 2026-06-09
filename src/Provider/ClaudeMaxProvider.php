@@ -23,10 +23,10 @@ class ClaudeMaxProvider extends AnthropicProvider {
 	}
 
 	protected function authHeaders(): array {
-		return [
+		return array(
 			'Authorization'     => 'Bearer ' . $this->apiKey, // a `claude setup-token` OAuth token
 			'anthropic-version' => '2023-06-01',
 			'anthropic-beta'    => self::OAUTH_BETA,
-		];
+		);
 	}
 }

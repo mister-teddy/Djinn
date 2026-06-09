@@ -20,38 +20,53 @@ class MetaFeature implements Feature {
 
 	public function register( Registry $r ): void {
 		$meta = new ObjectType(
-			[
+			array(
 				'name'        => 'MetaEntry',
 				'description' => 'A single post-meta (custom field) key/value. Plugins store much of their data here.',
-				'fields'      => [
-					'key'       => [ 'type' => Type::string() ],
-					'value'     => [ 'type' => Type::string(), 'description' => 'Scalar as-is; arrays/objects JSON-encoded.' ],
-					'protected' => [ 'type' => Type::boolean(), 'description' => 'Protected (internal) meta — readable here but not writable via setPostMeta.' ],
-				],
-			]
+				'fields'      => array(
+					'key'       => array( 'type' => Type::string() ),
+					'value'     => array(
+						'type'        => Type::string(),
+						'description' => 'Scalar as-is; arrays/objects JSON-encoded.',
+					),
+					'protected' => array(
+						'type'        => Type::boolean(),
+						'description' => 'Protected (internal) meta — readable here but not writable via setPostMeta.',
+					),
+				),
+			)
 		);
 		$r->setType( 'MetaEntry', $meta );
 
-		$r->addQuery( 'postMeta', [
-			'type'        => Type::listOf( $meta ),
-			'description' => 'Read a post\'s custom fields (post meta). Optionally filter to one key. Works for any post type.',
-			'args'        => [
-				'postId' => [ 'type' => Type::nonNull( Type::id() ) ],
-				'key'    => [ 'type' => Type::string() ],
-			],
-			'resolve'     => [ $this, 'postMeta' ],
-		] );
+		$r->addQuery(
+			'postMeta',
+			array(
+				'type'        => Type::listOf( $meta ),
+				'description' => 'Read a post\'s custom fields (post meta). Optionally filter to one key. Works for any post type.',
+				'args'        => array(
+					'postId' => array( 'type' => Type::nonNull( Type::id() ) ),
+					'key'    => array( 'type' => Type::string() ),
+				),
+				'resolve'     => array( $this, 'postMeta' ),
+			)
+		);
 
-		$r->addMutation( 'setPostMeta', [
-			'type'        => Type::boolean(),
-			'description' => 'Set a custom field (post meta) on a post. Refuses protected (underscore/internal) keys.',
-			'args'        => [
-				'postId' => [ 'type' => Type::nonNull( Type::id() ) ],
-				'key'    => [ 'type' => Type::nonNull( Type::string() ) ],
-				'value'  => [ 'type' => Type::nonNull( Type::string() ), 'description' => 'Stored as-is; pass JSON for non-scalar values.' ],
-			],
-			'resolve'     => [ $this, 'setPostMeta' ],
-		] );
+		$r->addMutation(
+			'setPostMeta',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Set a custom field (post meta) on a post. Refuses protected (underscore/internal) keys.',
+				'args'        => array(
+					'postId' => array( 'type' => Type::nonNull( Type::id() ) ),
+					'key'    => array( 'type' => Type::nonNull( Type::string() ) ),
+					'value'  => array(
+						'type'        => Type::nonNull( Type::string() ),
+						'description' => 'Stored as-is; pass JSON for non-scalar values.',
+					),
+				),
+				'resolve'     => array( $this, 'setPostMeta' ),
+			)
+		);
 	}
 
 	/**
@@ -67,17 +82,17 @@ class MetaFeature implements Feature {
 			throw new UserError( 'You do not have permission to read this post\'s custom fields.' );
 		}
 		$key = isset( $args['key'] ) ? (string) $args['key'] : null;
-		$out = [];
+		$out = array();
 		foreach ( get_post_meta( $id ) as $k => $values ) {
 			if ( $key !== null && $k !== $key ) {
 				continue;
 			}
 			foreach ( (array) $values as $v ) {
-				$out[] = [
+				$out[] = array(
 					'key'       => (string) $k,
 					'value'     => is_scalar( $v ) ? (string) $v : (string) wp_json_encode( $v ),
 					'protected' => is_protected_meta( (string) $k, 'post' ),
-				];
+				);
 			}
 		}
 		return $out;

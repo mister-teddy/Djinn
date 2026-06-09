@@ -11,13 +11,13 @@ namespace Djinn\Security;
  */
 class Guard {
 
-	private const PATTERNS = [
+	private const PATTERNS = array(
 		'/ignore (all |any |the )?(previous|prior|above) (instructions|prompts?)/i',
 		'/disregard (the )?(system|above|previous)/i',
 		'/you are (now )?(an? )?(admin|administrator|root|developer mode)/i',
 		'/\[system\]\s*:/i',
 		'/your (new )?(instructions|role) (are|is)/i',
-	];
+	);
 
 	public static function sanitize( string $text ): string {
 		foreach ( self::PATTERNS as $pattern ) {

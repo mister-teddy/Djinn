@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<ruleset name="Djinn">
+	<description>WordPress coding style for the Djinn plugin; `phpcbf` auto-formats to it.</description>
+
+	<!-- What to format: the shipped plugin code only (not vendor/build/dev scripts). -->
+	<file>djinn.php</file>
+	<file>src</file>
+	<arg name="extensions" value="php"/>
+	<arg name="basepath" value="."/>
+	<arg value="ps"/>
+
+	<!-- The WordPress coding style: tabs, spacing, array and brace formatting. -->
+	<rule ref="WordPress-Core"/>
+</ruleset>

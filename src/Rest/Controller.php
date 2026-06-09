@@ -25,73 +25,101 @@ class Controller {
 	private const NS = 'djinn/v1';
 
 	public function register(): void {
-		add_action( 'rest_api_init', [ $this, 'routes' ] );
+		add_action( 'rest_api_init', array( $this, 'routes' ) );
 	}
 
 	public function routes(): void {
-		$auth = [ $this, 'canManage' ];
+		$auth = array( $this, 'canManage' );
 
-		register_rest_route( self::NS, '/wish', [
-			'methods'             => 'POST',
-			'permission_callback' => $auth,
-			'callback'            => [ $this, 'wish' ],
-		] );
+		register_rest_route(
+			self::NS,
+			'/wish',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => $auth,
+				'callback'            => array( $this, 'wish' ),
+			)
+		);
 
-		register_rest_route( self::NS, '/wish/stream', [
-			'methods'             => 'POST',
-			'permission_callback' => $auth,
-			'callback'            => [ $this, 'wishStream' ],
-		] );
+		register_rest_route(
+			self::NS,
+			'/wish/stream',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => $auth,
+				'callback'            => array( $this, 'wishStream' ),
+			)
+		);
 
-		register_rest_route( self::NS, '/grant', [
-			'methods'             => 'POST',
-			'permission_callback' => $auth,
-			'callback'            => [ $this, 'grant' ],
-		] );
+		register_rest_route(
+			self::NS,
+			'/grant',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => $auth,
+				'callback'            => array( $this, 'grant' ),
+			)
+		);
 
-		register_rest_route( self::NS, '/upload', [
-			'methods'             => 'POST',
-			'permission_callback' => $auth,
-			'callback'            => [ $this, 'upload' ],
-		] );
+		register_rest_route(
+			self::NS,
+			'/upload',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => $auth,
+				'callback'            => array( $this, 'upload' ),
+			)
+		);
 
-		register_rest_route( self::NS, '/download', [
-			'methods'             => 'GET',
-			'permission_callback' => $auth,
-			'callback'            => [ $this, 'download' ],
-		] );
+		register_rest_route(
+			self::NS,
+			'/download',
+			array(
+				'methods'             => 'GET',
+				'permission_callback' => $auth,
+				'callback'            => array( $this, 'download' ),
+			)
+		);
 
 		// PUBLIC: the hosted proxy calls this back during register() to push this site's token. The
 		// PairingSchema stores it only while connect() has a pairing window open, and the proxy can't
 		// be a WP user — hence no auth here. Knowing the URL grants nothing without an open window.
-		register_rest_route( self::NS, '/claim', [
-			'methods'             => 'POST',
-			'permission_callback' => '__return_true',
-			'callback'            => [ $this, 'claim' ],
-		] );
+		register_rest_route(
+			self::NS,
+			'/claim',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => '__return_true',
+				'callback'            => array( $this, 'claim' ),
+			)
+		);
 
 		// The admin control-plane GraphQL endpoint the Cave + Lamp SPAs query. Same manage_options +
 		// nonce gate as the REST routes above.
-		register_rest_route( self::NS, '/graphql', [
-			'methods'             => 'POST',
-			'permission_callback' => $auth,
-			'callback'            => [ $this, 'graphql' ],
-		] );
+		register_rest_route(
+			self::NS,
+			'/graphql',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => $auth,
+				'callback'            => array( $this, 'graphql' ),
+			)
+		);
 	}
 
 	/** Execute one admin GraphQL operation. Always 200; failures live in the body's `errors`. */
 	public function graphql( WP_REST_Request $req ): WP_REST_Response {
-		$body  = (array) $req->get_json_params();
-		$query = (string) ( $body['query'] ?? '' );
-		$vars  = isset( $body['variables'] ) && is_array( $body['variables'] ) ? $body['variables'] : null;
-		$debug = ( defined( 'WP_DEBUG' ) && WP_DEBUG )
+		$body   = (array) $req->get_json_params();
+		$query  = (string) ( $body['query'] ?? '' );
+		$vars   = isset( $body['variables'] ) && is_array( $body['variables'] ) ? $body['variables'] : null;
+		$debug  = ( defined( 'WP_DEBUG' ) && WP_DEBUG )
 			? DebugFlag::INCLUDE_DEBUG_MESSAGE | DebugFlag::INCLUDE_TRACE
 			: DebugFlag::NONE;
 		$result = GraphQL::executeQuery(
 			AdminSchema::build(),
 			$query,
 			null,
-			[ 'currentUserId' => get_current_user_id() ],
+			array( 'currentUserId' => get_current_user_id() ),
 			$vars
 		)->toArray( $debug );
 		return new WP_REST_Response( $result );
@@ -99,9 +127,9 @@ class Controller {
 
 	/** Public pairing endpoint: the proxy pushes this site's token here during connect(). */
 	public function claim( WP_REST_Request $req ): WP_REST_Response {
-		$body  = (array) $req->get_json_params();
-		$query = (string) ( $body['query'] ?? '' );
-		$vars  = isset( $body['variables'] ) && is_array( $body['variables'] ) ? $body['variables'] : null;
+		$body   = (array) $req->get_json_params();
+		$query  = (string) ( $body['query'] ?? '' );
+		$vars   = isset( $body['variables'] ) && is_array( $body['variables'] ) ? $body['variables'] : null;
 		$result = GraphQL::executeQuery( PairingSchema::build(), $query, null, null, $vars )->toArray( DebugFlag::NONE );
 		return new WP_REST_Response( $result );
 	}
@@ -110,14 +138,26 @@ class Controller {
 		$text        = trim( (string) $req->get_param( 'message' ) );
 		$attachments = $this->attachmentsParam( $req );
 		if ( $text === '' && ! $attachments ) {
-			return new WP_REST_Response( [ 'status' => 'error', 'message' => 'Whisper something.' ], 400 );
+			return new WP_REST_Response(
+				array(
+					'status'  => 'error',
+					'message' => 'Whisper something.',
+				),
+				400
+			);
 		}
 
 		$chatId = (int) $req->get_param( 'chat_id' );
 		if ( $chatId <= 0 ) {
 			$chatId = Repository::createChat( get_current_user_id(), $this->chatTitle( $text, $attachments ) );
 		} elseif ( ! $this->ownsChat( $chatId ) ) {
-			return new WP_REST_Response( [ 'status' => 'error', 'message' => 'Not your lamp.' ], 403 );
+			return new WP_REST_Response(
+				array(
+					'status'  => 'error',
+					'message' => 'Not your lamp.',
+				),
+				403
+			);
 		}
 
 		return new WP_REST_Response( ( new AgentLoop() )->run( $chatId, $text, $attachments ) );
@@ -132,13 +172,25 @@ class Controller {
 		$text        = trim( (string) $req->get_param( 'message' ) );
 		$attachments = $this->attachmentsParam( $req );
 		if ( $text === '' && ! $attachments ) {
-			return new WP_REST_Response( [ 'status' => 'error', 'message' => 'Whisper something.' ], 400 );
+			return new WP_REST_Response(
+				array(
+					'status'  => 'error',
+					'message' => 'Whisper something.',
+				),
+				400
+			);
 		}
 		$chatId = (int) $req->get_param( 'chat_id' );
 		if ( $chatId <= 0 ) {
 			$chatId = Repository::createChat( get_current_user_id(), $this->chatTitle( $text, $attachments ) );
 		} elseif ( ! $this->ownsChat( $chatId ) ) {
-			return new WP_REST_Response( [ 'status' => 'error', 'message' => 'Not your lamp.' ], 403 );
+			return new WP_REST_Response(
+				array(
+					'status'  => 'error',
+					'message' => 'Not your lamp.',
+				),
+				403
+			);
 		}
 
 		$this->openStream();
@@ -148,7 +200,7 @@ class Controller {
 			@ob_flush();
 			@flush();
 		};
-		$emit( 'open', [ 'chat_id' => $chatId ] );
+		$emit( 'open', array( 'chat_id' => $chatId ) );
 		( new AgentLoop() )->streamRun( $chatId, $text, $emit, $attachments );
 		exit;
 	}
@@ -174,7 +226,13 @@ class Controller {
 		$confirmed = (bool) $req->get_param( 'confirmed' );
 
 		if ( ! $this->ownsChat( $chatId ) ) {
-			return new WP_REST_Response( [ 'status' => 'error', 'message' => 'Not your lamp.' ], 403 );
+			return new WP_REST_Response(
+				array(
+					'status'  => 'error',
+					'message' => 'Not your lamp.',
+				),
+				403
+			);
 		}
 
 		return new WP_REST_Response( ( new AgentLoop() )->resume( $chatId, $pendingId, $confirmed ) );
@@ -187,31 +245,33 @@ class Controller {
 	public function upload( WP_REST_Request $req ): WP_REST_Response {
 		$f = $_FILES['file'] ?? null; // phpcs:ignore WordPress.Security.NonceVerification — REST nonce already checked
 		if ( ! is_array( $f ) || ( $f['error'] ?? UPLOAD_ERR_NO_FILE ) !== UPLOAD_ERR_OK ) {
-			return new WP_REST_Response( [ 'message' => 'No file was uploaded.' ], 400 );
+			return new WP_REST_Response( array( 'message' => 'No file was uploaded.' ), 400 );
 		}
 		if ( (int) $f['size'] > wp_max_upload_size() ) {
-			return new WP_REST_Response( [ 'message' => 'That file is too large.' ], 413 );
+			return new WP_REST_Response( array( 'message' => 'That file is too large.' ), 413 );
 		}
 		$check   = wp_check_filetype_and_ext( $f['tmp_name'], $f['name'] );
 		$ext     = strtolower( (string) ( $check['ext'] ?: pathinfo( $f['name'], PATHINFO_EXTENSION ) ) );
-		$allowed = [ 'xml', 'json', 'csv', 'txt', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'zip' ];
+		$allowed = array( 'xml', 'json', 'csv', 'txt', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'zip' );
 		if ( ! in_array( $ext, $allowed, true ) ) {
-			return new WP_REST_Response( [ 'message' => "Unsupported file type: .$ext" ], 415 );
+			return new WP_REST_Response( array( 'message' => "Unsupported file type: .$ext" ), 415 );
 		}
 
 		$dir  = Downloads::dir();
 		$name = wp_unique_filename( $dir, sanitize_file_name( $f['name'] ) );
 		$path = trailingslashit( $dir ) . $name;
 		if ( ! @move_uploaded_file( $f['tmp_name'], $path ) ) {
-			return new WP_REST_Response( [ 'message' => 'Could not store the upload.' ], 500 );
+			return new WP_REST_Response( array( 'message' => 'Could not store the upload.' ), 500 );
 		}
 		$mime = $check['type'] ?: 'application/octet-stream';
-		return new WP_REST_Response( [
-			'token'    => Downloads::register( $path, $name, $mime ),
-			'filename' => $name,
-			'mime'     => $mime,
-			'size'     => (int) filesize( $path ),
-		] );
+		return new WP_REST_Response(
+			array(
+				'token'    => Downloads::register( $path, $name, $mime ),
+				'filename' => $name,
+				'mime'     => $mime,
+				'size'     => (int) filesize( $path ),
+			)
+		);
 	}
 
 	/**
@@ -221,7 +281,7 @@ class Controller {
 	public function download( WP_REST_Request $req ) {
 		$file = Downloads::resolve( (string) $req->get_param( 'token' ) );
 		if ( ! $file ) {
-			return new WP_REST_Response( [ 'message' => 'That download has expired or does not exist.' ], 404 );
+			return new WP_REST_Response( array( 'message' => 'That download has expired or does not exist.' ), 404 );
 		}
 		nocache_headers();
 		header( 'Content-Type: ' . ( $file['mime'] ?: 'application/octet-stream' ) );
@@ -248,19 +308,19 @@ class Controller {
 	private function attachmentsParam( WP_REST_Request $req ): array {
 		$raw = $req->get_param( 'attachments' );
 		if ( ! is_array( $raw ) ) {
-			return [];
+			return array();
 		}
-		$out = [];
+		$out = array();
 		foreach ( $raw as $a ) {
 			$token = is_array( $a ) ? sanitize_text_field( (string) ( $a['token'] ?? '' ) ) : '';
 			if ( $token === '' ) {
 				continue;
 			}
-			$out[] = [
+			$out[] = array(
 				'filename' => sanitize_file_name( (string) ( $a['filename'] ?? 'file' ) ),
 				'token'    => $token,
 				'size'     => isset( $a['size'] ) ? max( 0, (int) $a['size'] ) : 0,
-			];
+			);
 		}
 		return $out;
 	}

@@ -28,19 +28,19 @@ class GeminiProvider implements Provider {
 	}
 
 	public function chat( string $system, array $messages, array $tools ): array {
-		$payload = [
-			'systemInstruction' => [ 'parts' => [ [ 'text' => $system ] ] ],
-			'contents'          => array_map( [ $this, 'mapMessage' ], $messages ),
-		];
+		$payload = array(
+			'systemInstruction' => array( 'parts' => array( array( 'text' => $system ) ) ),
+			'contents'          => array_map( array( $this, 'mapMessage' ), $messages ),
+		);
 		if ( ! empty( $tools ) ) {
-			$payload['tools']      = [ [ 'functionDeclarations' => array_map( [ $this, 'mapTool' ], $tools ) ] ];
-			$payload['toolConfig'] = [ 'functionCallingConfig' => [ 'mode' => 'AUTO' ] ];
+			$payload['tools']      = array( array( 'functionDeclarations' => array_map( array( $this, 'mapTool' ), $tools ) ) );
+			$payload['toolConfig'] = array( 'functionCallingConfig' => array( 'mode' => 'AUTO' ) );
 		}
 
 		$url  = self::BASE . rawurlencode( $this->chatModel ) . ':generateContent?key=' . rawurlencode( $this->apiKey );
-		$json = $this->postJson( $url, [], $payload );
+		$json = $this->postJson( $url, array(), $payload );
 
-		$usage = $json['usageMetadata'] ?? [];
+		$usage = $json['usageMetadata'] ?? array();
 		UsageRecorder::record(
 			'gemini',
 			$this->chatModel,
@@ -49,72 +49,80 @@ class GeminiProvider implements Provider {
 			(int) ( $usage['candidatesTokenCount'] ?? 0 )
 		);
 
-		$parts     = $json['candidates'][0]['content']['parts'] ?? [];
+		$parts     = $json['candidates'][0]['content']['parts'] ?? array();
 		$text      = null;
-		$toolCalls = [];
+		$toolCalls = array();
 		foreach ( $parts as $part ) {
 			if ( isset( $part['text'] ) ) {
 				$text = ( $text ?? '' ) . $part['text'];
 			}
 			if ( isset( $part['functionCall'] ) ) {
-				$toolCalls[] = [
+				$toolCalls[] = array(
 					'id'        => 'gemini-' . count( $toolCalls ),
 					'name'      => (string) ( $part['functionCall']['name'] ?? '' ),
-					'arguments' => (array) ( $part['functionCall']['args'] ?? [] ),
-				];
+					'arguments' => (array) ( $part['functionCall']['args'] ?? array() ),
+				);
 			}
 		}
 
-		return [ 'content' => $text, 'tool_calls' => $toolCalls ];
+		return array(
+			'content'    => $text,
+			'tool_calls' => $toolCalls,
+		);
 	}
 
 	public function chatStream( string $system, array $messages, array $tools, callable $onDelta ): array {
-		$payload = [
-			'systemInstruction' => [ 'parts' => [ [ 'text' => $system ] ] ],
-			'contents'          => array_map( [ $this, 'mapMessage' ], $messages ),
-		];
+		$payload = array(
+			'systemInstruction' => array( 'parts' => array( array( 'text' => $system ) ) ),
+			'contents'          => array_map( array( $this, 'mapMessage' ), $messages ),
+		);
 		if ( ! empty( $tools ) ) {
-			$payload['tools']      = [ [ 'functionDeclarations' => array_map( [ $this, 'mapTool' ], $tools ) ] ];
-			$payload['toolConfig'] = [ 'functionCallingConfig' => [ 'mode' => 'AUTO' ] ];
+			$payload['tools']      = array( array( 'functionDeclarations' => array_map( array( $this, 'mapTool' ), $tools ) ) );
+			$payload['toolConfig'] = array( 'functionCallingConfig' => array( 'mode' => 'AUTO' ) );
 		}
 
 		$url = self::BASE . rawurlencode( $this->chatModel ) . ':streamGenerateContent?alt=sse&key=' . rawurlencode( $this->apiKey );
 
 		$text      = '';
-		$toolCalls = [];
-		$usage     = [];
+		$toolCalls = array();
+		$usage     = array();
 		$buffer    = '';
 
-		$this->postStream( $url, [], $payload, function ( $chunk ) use ( &$buffer, &$text, &$toolCalls, &$usage, $onDelta ) {
-			$buffer .= $chunk;
-			while ( ( $nl = strpos( $buffer, "\n" ) ) !== false ) {
-				$line   = trim( substr( $buffer, 0, $nl ) );
-				$buffer = substr( $buffer, $nl + 1 );
-				if ( $line === '' || strpos( $line, 'data:' ) !== 0 ) {
-					continue;
-				}
-				$json = json_decode( trim( substr( $line, 5 ) ), true );
-				if ( ! is_array( $json ) ) {
-					continue;
-				}
-				if ( isset( $json['usageMetadata'] ) ) {
-					$usage = $json['usageMetadata'];
-				}
-				foreach ( $json['candidates'][0]['content']['parts'] ?? [] as $part ) {
-					if ( isset( $part['text'] ) && $part['text'] !== '' ) {
-						$text .= $part['text'];
-						$onDelta( (string) $part['text'] );
+		$this->postStream(
+			$url,
+			array(),
+			$payload,
+			function ( $chunk ) use ( &$buffer, &$text, &$toolCalls, &$usage, $onDelta ) {
+				$buffer .= $chunk;
+				while ( ( $nl = strpos( $buffer, "\n" ) ) !== false ) {
+					$line   = trim( substr( $buffer, 0, $nl ) );
+					$buffer = substr( $buffer, $nl + 1 );
+					if ( $line === '' || strpos( $line, 'data:' ) !== 0 ) {
+						continue;
 					}
-					if ( isset( $part['functionCall'] ) ) {
-						$toolCalls[] = [
-							'id'        => 'gemini-' . count( $toolCalls ),
-							'name'      => (string) ( $part['functionCall']['name'] ?? '' ),
-							'arguments' => (array) ( $part['functionCall']['args'] ?? [] ),
-						];
+					$json = json_decode( trim( substr( $line, 5 ) ), true );
+					if ( ! is_array( $json ) ) {
+						continue;
+					}
+					if ( isset( $json['usageMetadata'] ) ) {
+						$usage = $json['usageMetadata'];
+					}
+					foreach ( $json['candidates'][0]['content']['parts'] ?? array() as $part ) {
+						if ( isset( $part['text'] ) && $part['text'] !== '' ) {
+							$text .= $part['text'];
+							$onDelta( (string) $part['text'] );
+						}
+						if ( isset( $part['functionCall'] ) ) {
+							$toolCalls[] = array(
+								'id'        => 'gemini-' . count( $toolCalls ),
+								'name'      => (string) ( $part['functionCall']['name'] ?? '' ),
+								'arguments' => (array) ( $part['functionCall']['args'] ?? array() ),
+							);
+						}
 					}
 				}
 			}
-		} );
+		);
 
 		UsageRecorder::record(
 			'gemini',
@@ -124,22 +132,25 @@ class GeminiProvider implements Provider {
 			(int) ( $usage['candidatesTokenCount'] ?? 0 )
 		);
 
-		return [ 'content' => $text !== '' ? $text : null, 'tool_calls' => $toolCalls ];
+		return array(
+			'content'    => $text !== '' ? $text : null,
+			'tool_calls' => $toolCalls,
+		);
 	}
 
 	public function embed( array $texts ): array {
 		if ( empty( $texts ) ) {
-			return [];
+			return array();
 		}
 
 		// Current Gemini embedding models (gemini-embedding-001, …) support embedContent but not
 		// the older synchronous batchEmbedContents, so embed one text per call. Djinn embeds in
 		// small batches (a handful of schema chunks, one query per wish), so this stays cheap.
 		$url     = self::BASE . rawurlencode( $this->embeddingModel ) . ':embedContent?key=' . rawurlencode( $this->apiKey );
-		$vectors = [];
+		$vectors = array();
 		foreach ( array_values( $texts ) as $text ) {
-			$json      = $this->postJson( $url, [], [ 'content' => [ 'parts' => [ [ 'text' => $text ] ] ] ] );
-			$vectors[] = $json['embedding']['values'] ?? [];
+			$json      = $this->postJson( $url, array(), array( 'content' => array( 'parts' => array( array( 'text' => $text ) ) ) ) );
+			$vectors[] = $json['embedding']['values'] ?? array();
 		}
 
 		// embedContent returns no usage metadata, so approximate tokens (~4 chars/token).
@@ -156,38 +167,53 @@ class GeminiProvider implements Provider {
 		if ( $role === 'tool' ) {
 			$response = json_decode( (string) ( $entry['content'] ?? '' ), true );
 			if ( ! is_array( $response ) ) {
-				$response = [ 'result' => (string) ( $entry['content'] ?? '' ) ];
+				$response = array( 'result' => (string) ( $entry['content'] ?? '' ) );
 			}
-			return [
+			return array(
 				'role'  => 'user',
-				'parts' => [ [ 'functionResponse' => [ 'name' => $entry['name'] ?? '', 'response' => $response ] ] ],
-			];
+				'parts' => array(
+					array(
+						'functionResponse' => array(
+							'name'     => $entry['name'] ?? '',
+							'response' => $response,
+						),
+					),
+				),
+			);
 		}
 
 		if ( $role === 'assistant' && ! empty( $entry['tool_calls'] ) ) {
-			$parts = [];
+			$parts = array();
 			if ( ! empty( $entry['content'] ) ) {
-				$parts[] = [ 'text' => $entry['content'] ];
+				$parts[] = array( 'text' => $entry['content'] );
 			}
 			foreach ( $entry['tool_calls'] as $tc ) {
-				$parts[] = [ 'functionCall' => [ 'name' => $tc['name'], 'args' => (object) ( $tc['arguments'] ?? [] ) ] ];
+				$parts[] = array(
+					'functionCall' => array(
+						'name' => $tc['name'],
+						'args' => (object) ( $tc['arguments'] ?? array() ),
+					),
+				);
 			}
-			return [ 'role' => 'model', 'parts' => $parts ];
+			return array(
+				'role'  => 'model',
+				'parts' => $parts,
+			);
 		}
 
-		return [
+		return array(
 			'role'  => $role === 'assistant' ? 'model' : 'user',
-			'parts' => [ [ 'text' => (string) ( $entry['content'] ?? '' ) ] ],
-		];
+			'parts' => array( array( 'text' => (string) ( $entry['content'] ?? '' ) ) ),
+		);
 	}
 
 	/** @param array<string,mixed> $tool */
 	private function mapTool( array $tool ): array {
-		return [
+		return array(
 			'name'        => $tool['name'],
 			'description' => $tool['description'],
 			'parameters'  => self::toGeminiSchema( $tool['parameters'] ),
-		];
+		);
 	}
 
 	/**

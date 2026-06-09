@@ -19,92 +19,125 @@ class MediaFeature implements Feature {
 
 	public function register( Registry $r ): void {
 		$media = new ObjectType(
-			[
+			array(
 				'name'        => 'MediaItem',
 				'description' => 'An attachment in the media library.',
-				'fields'      => [
-					'id'       => [ 'type' => Type::id() ],
-					'title'    => [ 'type' => Type::string() ],
-					'url'      => [ 'type' => Type::string() ],
-					'mimeType' => [ 'type' => Type::string() ],
-					'date'     => [ 'type' => Type::string() ],
-				],
-			]
+				'fields'      => array(
+					'id'       => array( 'type' => Type::id() ),
+					'title'    => array( 'type' => Type::string() ),
+					'url'      => array( 'type' => Type::string() ),
+					'mimeType' => array( 'type' => Type::string() ),
+					'date'     => array( 'type' => Type::string() ),
+				),
+			)
 		);
 		$r->setType( 'MediaItem', $media );
 
-		$r->addQuery( 'media', [
-			'type'        => Type::listOf( $media ),
-			'description' => 'List media library items.',
-			'args'        => [
-				'first'  => [ 'type' => Type::int(), 'defaultValue' => 20 ],
-				'search' => [ 'type' => Type::string() ],
-			],
-			'resolve'     => [ $this, 'media' ],
-		] );
+		$r->addQuery(
+			'media',
+			array(
+				'type'        => Type::listOf( $media ),
+				'description' => 'List media library items.',
+				'args'        => array(
+					'first'  => array(
+						'type'         => Type::int(),
+						'defaultValue' => 20,
+					),
+					'search' => array( 'type' => Type::string() ),
+				),
+				'resolve'     => array( $this, 'media' ),
+			)
+		);
 
-		$r->addMutation( 'sideloadMedia', [
-			'type'        => $media,
-			'description' => 'Download a file from a URL into the media library.',
-			'args'        => [
-				'url'   => [ 'type' => Type::nonNull( Type::string() ) ],
-				'title' => [ 'type' => Type::string() ],
-			],
-			'resolve'     => [ $this, 'sideloadMedia' ],
-		] );
+		$r->addMutation(
+			'sideloadMedia',
+			array(
+				'type'        => $media,
+				'description' => 'Download a file from a URL into the media library.',
+				'args'        => array(
+					'url'   => array( 'type' => Type::nonNull( Type::string() ) ),
+					'title' => array( 'type' => Type::string() ),
+				),
+				'resolve'     => array( $this, 'sideloadMedia' ),
+			)
+		);
 
-		$r->addMutation( 'importMedia', [
-			'type'        => $media,
-			'description' => 'Import a file the user ATTACHED to their wish (identified by its "import token") into the media library. Use this — NOT sideloadMedia — for attached/uploaded files: it takes the token, not a URL. Pass postId to also set it as that post\'s featured image.',
-			'args'        => [
-				'token'  => [ 'type' => Type::nonNull( Type::string() ), 'description' => 'The import token shown for the attached file.' ],
-				'title'  => [ 'type' => Type::string() ],
-				'postId' => [ 'type' => Type::id(), 'description' => 'If set, also make the imported image this post\'s featured image.' ],
-			],
-			'resolve'     => [ $this, 'importMedia' ],
-		] );
+		$r->addMutation(
+			'importMedia',
+			array(
+				'type'        => $media,
+				'description' => 'Import a file the user ATTACHED to their wish (identified by its "import token") into the media library. Use this — NOT sideloadMedia — for attached/uploaded files: it takes the token, not a URL. Pass postId to also set it as that post\'s featured image.',
+				'args'        => array(
+					'token'  => array(
+						'type'        => Type::nonNull( Type::string() ),
+						'description' => 'The import token shown for the attached file.',
+					),
+					'title'  => array( 'type' => Type::string() ),
+					'postId' => array(
+						'type'        => Type::id(),
+						'description' => 'If set, also make the imported image this post\'s featured image.',
+					),
+				),
+				'resolve'     => array( $this, 'importMedia' ),
+			)
+		);
 
-		$r->addMutation( 'updateMedia', [
-			'type'        => $media,
-			'description' => 'Update a media item\'s title, alt text, caption, or description.',
-			'args'        => [
-				'id'          => [ 'type' => Type::nonNull( Type::id() ) ],
-				'title'       => [ 'type' => Type::string() ],
-				'altText'     => [ 'type' => Type::string(), 'description' => 'Alt text (accessibility) for images.' ],
-				'caption'     => [ 'type' => Type::string() ],
-				'description' => [ 'type' => Type::string() ],
-			],
-			'resolve'     => [ $this, 'updateMedia' ],
-		] );
+		$r->addMutation(
+			'updateMedia',
+			array(
+				'type'        => $media,
+				'description' => 'Update a media item\'s title, alt text, caption, or description.',
+				'args'        => array(
+					'id'          => array( 'type' => Type::nonNull( Type::id() ) ),
+					'title'       => array( 'type' => Type::string() ),
+					'altText'     => array(
+						'type'        => Type::string(),
+						'description' => 'Alt text (accessibility) for images.',
+					),
+					'caption'     => array( 'type' => Type::string() ),
+					'description' => array( 'type' => Type::string() ),
+				),
+				'resolve'     => array( $this, 'updateMedia' ),
+			)
+		);
 
-		$r->addMutation( 'setFeaturedImage', [
-			'type'        => Type::boolean(),
-			'description' => 'Set a post\'s featured image to a media item.',
-			'args'        => [
-				'postId'  => [ 'type' => Type::nonNull( Type::id() ) ],
-				'mediaId' => [ 'type' => Type::nonNull( Type::id() ) ],
-			],
-			'resolve'     => [ $this, 'setFeaturedImage' ],
-		] );
+		$r->addMutation(
+			'setFeaturedImage',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Set a post\'s featured image to a media item.',
+				'args'        => array(
+					'postId'  => array( 'type' => Type::nonNull( Type::id() ) ),
+					'mediaId' => array( 'type' => Type::nonNull( Type::id() ) ),
+				),
+				'resolve'     => array( $this, 'setFeaturedImage' ),
+			)
+		);
 
-		$r->addMutation( 'deleteMedia', [
-			'type'        => Type::boolean(),
-			'args'        => [
-				'id'    => [ 'type' => Type::nonNull( Type::id() ) ],
-				'force' => [ 'type' => Type::boolean(), 'defaultValue' => true ],
-			],
-			'resolve'     => [ $this, 'deleteMedia' ],
-		] );
+		$r->addMutation(
+			'deleteMedia',
+			array(
+				'type'    => Type::boolean(),
+				'args'    => array(
+					'id'    => array( 'type' => Type::nonNull( Type::id() ) ),
+					'force' => array(
+						'type'         => Type::boolean(),
+						'defaultValue' => true,
+					),
+				),
+				'resolve' => array( $this, 'deleteMedia' ),
+			)
+		);
 	}
 
 	private function shape( \WP_Post $a ): array {
-		return [
+		return array(
 			'id'       => (string) $a->ID,
 			'title'    => get_the_title( $a ),
 			'url'      => (string) wp_get_attachment_url( $a->ID ),
 			'mimeType' => $a->post_mime_type,
 			'date'     => $a->post_date_gmt,
-		];
+		);
 	}
 
 	/** @param array<string,mixed> $args */
@@ -113,14 +146,14 @@ class MediaFeature implements Feature {
 			throw new UserError( 'You do not have permission to view the media library.' );
 		}
 		$items = get_posts(
-			[
+			array(
 				'post_type'      => 'attachment',
 				'post_status'    => 'inherit',
 				's'              => $args['search'] ?? '',
 				'posts_per_page' => min( max( (int) ( $args['first'] ?? 20 ), 1 ), 100 ),
-			]
+			)
 		);
-		return array_map( [ $this, 'shape' ], $items );
+		return array_map( array( $this, 'shape' ), $items );
 	}
 
 	/** @param array<string,mixed> $args */
@@ -164,10 +197,13 @@ class MediaFeature implements Feature {
 		require_once ABSPATH . 'wp-admin/includes/image.php';
 
 		$id = media_handle_sideload(
-			[ 'name' => $file['filename'], 'tmp_name' => $file['path'] ],
+			array(
+				'name'     => $file['filename'],
+				'tmp_name' => $file['path'],
+			),
 			$postId,
 			$args['title'] ?? null,
-			[ 'test_form' => false ]
+			array( 'test_form' => false )
 		);
 		if ( is_wp_error( $id ) ) {
 			throw new UserError( $id->get_error_message() );
@@ -188,7 +224,7 @@ class MediaFeature implements Feature {
 		if ( ! current_user_can( 'edit_post', $id ) ) {
 			throw new UserError( 'You do not have permission to edit this media item.' );
 		}
-		$post = [ 'ID' => $id ];
+		$post = array( 'ID' => $id );
 		if ( isset( $args['title'] ) ) {
 			$post['post_title'] = (string) $args['title'];
 		}

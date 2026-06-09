@@ -37,7 +37,7 @@ class Runner {
 	 * @param array<string,mixed> $variables
 	 * @return array<string,mixed>
 	 */
-	public static function execute( string $operation, array $variables = [] ): array {
+	public static function execute( string $operation, array $variables = array() ): array {
 		$result = GraphQL::executeQuery(
 			SchemaFactory::build(),
 			$operation,

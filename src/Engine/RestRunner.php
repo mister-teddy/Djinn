@@ -14,7 +14,7 @@ namespace Djinn\Engine;
 class RestRunner {
 
 	/** Methods that mutate — classified as writes and gated behind a Grant. */
-	public const WRITE_METHODS = [ 'POST', 'PUT', 'PATCH', 'DELETE' ];
+	public const WRITE_METHODS = array( 'POST', 'PUT', 'PATCH', 'DELETE' );
 
 	/**
 	 * Enumerate the site's registered REST routes, optionally narrowed by namespace or a substring
@@ -23,7 +23,7 @@ class RestRunner {
 	 * @return array<int,array{route:string,namespace:string,methods:array<int,string>}>
 	 */
 	public static function routes( ?string $namespace = null, ?string $search = null, int $limit = 60 ): array {
-		$out = [];
+		$out = array();
 		foreach ( rest_get_server()->get_routes() as $route => $handlers ) {
 			if ( $route === '/' || str_starts_with( $route, '/batch' ) ) {
 				continue;
@@ -35,19 +35,19 @@ class RestRunner {
 				continue;
 			}
 
-			$methods = [];
+			$methods = array();
 			foreach ( $handlers as $handler ) {
-				foreach ( array_keys( (array) ( $handler['methods'] ?? [] ) ) as $m ) {
+				foreach ( array_keys( (array) ( $handler['methods'] ?? array() ) ) as $m ) {
 					$methods[ $m ] = true;
 				}
 			}
 
 			$parts = explode( '/', ltrim( $route, '/' ) );
-			$out[] = [
+			$out[] = array(
 				'route'     => $route,
 				'namespace' => isset( $parts[1] ) ? $parts[0] . '/' . $parts[1] : ( $parts[0] ?? '' ),
 				'methods'   => array_keys( $methods ),
-			];
+			);
 			if ( count( $out ) >= $limit ) {
 				break;
 			}
@@ -62,8 +62,8 @@ class RestRunner {
 	 * @param array<string,mixed> $params Query params (for reads/filters).
 	 * @return array<string,mixed>
 	 */
-	public static function execute( string $path, string $method, array $body = [], array $params = [] ): array {
-		$method = strtoupper( $method );
+	public static function execute( string $path, string $method, array $body = array(), array $params = array() ): array {
+		$method  = strtoupper( $method );
 		$request = new \WP_REST_Request( $method, $path );
 
 		foreach ( $params as $k => $v ) {
@@ -80,16 +80,16 @@ class RestRunner {
 		$response = rest_do_request( $request );
 		if ( $response->is_error() ) {
 			$err = $response->as_error();
-			return [
+			return array(
 				'status' => $response->get_status(),
 				'error'  => $err->get_error_message(),
 				'code'   => $err->get_error_code(),
-			];
+			);
 		}
 
-		return [
+		return array(
 			'status' => $response->get_status(),
 			'data'   => $server->response_to_data( $response, false ),
-		];
+		);
 	}
 }

@@ -21,61 +21,76 @@ class UsersFeature implements Feature {
 			return; // core User type must exist
 		}
 
-		$r->addMutation( 'createUser', [
-			'type'        => $user,
-			'description' => 'Create a user. A random password is generated if none is given.',
-			'args'        => [
-				'username' => [ 'type' => Type::nonNull( Type::string() ) ],
-				'email'    => [ 'type' => Type::nonNull( Type::string() ) ],
-				'role'     => [ 'type' => Type::string(), 'description' => 'e.g. subscriber (default), author, editor, administrator.' ],
-				'password' => [ 'type' => Type::string() ],
-			],
-			'resolve'     => [ $this, 'createUser' ],
-		] );
+		$r->addMutation(
+			'createUser',
+			array(
+				'type'        => $user,
+				'description' => 'Create a user. A random password is generated if none is given.',
+				'args'        => array(
+					'username' => array( 'type' => Type::nonNull( Type::string() ) ),
+					'email'    => array( 'type' => Type::nonNull( Type::string() ) ),
+					'role'     => array(
+						'type'        => Type::string(),
+						'description' => 'e.g. subscriber (default), author, editor, administrator.',
+					),
+					'password' => array( 'type' => Type::string() ),
+				),
+				'resolve'     => array( $this, 'createUser' ),
+			)
+		);
 
-		$r->addMutation( 'updateUser', [
-			'type'        => $user,
-			'description' => 'Update a user\'s profile: display name, email, first/last name, website, or password.',
-			'args'        => [
-				'id'          => [ 'type' => Type::nonNull( Type::id() ) ],
-				'displayName' => [ 'type' => Type::string() ],
-				'email'       => [ 'type' => Type::string() ],
-				'firstName'   => [ 'type' => Type::string() ],
-				'lastName'    => [ 'type' => Type::string() ],
-				'url'         => [ 'type' => Type::string() ],
-				'password'    => [ 'type' => Type::string() ],
-			],
-			'resolve'     => [ $this, 'updateUser' ],
-		] );
+		$r->addMutation(
+			'updateUser',
+			array(
+				'type'        => $user,
+				'description' => 'Update a user\'s profile: display name, email, first/last name, website, or password.',
+				'args'        => array(
+					'id'          => array( 'type' => Type::nonNull( Type::id() ) ),
+					'displayName' => array( 'type' => Type::string() ),
+					'email'       => array( 'type' => Type::string() ),
+					'firstName'   => array( 'type' => Type::string() ),
+					'lastName'    => array( 'type' => Type::string() ),
+					'url'         => array( 'type' => Type::string() ),
+					'password'    => array( 'type' => Type::string() ),
+				),
+				'resolve'     => array( $this, 'updateUser' ),
+			)
+		);
 
-		$r->addMutation( 'updateUserRole', [
-			'type'        => Type::boolean(),
-			'description' => 'Set a user\'s role (replaces existing roles).',
-			'args'        => [
-				'id'   => [ 'type' => Type::nonNull( Type::id() ) ],
-				'role' => [ 'type' => Type::nonNull( Type::string() ) ],
-			],
-			'resolve'     => [ $this, 'updateUserRole' ],
-		] );
+		$r->addMutation(
+			'updateUserRole',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Set a user\'s role (replaces existing roles).',
+				'args'        => array(
+					'id'   => array( 'type' => Type::nonNull( Type::id() ) ),
+					'role' => array( 'type' => Type::nonNull( Type::string() ) ),
+				),
+				'resolve'     => array( $this, 'updateUserRole' ),
+			)
+		);
 
-		$r->addMutation( 'deleteUser', [
-			'type'        => Type::boolean(),
-			'description' => 'Delete a user, optionally reassigning their content to another user.',
-			'args'        => [
-				'id'           => [ 'type' => Type::nonNull( Type::id() ) ],
-				'reassignToId' => [ 'type' => Type::id() ],
-			],
-			'resolve'     => [ $this, 'deleteUser' ],
-		] );
+		$r->addMutation(
+			'deleteUser',
+			array(
+				'type'        => Type::boolean(),
+				'description' => 'Delete a user, optionally reassigning their content to another user.',
+				'args'        => array(
+					'id'           => array( 'type' => Type::nonNull( Type::id() ) ),
+					'reassignToId' => array( 'type' => Type::id() ),
+				),
+				'resolve'     => array( $this, 'deleteUser' ),
+			)
+		);
 	}
 
 	private function shape( \WP_User $u ): array {
-		return [
+		return array(
 			'id'          => (string) $u->ID,
 			'displayName' => $u->display_name,
 			'email'       => $u->user_email,
 			'roles'       => $u->roles,
-		];
+		);
 	}
 
 	private function roleOrFail( string $role ): string {
@@ -92,12 +107,12 @@ class UsersFeature implements Feature {
 		}
 		$role = isset( $args['role'] ) ? $this->roleOrFail( (string) $args['role'] ) : get_option( 'default_role', 'subscriber' );
 		$id   = wp_insert_user(
-			[
+			array(
 				'user_login' => (string) $args['username'],
 				'user_email' => (string) $args['email'],
 				'user_pass'  => isset( $args['password'] ) && $args['password'] !== '' ? (string) $args['password'] : wp_generate_password( 20 ),
 				'role'       => $role,
-			]
+			)
 		);
 		if ( is_wp_error( $id ) ) {
 			throw new UserError( $id->get_error_message() );
@@ -114,15 +129,15 @@ class UsersFeature implements Feature {
 		if ( ! get_userdata( $id ) ) {
 			throw new UserError( 'No such user.' );
 		}
-		$data = [ 'ID' => $id ];
-		$map  = [
+		$data = array( 'ID' => $id );
+		$map  = array(
 			'displayName' => 'display_name',
 			'email'       => 'user_email',
 			'firstName'   => 'first_name',
 			'lastName'    => 'last_name',
 			'url'         => 'user_url',
 			'password'    => 'user_pass',
-		];
+		);
 		foreach ( $map as $in => $col ) {
 			if ( isset( $args[ $in ] ) && $args[ $in ] !== '' ) {
 				$data[ $col ] = (string) $args[ $in ];

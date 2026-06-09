@@ -61,10 +61,23 @@ class ModelCatalog {
 	 * @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool}
 	 */
 	private static function discoverAnthropic( string $apiKey, bool $oauth ): array {
-		$headers = $oauth
-			? [ 'Authorization' => 'Bearer ' . $apiKey, 'anthropic-version' => '2023-06-01', 'anthropic-beta' => 'oauth-2025-04-20' ]
-			: [ 'x-api-key' => $apiKey, 'anthropic-version' => '2023-06-01' ];
-		$response = wp_remote_get( 'https://api.anthropic.com/v1/models?limit=100', [ 'timeout' => 20, 'headers' => $headers ] );
+		$headers  = $oauth
+			? array(
+				'Authorization'     => 'Bearer ' . $apiKey,
+				'anthropic-version' => '2023-06-01',
+				'anthropic-beta'    => 'oauth-2025-04-20',
+			)
+			: array(
+				'x-api-key'         => $apiKey,
+				'anthropic-version' => '2023-06-01',
+			);
+		$response = wp_remote_get(
+			'https://api.anthropic.com/v1/models?limit=100',
+			array(
+				'timeout' => 20,
+				'headers' => $headers,
+			)
+		);
 		if ( is_wp_error( $response ) ) {
 			return self::fallback( 'anthropic', 'Could not reach Anthropic: ' . $response->get_error_message() );
 		}
@@ -72,20 +85,20 @@ class ModelCatalog {
 		if ( isset( $json['error'] ) ) {
 			return self::fallback( 'anthropic', 'Anthropic rejected the key/token: ' . ( $json['error']['message'] ?? 'unknown error' ) );
 		}
-		$chat = [];
-		foreach ( $json['data'] ?? [] as $model ) {
+		$chat = array();
+		foreach ( $json['data'] ?? array() as $model ) {
 			$id = (string) ( $model['id'] ?? '' );
 			if ( $id !== '' ) {
 				$chat[] = $id;
 			}
 		}
-		return self::finish( $chat, [] );
+		return self::finish( $chat, array() );
 	}
 
 	/** @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool} */
 	private static function discoverGemini( string $apiKey ): array {
 		$url      = 'https://generativelanguage.googleapis.com/v1beta/models?key=' . rawurlencode( $apiKey ) . '&pageSize=200';
-		$response = wp_remote_get( $url, [ 'timeout' => 20 ] );
+		$response = wp_remote_get( $url, array( 'timeout' => 20 ) );
 		if ( is_wp_error( $response ) ) {
 			return self::fallback( 'gemini', 'Could not reach Gemini: ' . $response->get_error_message() );
 		}
@@ -94,11 +107,11 @@ class ModelCatalog {
 			return self::fallback( 'gemini', 'Gemini rejected the key: ' . ( $json['error']['message'] ?? 'unknown error' ) );
 		}
 
-		$chat  = [];
-		$embed = [];
-		foreach ( $json['models'] ?? [] as $model ) {
+		$chat  = array();
+		$embed = array();
+		foreach ( $json['models'] ?? array() as $model ) {
 			$id      = preg_replace( '#^models/#', '', (string) ( $model['name'] ?? '' ) );
-			$methods = (array) ( $model['supportedGenerationMethods'] ?? [] );
+			$methods = (array) ( $model['supportedGenerationMethods'] ?? array() );
 			if ( $id === '' ) {
 				continue;
 			}
@@ -115,7 +128,10 @@ class ModelCatalog {
 	private static function discoverOpenAI( string $apiKey ): array {
 		$response = wp_remote_get(
 			'https://api.openai.com/v1/models',
-			[ 'timeout' => 20, 'headers' => [ 'Authorization' => 'Bearer ' . $apiKey ] ]
+			array(
+				'timeout' => 20,
+				'headers' => array( 'Authorization' => 'Bearer ' . $apiKey ),
+			)
 		);
 		if ( is_wp_error( $response ) ) {
 			return self::fallback( 'openai', 'Could not reach OpenAI: ' . $response->get_error_message() );
@@ -125,9 +141,9 @@ class ModelCatalog {
 			return self::fallback( 'openai', 'OpenAI rejected the key: ' . ( $json['error']['message'] ?? 'unknown error' ) );
 		}
 
-		$chat  = [];
-		$embed = [];
-		foreach ( $json['data'] ?? [] as $model ) {
+		$chat  = array();
+		$embed = array();
+		foreach ( $json['data'] ?? array() as $model ) {
 			$id = (string) ( $model['id'] ?? '' );
 			if ( $id === '' ) {
 				continue;
@@ -150,12 +166,12 @@ class ModelCatalog {
 	 * @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool}
 	 */
 	private static function finish( array $chat, array $embed ): array {
-		return [
+		return array(
 			'chat'  => self::order( $chat ),
 			'embed' => self::order( $embed ),
 			'error' => null,
 			'live'  => true,
-		];
+		);
 	}
 
 	/**
@@ -203,14 +219,14 @@ class ModelCatalog {
 	 * @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool}
 	 */
 	private static function fallback( string $provider, string $error ): array {
-		$prefixes = [
-			'gemini'    => [ 'gemini', 'gemma' ],
-			'anthropic' => [ 'claude' ],
-			'openai'    => [ 'gpt', 'o1', 'o3', 'o4', 'chatgpt', 'text-embedding' ],
-		];
-		$prefix = $prefixes[ Providers::family( $provider ) ] ?? $prefixes['openai'];
-		$chat   = [];
-		$embed  = [];
+		$prefixes = array(
+			'gemini'    => array( 'gemini', 'gemma' ),
+			'anthropic' => array( 'claude' ),
+			'openai'    => array( 'gpt', 'o1', 'o3', 'o4', 'chatgpt', 'text-embedding' ),
+		);
+		$prefix   = $prefixes[ Providers::family( $provider ) ] ?? $prefixes['openai'];
+		$chat     = array();
+		$embed    = array();
 		foreach ( Pricing::table() as $model => $rates ) {
 			$matches = false;
 			foreach ( $prefix as $p ) {
@@ -228,11 +244,11 @@ class ModelCatalog {
 				$chat[] = $model;
 			}
 		}
-		return [
+		return array(
 			'chat'  => self::order( $chat ),
 			'embed' => self::order( $embed ),
 			'error' => $error,
 			'live'  => false,
-		];
+		);
 	}
 }

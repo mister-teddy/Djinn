@@ -19,31 +19,46 @@ class CronFeature implements Feature {
 
 	public function register( Registry $r ): void {
 		$event = new ObjectType(
-			[
+			array(
 				'name'        => 'ScheduledEvent',
 				'description' => 'A WP-Cron scheduled event.',
-				'fields'      => [
-					'hook'     => [ 'type' => Type::string() ],
-					'schedule' => [ 'type' => Type::string(), 'description' => 'Recurrence name (hourly, daily, …) or "single".' ],
-					'nextRun'  => [ 'type' => Type::string(), 'description' => 'Next run time (ISO 8601, UTC).' ],
-					'interval' => [ 'type' => Type::int(), 'description' => 'Recurrence interval in seconds, if recurring.' ],
-				],
-			]
+				'fields'      => array(
+					'hook'     => array( 'type' => Type::string() ),
+					'schedule' => array(
+						'type'        => Type::string(),
+						'description' => 'Recurrence name (hourly, daily, …) or "single".',
+					),
+					'nextRun'  => array(
+						'type'        => Type::string(),
+						'description' => 'Next run time (ISO 8601, UTC).',
+					),
+					'interval' => array(
+						'type'        => Type::int(),
+						'description' => 'Recurrence interval in seconds, if recurring.',
+					),
+				),
+			)
 		);
 		$r->setType( 'ScheduledEvent', $event );
 
-		$r->addQuery( 'scheduledEvents', [
-			'type'        => Type::listOf( $event ),
-			'description' => 'List WP-Cron scheduled events.',
-			'resolve'     => [ $this, 'scheduledEvents' ],
-		] );
+		$r->addQuery(
+			'scheduledEvents',
+			array(
+				'type'        => Type::listOf( $event ),
+				'description' => 'List WP-Cron scheduled events.',
+				'resolve'     => array( $this, 'scheduledEvents' ),
+			)
+		);
 
-		$r->addMutation( 'unscheduleHook', [
-			'type'        => Type::int(),
-			'description' => 'Clear all scheduled events for a hook. Returns how many were cleared.',
-			'args'        => [ 'hook' => [ 'type' => Type::nonNull( Type::string() ) ] ],
-			'resolve'     => [ $this, 'unscheduleHook' ],
-		] );
+		$r->addMutation(
+			'unscheduleHook',
+			array(
+				'type'        => Type::int(),
+				'description' => 'Clear all scheduled events for a hook. Returns how many were cleared.',
+				'args'        => array( 'hook' => array( 'type' => Type::nonNull( Type::string() ) ) ),
+				'resolve'     => array( $this, 'unscheduleHook' ),
+			)
+		);
 	}
 
 	private function gate(): void {
@@ -57,18 +72,18 @@ class CronFeature implements Feature {
 		$this->gate();
 		$cron = _get_cron_array();
 		if ( ! is_array( $cron ) ) {
-			return [];
+			return array();
 		}
-		$out = [];
+		$out = array();
 		foreach ( $cron as $ts => $hooks ) {
 			foreach ( (array) $hooks as $hook => $events ) {
 				foreach ( (array) $events as $e ) {
-					$out[] = [
+					$out[] = array(
 						'hook'     => (string) $hook,
 						'schedule' => ! empty( $e['schedule'] ) ? (string) $e['schedule'] : 'single',
 						'nextRun'  => gmdate( 'c', (int) $ts ),
 						'interval' => isset( $e['interval'] ) ? (int) $e['interval'] : null,
-					];
+					);
 				}
 			}
 		}
