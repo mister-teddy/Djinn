@@ -9,8 +9,9 @@ import {
 	Field,
 	Select,
 	PasswordField,
-	StatCard,
+	Card,
 	Cards,
+	Switch,
 	toast,
 	type OptionGroup,
 } from '@shared/ui';
@@ -208,10 +209,8 @@ export function AccountTile() {
 			>
 				Save settings
 			</Button>
-			{isProBuild ? (
+			{isProBuild && (
 				<LicenseView settings={settings} setSettings={setSettings} />
-			) : (
-				<UpgradeView />
 			)}
 		</Tile>
 	);
@@ -303,20 +302,22 @@ function ProxyView({
 	}
 
 	return (
-		<div>
-			<Cards>
-				<StatCard
-					value={'$' + (account.balanceUsd || 0).toFixed(2)}
-					label="Account credit"
-					sub={
-						account.subscribed
-							? 'auto-renew on'
-							: 'top up to continue'
-					}
-				/>
-			</Cards>
-			{config.polarEnabled && <PaymentBlock account={account} />}
-		</div>
+		<Cards>
+			<Card className="min-w-[220px]">
+				<div className="text-[26px] font-semibold leading-tight">
+					{'$' + (account.balanceUsd || 0).toFixed(2)}
+				</div>
+				<div className="mt-1.5 font-semibold text-[#1d2327]">
+					Account credit
+				</div>
+				<div className="mt-0.5 text-xs text-[#787c82]">
+					{account.subscribed
+						? 'auto-renew on'
+						: 'top up to keep wishing'}
+				</div>
+				{config.polarEnabled && <PaymentBlock account={account} />}
+			</Card>
+		</Cards>
 	);
 }
 
@@ -396,32 +397,6 @@ function LicenseView({
 	);
 }
 
-// Free build: surface what Pro adds and link to the purchase page.
-function UpgradeView() {
-	return (
-		<div className="mt-4 border-t border-[#e4e4e7] pt-3.5">
-			<p className="text-[#787c82]">
-				This is Djinn Free — wishes read anything and write content
-				(posts, pages, media, categories, comments). Djinn Pro unlocks
-				the full schema: users, settings, navigation, appearance,
-				plugins/themes/core, WooCommerce, and the universal REST escape
-				hatch.
-			</p>
-			<a
-				className="mt-2 inline-block text-gold hover:underline"
-				href={
-					config.proUrl ||
-					'https://buy.polar.sh/polar_cl_DGwSeP4nDmqeEXZLw4vC6RFkEBP7frjlGPU3u2768kC'
-				}
-				target="_blank"
-				rel="noopener"
-			>
-				Get Djinn Pro →
-			</a>
-		</div>
-	);
-}
-
 function PaymentBlock({ account }: { account: AccountData }) {
 	const [loading, setLoading] = useState<'' | 'credit' | 'subscription'>('');
 	const checkout = (kind: 'credit' | 'subscription') => async () => {
@@ -461,28 +436,28 @@ function PaymentBlock({ account }: { account: AccountData }) {
 		setLoading('');
 	};
 	return (
-		<div className="mt-3.5">
-			<div className="mt-2 flex flex-wrap items-center gap-2">
-				<Button
-					variant="primary"
-					busy={loading === 'credit'}
-					disabled={!!loading}
-					onClick={checkout('credit')}
-				>
-					Add credit
-				</Button>
-				{account.subscribed ? (
-					<span className="text-[#787c82]">✓ Auto-renew on</span>
-				) : (
-					<Button
-						busy={loading === 'subscription'}
-						disabled={!!loading}
-						onClick={checkout('subscription')}
-					>
-						Subscribe (auto-renew)
-					</Button>
-				)}
-			</div>
+		<div className="mt-3 flex flex-col items-start gap-2.5 border-t border-[#e4e4e7] pt-3">
+			<Button
+				variant="primary"
+				className="w-full"
+				busy={loading === 'credit'}
+				disabled={!!loading}
+				onClick={checkout('credit')}
+			>
+				Add credit
+			</Button>
+			<Switch
+				checked={!!account.subscribed}
+				disabled={loading === 'subscription'}
+				onChange={(on) => {
+					if (on) {
+						if (!account.subscribed) checkout('subscription')();
+					} else if (account.subscribed) {
+						toast('Cancel auto-renew from your Polar account.');
+					}
+				}}
+				label="Auto top-up monthly"
+			/>
 		</div>
 	);
 }

@@ -169,6 +169,40 @@ export function Cards({ children }: { children: ReactNode }) {
 	return <div className="my-3 flex flex-wrap gap-4">{children}</div>;
 }
 
+export function Switch({
+	checked,
+	onChange,
+	label,
+	disabled,
+}: {
+	checked: boolean;
+	onChange: (value: boolean) => void;
+	label?: ReactNode;
+	disabled?: boolean;
+}) {
+	return (
+		<label
+			className={`inline-flex items-center gap-2 ${disabled ? 'opacity-60' : 'cursor-pointer'}`}
+		>
+			<button
+				type="button"
+				role="switch"
+				aria-checked={checked}
+				disabled={disabled}
+				onClick={() => onChange(!checked)}
+				className={`relative inline-flex h-5 w-9 flex-none items-center rounded-full transition ${checked ? 'bg-gradient-to-b from-gold to-gold-deep' : 'bg-[#c3c4c7]'}`}
+			>
+				<span
+					className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${checked ? 'translate-x-[18px]' : 'translate-x-[2px]'}`}
+				/>
+			</button>
+			{label && (
+				<span className="text-[13px] text-[#1d2327]">{label}</span>
+			)}
+		</label>
+	);
+}
+
 // ---- Form primitives --------------------------------------------------------------------------
 
 export function Field({

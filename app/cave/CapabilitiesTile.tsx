@@ -1,10 +1,69 @@
 import { useState, useEffect } from '@wordpress/element';
+import { config } from '@shared/api';
 import { Tile, Spinner, Popover } from '@shared/ui';
 import {
 	loadOperations,
 	type OperationsData,
 	type OperationInfo,
 } from './data';
+
+// Capability areas the free edition can't write — surfaced as the Pro upsell. The free schema never
+// reports these (they aren't registered), so this list is curated to mirror the scope gate.
+const PRO_CAPABILITIES = [
+	'Users & roles',
+	'Site settings',
+	'Navigation menus',
+	'Appearance & the Site Editor',
+	'Widgets',
+	'Plugins, themes & core',
+	'WooCommerce',
+	'The REST escape hatch',
+];
+
+// A premium, gold-accented teaser shown to Free users at the top of Capabilities: what Pro unlocks,
+// plus the purchase link. Matches the plugin's lamp-and-gold language (✦, Cardo serif, gold chips).
+function ProUpsell() {
+	const url =
+		config.proUrl ||
+		'https://buy.polar.sh/polar_cl_DGwSeP4nDmqeEXZLw4vC6RFkEBP7frjlGPU3u2768kC';
+	return (
+		<div className="mb-5 rounded-djinn border border-gold/40 bg-gradient-to-br from-[#fffaf2] to-[#fbeecb] p-4 shadow-[0_2px_14px_-6px_rgba(251,191,36,0.6)]">
+			<div className="flex items-center gap-2">
+				<span
+					className="text-[15px] leading-none text-gold"
+					aria-hidden
+				>
+					✦
+				</span>
+				<h3 className="m-0 font-serif text-[18px] leading-none text-[#1d2327]">
+					Djinn Pro
+				</h3>
+			</div>
+			<p className="mb-0 mt-1.5 text-[13px] text-[#7a5c12]">
+				Free grants wishes over your content. Pro unlocks the rest of
+				the lamp:
+			</p>
+			<ul className="m-0 mt-2.5 flex list-none flex-wrap gap-1.5 p-0">
+				{PRO_CAPABILITIES.map((c) => (
+					<li
+						key={c}
+						className="rounded-md bg-[rgba(251,191,36,0.2)] px-2 py-0.5 text-xs font-medium text-[#7a5c12]"
+					>
+						{c}
+					</li>
+				))}
+			</ul>
+			<a
+				className="mt-3.5 inline-flex items-center rounded-control border-0 bg-gradient-to-b from-gold to-gold-deep px-4 py-2 font-sans text-[13px] font-semibold text-midnight no-underline shadow-glow transition hover:-translate-y-px hover:text-midnight hover:brightness-110 hover:no-underline"
+				href={url}
+				target="_blank"
+				rel="noopener"
+			>
+				Get Djinn Pro →
+			</a>
+		</div>
+	);
+}
 
 export function CapabilitiesTile() {
 	const [ops, setOps] = useState<OperationsData | null>(null);
@@ -16,6 +75,7 @@ export function CapabilitiesTile() {
 
 	return (
 		<Tile title="Capabilities">
+			{!config.isPro && <ProUpsell />}
 			<p className="text-[#787c82]">
 				Everything the Djinn can do here — the operations it can run,
 				grouped by area. Build the index from the Lamp so it can find
