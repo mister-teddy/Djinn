@@ -78,11 +78,9 @@ export function CapabilitiesTile() {
 			{!config.isPro && <ProUpsell />}
 			<p className="text-[#787c82]">
 				Everything the Djinn can do here — the operations it can run,
-				grouped by area. Build the index from the Lamp so it can find
-				them by meaning.
+				grouped by area.
 			</p>
 			{ops ? <OperationsList ops={ops} /> : <Spinner />}
-			{ops && <UnindexedSection ops={ops} />}
 		</Tile>
 	);
 }
@@ -192,41 +190,6 @@ function OperationsList({ ops }: { ops: OperationsData }) {
 					</div>
 				);
 			})}
-		</div>
-	);
-}
-
-function UnindexedSection({ ops }: { ops: OperationsData }) {
-	if (!ops.unindexed.length && !ops.outdated.length) {
-		return null;
-	}
-	return (
-		<div className="mt-[18px]">
-			<h3 className="mb-2 mt-5 text-[13px] font-semibold uppercase tracking-wide text-[#50575e]">
-				Not yet indexed
-			</h3>
-			<p className="text-[#787c82]">
-				Build or update the index so the Djinn can find these by
-				meaning.
-			</p>
-			<ul className="m-0 mt-2 flex list-none flex-wrap gap-1.5 p-0">
-				{ops.unindexed.map((t) => (
-					<li
-						key={'u' + t}
-						className="rounded-md bg-[rgba(251,191,36,0.18)] px-2 py-0.5 text-xs text-[#7a5c12]"
-					>
-						{t}
-					</li>
-				))}
-				{ops.outdated.map((t) => (
-					<li
-						key={'o' + t}
-						className="rounded-md bg-[rgba(245,158,11,0.22)] px-2 py-0.5 text-xs text-[#92400e]"
-					>
-						{t} (changed)
-					</li>
-				))}
-			</ul>
 		</div>
 	);
 }

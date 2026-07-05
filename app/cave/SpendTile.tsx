@@ -113,7 +113,6 @@ export function SpendTile() {
 				<StatCard
 					value={t.calls.toLocaleString()}
 					label="Provider calls"
-					sub="chat + embed"
 				/>
 				<StatCard
 					value={t.prompt.toLocaleString()}

@@ -43,7 +43,7 @@ class RestFeature implements Feature {
 			'restRoutes',
 			array(
 				'type'        => Type::listOf( $route ),
-				'description' => 'List REST routes registered on this site — including those added by plugins Djinn has no built-in support for. Use when search_schema finds no native field for a plugin feature; then call the rest_call tool to act on the chosen route.',
+				'description' => 'List REST routes registered on this site — including those added by plugins Djinn has no built-in support for. Use when the schema has no native field for a plugin feature; then call the rest_call tool to act on the chosen route.',
 				'args'        => array(
 					'namespace' => array(
 						'type'        => Type::string(),

@@ -7,9 +7,8 @@ namespace Djinn\Provider;
 use Djinn\Usage\UsageRecorder;
 
 /**
- * Google Gemini adapter (generateContent / batchEmbedContents REST endpoints). Gemini has no
- * tool-call IDs, which is fine: the agent loop handles one tool call per turn, so function
- * responses are matched by name.
+ * Google Gemini adapter (generateContent REST endpoint). Gemini has no tool-call IDs, which is
+ * fine: the agent loop handles one tool call per turn, so function responses are matched by name.
  */
 class GeminiProvider implements Provider {
 
@@ -19,13 +18,8 @@ class GeminiProvider implements Provider {
 
 	public function __construct(
 		private string $apiKey,
-		private string $chatModel,
-		private string $embeddingModel
+		private string $chatModel
 	) {}
-
-	public function embeddingModel(): string {
-		return $this->embeddingModel;
-	}
 
 	public function chat( string $system, array $messages, array $tools ): array {
 		$payload = array(
@@ -136,28 +130,6 @@ class GeminiProvider implements Provider {
 			'content'    => $text !== '' ? $text : null,
 			'tool_calls' => $toolCalls,
 		);
-	}
-
-	public function embed( array $texts ): array {
-		if ( empty( $texts ) ) {
-			return array();
-		}
-
-		// Current Gemini embedding models (gemini-embedding-001, …) support embedContent but not
-		// the older synchronous batchEmbedContents, so embed one text per call. Djinn embeds in
-		// small batches (a handful of schema chunks, one query per wish), so this stays cheap.
-		$url     = self::BASE . rawurlencode( $this->embeddingModel ) . ':embedContent?key=' . rawurlencode( $this->apiKey );
-		$vectors = array();
-		foreach ( array_values( $texts ) as $text ) {
-			$json      = $this->postJson( $url, array(), array( 'content' => array( 'parts' => array( array( 'text' => $text ) ) ) ) );
-			$vectors[] = $json['embedding']['values'] ?? array();
-		}
-
-		// embedContent returns no usage metadata, so approximate tokens (~4 chars/token).
-		$chars = array_sum( array_map( 'strlen', array_values( $texts ) ) );
-		UsageRecorder::record( 'gemini', $this->embeddingModel, 'embed', (int) ceil( $chars / 4 ), 0, true );
-
-		return $vectors;
 	}
 
 	/** @param array<string,mixed> $entry */

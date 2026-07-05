@@ -8,18 +8,17 @@ fulfils it.
 
 ## How it works
 
-There are no hand-written per-feature tools. The Djinn works through a small, fixed toolset:
+There are no hand-written per-feature tools. The full GraphQL schema rides in the system prompt,
+and the Djinn works through a small, fixed toolset:
 
-- `search_schema` — semantic (RAG) search over the site's GraphQL schema.
 - `run_graphql` — execute a GraphQL operation. Reads run immediately; **wishes that write pause
   for your blessing**, showing the exact mutation and variables before anything happens.
 - `rest_call` — call a WordPress REST route directly, the escape hatch for plugins with no native
   GraphQL field. Reads run immediately; writes pause for your blessing, like mutations.
 
 ```
-Admin SPA (React/Tailwind)  ──POST /wish/stream (SSE)──▶  PHP agent loop
-                                                            ├─ search_schema → RAG retriever (cosine)
-                                                            └─ run_graphql   → parse op:
+Admin SPA (React/Tailwind)  ──POST /wish/stream (SSE)──▶  PHP agent loop (schema in system prompt)
+                                                            └─ run_graphql → parse op:
                                                                   query    → execute now
                                                                   mutation → Grant? → execute
                                                                         ▼
@@ -46,7 +45,7 @@ Admin SPA (React/Tailwind)  ──POST /wish/stream (SSE)──▶  PHP agent lo
 
 Two admin screens: **Lamp** (chat) and **Cave of Wonders** — a dashboard of three tiles:
 **Account** (provider/key/models or the hosted-proxy account), **Capabilities** (every operation
-the Djinn can run + index status), and **Spend** (token + cost usage).
+the Djinn can run), and **Spend** (token + cost usage).
 
 ## What you can wish for
 
@@ -70,9 +69,8 @@ add_action( 'djinn_register_schema', function ( $registry ) {
 } );
 ```
 
-After any schema change, rebuild the index from the Lamp's **Build / Update RAG** button (its hover
-popover shows the estimated embedding cost first); the **Capabilities** tile of **Djinn → Cave of
-Wonders** lists which types changed.
+The full schema rides in the system prompt on every wish, so a schema change is live immediately;
+the **Capabilities** tile of **Djinn → Cave of Wonders** lists every operation.
 
 ## Install (development)
 
@@ -84,7 +82,6 @@ Requires Docker and Node (for [`wp-env`](https://developer.wordpress.org/block-e
 cp .env.example .env        # then paste your provider API key into .env
 make up                     # composer install + wp-env start + activate + seed settings
 npm ci && make build        # install JS deps + compile the admin SPA (or `make watch` to rebuild on change)
-make lamp                   # build the schema index (same as the Lamp's Build RAG button)
 make open                   # open wp-admin (admin / password)
 ```
 
@@ -99,11 +96,11 @@ Then visit **Djinn → Lamp** and make a wish. Other targets: `make restart` (fa
 // out of date
 4. **Djinn → Cave of Wonders**, Account tile: choose a provider, paste an API key (or define
    `DJINN_API_KEY` in `wp-config.php`); models are picked from dropdowns discovered from your key. Save.
-5. Open **Djinn → Lamp**, click **Build RAG** to build the schema index, then make a wish.
+5. Open **Djinn → Lamp** and make a wish.
 
 ## Try it
 
-- *"List my 5 most recent posts."* → `search_schema` → `run_graphql` (query) → answer.
+- *"List my 5 most recent posts."* → `run_graphql` (query) → answer.
 - *"Create a draft page titled 'Hello'."* → "Grant this wish?" card → **Grant** → it exists.
 - *"Make all headings dark red."* → Grant → Additional CSS updated.
 - *"Install and activate the Classic Editor plugin."* → Grant → installed from WordPress.org.
@@ -129,10 +126,10 @@ Every provider call is metered (**Djinn → Cave of Wonders**, Spend tile). Meas
 | Tokens | ~6,900 |
 | **Cost** | **~$0.0009** — about a tenth of a cent |
 
-A wish fans out to ~1–3 model calls (schema search → GraphQL → reply) plus a tiny embedding;
-embeddings (search + the one-time index build) are effectively free on `gemini-embedding-001`.
-Model choice dominates: a flagship like GPT-4o runs roughly 30–50× pricier per wish. Figures are
-estimates from public list prices — tune them with the `djinn_model_pricing` filter.
+A wish fans out to ~1–2 model calls (GraphQL → reply); the full schema rides in the system prompt,
+where providers cache it. Model choice dominates: a flagship like GPT-4o runs roughly 30–50×
+pricier per wish. Figures are estimates from public list prices — tune them with the
+`djinn_model_pricing` filter.
 
 ## Editions
 

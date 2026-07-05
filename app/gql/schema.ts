@@ -16,7 +16,6 @@ export interface Query {
     account: Account
     models: ModelCatalog
     operations: OperationsReport
-    indexStatus: IndexStatus
     usage: Usage
     chats: Chat[]
     chat: (ChatDetail | null)
@@ -28,7 +27,6 @@ export interface Settings {
     isPro: Scalars['Boolean']
     provider: Scalars['String']
     chatModel: (Scalars['String'] | null)
-    embeddingModel: (Scalars['String'] | null)
     hasApiKey: Scalars['Boolean']
     hasSiteToken: Scalars['Boolean']
     usesProxy: Scalars['Boolean']
@@ -48,7 +46,6 @@ export interface Account {
 
 export interface ModelCatalog {
     chat: ChatModel[]
-    embed: EmbedModel[]
     live: Scalars['Boolean']
     error: (Scalars['String'] | null)
     __typename: 'ModelCatalog'
@@ -61,16 +58,8 @@ export interface ChatModel {
     __typename: 'ChatModel'
 }
 
-export interface EmbedModel {
-    id: Scalars['String']
-    price: (Scalars['String'] | null)
-    __typename: 'EmbedModel'
-}
-
 export interface OperationsReport {
     operations: Operation[]
-    unindexed: Scalars['String'][]
-    outdated: Scalars['String'][]
     __typename: 'OperationsReport'
 }
 
@@ -89,36 +78,6 @@ export interface OpArg {
     type: Scalars['String']
     required: Scalars['Boolean']
     __typename: 'OpArg'
-}
-
-export interface IndexStatus {
-    configured: Scalars['Boolean']
-    embeds: Scalars['Boolean']
-    indexed: (Scalars['Boolean'] | null)
-    upToDate: (Scalars['Boolean'] | null)
-    model: (Scalars['String'] | null)
-    storedModel: (Scalars['String'] | null)
-    indexedAt: (Scalars['String'] | null)
-    countStored: (Scalars['Int'] | null)
-    countLive: (Scalars['Int'] | null)
-    estimate: (IndexEstimate | null)
-    diff: (IndexDiff | null)
-    __typename: 'IndexStatus'
-}
-
-export interface IndexEstimate {
-    chunks: Scalars['Int']
-    tokens: Scalars['Int']
-    cost: Scalars['Float']
-    free: Scalars['Boolean']
-    unpriced: Scalars['Boolean']
-    __typename: 'IndexEstimate'
-}
-
-export interface IndexDiff {
-    added: Scalars['String'][]
-    changed: Scalars['String'][]
-    __typename: 'IndexDiff'
 }
 
 export interface Usage {
@@ -220,18 +179,10 @@ export interface Mutation {
     connect: Account
     activateLicense: Settings
     deactivateLicense: Settings
-    reindex: ReindexResult
     resetUsage: Scalars['Boolean']
     billingCheckout: CheckoutSession
     deleteChat: Scalars['Boolean']
     __typename: 'Mutation'
-}
-
-export interface ReindexResult {
-    status: Scalars['String']
-    chunks: (Scalars['Int'] | null)
-    message: (Scalars['String'] | null)
-    __typename: 'ReindexResult'
 }
 
 export type BillingKind = 'credit' | 'subscription'
@@ -246,7 +197,6 @@ export interface QueryGenqlSelection{
     account?: AccountGenqlSelection
     models?: (ModelCatalogGenqlSelection & { __args?: {provider?: (Scalars['String'] | null), refresh?: (Scalars['Boolean'] | null)} })
     operations?: OperationsReportGenqlSelection
-    indexStatus?: IndexStatusGenqlSelection
     usage?: UsageGenqlSelection
     chats?: ChatGenqlSelection
     chat?: (ChatDetailGenqlSelection & { __args: {id: Scalars['Int']} })
@@ -259,7 +209,6 @@ export interface SettingsGenqlSelection{
     isPro?: boolean | number
     provider?: boolean | number
     chatModel?: boolean | number
-    embeddingModel?: boolean | number
     hasApiKey?: boolean | number
     hasSiteToken?: boolean | number
     usesProxy?: boolean | number
@@ -281,7 +230,6 @@ export interface AccountGenqlSelection{
 
 export interface ModelCatalogGenqlSelection{
     chat?: ChatModelGenqlSelection
-    embed?: EmbedModelGenqlSelection
     live?: boolean | number
     error?: boolean | number
     __typename?: boolean | number
@@ -296,17 +244,8 @@ export interface ChatModelGenqlSelection{
     __scalar?: boolean | number
 }
 
-export interface EmbedModelGenqlSelection{
-    id?: boolean | number
-    price?: boolean | number
-    __typename?: boolean | number
-    __scalar?: boolean | number
-}
-
 export interface OperationsReportGenqlSelection{
     operations?: OperationGenqlSelection
-    unindexed?: boolean | number
-    outdated?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -326,39 +265,6 @@ export interface OpArgGenqlSelection{
     name?: boolean | number
     type?: boolean | number
     required?: boolean | number
-    __typename?: boolean | number
-    __scalar?: boolean | number
-}
-
-export interface IndexStatusGenqlSelection{
-    configured?: boolean | number
-    embeds?: boolean | number
-    indexed?: boolean | number
-    upToDate?: boolean | number
-    model?: boolean | number
-    storedModel?: boolean | number
-    indexedAt?: boolean | number
-    countStored?: boolean | number
-    countLive?: boolean | number
-    estimate?: IndexEstimateGenqlSelection
-    diff?: IndexDiffGenqlSelection
-    __typename?: boolean | number
-    __scalar?: boolean | number
-}
-
-export interface IndexEstimateGenqlSelection{
-    chunks?: boolean | number
-    tokens?: boolean | number
-    cost?: boolean | number
-    free?: boolean | number
-    unpriced?: boolean | number
-    __typename?: boolean | number
-    __scalar?: boolean | number
-}
-
-export interface IndexDiffGenqlSelection{
-    added?: boolean | number
-    changed?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -472,7 +378,6 @@ export interface MutationGenqlSelection{
     connect?: AccountGenqlSelection
     activateLicense?: (SettingsGenqlSelection & { __args: {key: Scalars['String']} })
     deactivateLicense?: SettingsGenqlSelection
-    reindex?: ReindexResultGenqlSelection
     resetUsage?: boolean | number
     billingCheckout?: (CheckoutSessionGenqlSelection & { __args: {kind: BillingKind} })
     deleteChat?: { __args: {id: Scalars['Int']} }
@@ -480,15 +385,7 @@ export interface MutationGenqlSelection{
     __scalar?: boolean | number
 }
 
-export interface SettingsInput {provider?: (Scalars['String'] | null),apiKey?: (Scalars['String'] | null),chatModel?: (Scalars['String'] | null),embeddingModel?: (Scalars['String'] | null),siteToken?: (Scalars['String'] | null)}
-
-export interface ReindexResultGenqlSelection{
-    status?: boolean | number
-    chunks?: boolean | number
-    message?: boolean | number
-    __typename?: boolean | number
-    __scalar?: boolean | number
-}
+export interface SettingsInput {provider?: (Scalars['String'] | null),apiKey?: (Scalars['String'] | null),chatModel?: (Scalars['String'] | null),siteToken?: (Scalars['String'] | null)}
 
 export interface CheckoutSessionGenqlSelection{
     url?: boolean | number
@@ -537,14 +434,6 @@ export interface CheckoutSessionGenqlSelection{
     
 
 
-    const EmbedModel_possibleTypes: string[] = ['EmbedModel']
-    export const isEmbedModel = (obj?: { __typename?: any } | null): obj is EmbedModel => {
-      if (!obj?.__typename) throw new Error('__typename is missing in "isEmbedModel"')
-      return EmbedModel_possibleTypes.includes(obj.__typename)
-    }
-    
-
-
     const OperationsReport_possibleTypes: string[] = ['OperationsReport']
     export const isOperationsReport = (obj?: { __typename?: any } | null): obj is OperationsReport => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isOperationsReport"')
@@ -565,30 +454,6 @@ export interface CheckoutSessionGenqlSelection{
     export const isOpArg = (obj?: { __typename?: any } | null): obj is OpArg => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isOpArg"')
       return OpArg_possibleTypes.includes(obj.__typename)
-    }
-    
-
-
-    const IndexStatus_possibleTypes: string[] = ['IndexStatus']
-    export const isIndexStatus = (obj?: { __typename?: any } | null): obj is IndexStatus => {
-      if (!obj?.__typename) throw new Error('__typename is missing in "isIndexStatus"')
-      return IndexStatus_possibleTypes.includes(obj.__typename)
-    }
-    
-
-
-    const IndexEstimate_possibleTypes: string[] = ['IndexEstimate']
-    export const isIndexEstimate = (obj?: { __typename?: any } | null): obj is IndexEstimate => {
-      if (!obj?.__typename) throw new Error('__typename is missing in "isIndexEstimate"')
-      return IndexEstimate_possibleTypes.includes(obj.__typename)
-    }
-    
-
-
-    const IndexDiff_possibleTypes: string[] = ['IndexDiff']
-    export const isIndexDiff = (obj?: { __typename?: any } | null): obj is IndexDiff => {
-      if (!obj?.__typename) throw new Error('__typename is missing in "isIndexDiff"')
-      return IndexDiff_possibleTypes.includes(obj.__typename)
     }
     
 
@@ -677,14 +542,6 @@ export interface CheckoutSessionGenqlSelection{
     export const isMutation = (obj?: { __typename?: any } | null): obj is Mutation => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isMutation"')
       return Mutation_possibleTypes.includes(obj.__typename)
-    }
-    
-
-
-    const ReindexResult_possibleTypes: string[] = ['ReindexResult']
-    export const isReindexResult = (obj?: { __typename?: any } | null): obj is ReindexResult => {
-      if (!obj?.__typename) throw new Error('__typename is missing in "isReindexResult"')
-      return ReindexResult_possibleTypes.includes(obj.__typename)
     }
     
 

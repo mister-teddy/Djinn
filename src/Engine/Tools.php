@@ -7,8 +7,8 @@ namespace Djinn\Engine;
 use Djinn\Settings;
 
 /**
- * The Djinn's entire tool surface: discover the schema, then run GraphQL.
- * A single run_graphql handles reads and writes; the engine decides which by parsing the
+ * The Djinn's entire tool surface. The full schema rides in the system prompt, so a single
+ * run_graphql handles reads and writes; the engine decides which by parsing the
  * operation type, and gates mutations behind human confirmation ("grant this wish?").
  *
  * `rest_call` (the universal escape hatch) is Pro-only and matches `RestFeature` being unregistered
@@ -20,22 +20,8 @@ class Tools {
 	public static function specs(): array {
 		$specs = array(
 			array(
-				'name'        => 'search_schema',
-				'description' => 'Search the site\'s GraphQL schema for types and fields relevant to the user\'s wish. Call this before writing a query so you use real field/argument names. Returns SDL fragments.',
-				'parameters'  => array(
-					'type'       => 'object',
-					'properties' => array(
-						'query' => array(
-							'type'        => 'string',
-							'description' => 'What you are looking for, e.g. "create a page", "site tagline", "list recent posts".',
-						),
-					),
-					'required'   => array( 'query' ),
-				),
-			),
-			array(
 				'name'        => 'run_graphql',
-				'description' => 'Execute a GraphQL operation against the site. A `query` runs immediately; a `mutation` is shown to the user for confirmation before it runs. Use the exact types/fields from search_schema.',
+				'description' => 'Execute a GraphQL operation against the site. A `query` runs immediately; a `mutation` is shown to the user for confirmation before it runs. Use the exact types/fields from the schema in the system prompt.',
 				'parameters'  => array(
 					'type'       => 'object',
 					'properties' => array(

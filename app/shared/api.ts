@@ -5,7 +5,6 @@ export interface ProviderInfo {
 	value: string;
 	label: string;
 	needsKey?: boolean;
-	embeddings?: boolean;
 	description?: string;
 	keyHint?: string;
 }
@@ -19,10 +18,7 @@ export interface DjinnConfig {
 	configured: boolean;
 	privacyUrl?: string;
 	// Lamp
-	indexed?: boolean;
-	indexStale?: boolean;
 	settingsUrl?: string;
-	indexUrl?: string;
 	siteName?: string;
 	// Cave
 	edition?: string;
@@ -46,7 +42,7 @@ export const config: DjinnConfig = (window.DjinnCave ??
 // long-lived tab keeps working past the original nonce's lifetime.
 apiFetch.use(apiFetch.createNonceMiddleware(config.nonce));
 
-/** Typed GraphQL client for the admin control plane (settings, account, index, usage, chat CRUD). */
+/** Typed GraphQL client for the admin control plane (settings, account, usage, chat CRUD). */
 export const gql = createClient({
 	fetcher: (operation) =>
 		apiFetch({

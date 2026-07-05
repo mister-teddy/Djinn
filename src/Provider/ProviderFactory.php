@@ -22,13 +22,13 @@ class ProviderFactory {
 			throw new RuntimeException( 'Choose a chat model in the Account tile of Djinn → Cave of Wonders before making a wish.' );
 		}
 
-		// The proxy takes a site token + URL; every key-backed adapter takes (key, chat, embed) and is
+		// The proxy takes a site token + URL; every key-backed adapter takes (key, chat model) and is
 		// resolved from the provider registry.
 		$provider = Settings::provider();
 		if ( $provider === 'proxy' ) {
 			return new ProxyProvider( Settings::siteToken(), Settings::proxyUrl() );
 		}
 		$class = Providers::adapterClass( $provider );
-		return new $class( Settings::apiKey(), Settings::chatModel(), Settings::embeddingModel() );
+		return new $class( Settings::apiKey(), Settings::chatModel() );
 	}
 }

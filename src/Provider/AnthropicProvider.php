@@ -10,9 +10,6 @@ use Djinn\Usage\UsageRecorder;
  * Anthropic (Claude) Messages API adapter. Maps Djinn's normalized message/tool format onto
  * Anthropic's shape: `system` is a top-level field, tool calls are `tool_use` content blocks, and
  * tool results come back as a `tool_result` block inside a following user turn.
- *
- * Anthropic has no embeddings API, so embed() is a no-op — retrieval falls back to the full schema
- * (see Retriever), which is small enough to hand Claude whole.
  */
 class AnthropicProvider implements Provider {
 
@@ -24,18 +21,8 @@ class AnthropicProvider implements Provider {
 	public function __construct(
 		protected string $apiKey,
 		protected string $chatModel,
-		protected string $embeddingModel = '',
 		protected string $baseUrl = 'https://api.anthropic.com'
 	) {}
-
-	public function embeddingModel(): string {
-		return 'none';
-	}
-
-	/** Anthropic has no embeddings endpoint; return empty so retrieval uses the full schema. */
-	public function embed( array $texts ): array {
-		return array();
-	}
 
 	protected function providerLabel(): string {
 		return 'anthropic';

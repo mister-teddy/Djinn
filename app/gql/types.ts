@@ -4,8 +4,8 @@ export default {
         2,
         3,
         6,
-        25,
-        30
+        21,
+        25
     ],
     "types": {
         "Query": {
@@ -27,19 +27,16 @@ export default {
                 }
             ],
             "operations": [
-                10
-            ],
-            "indexStatus": [
-                13
+                9
             ],
             "usage": [
-                16
+                12
             ],
             "chats": [
-                21
+                17
             ],
             "chat": [
-                22,
+                18,
                 {
                     "id": [
                         3,
@@ -65,9 +62,6 @@ export default {
                 1
             ],
             "chatModel": [
-                1
-            ],
-            "embeddingModel": [
                 1
             ],
             "hasApiKey": [
@@ -114,9 +108,6 @@ export default {
             "chat": [
                 8
             ],
-            "embed": [
-                9
-            ],
             "live": [
                 2
             ],
@@ -141,26 +132,9 @@ export default {
                 1
             ]
         },
-        "EmbedModel": {
-            "id": [
-                1
-            ],
-            "price": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
         "OperationsReport": {
             "operations": [
-                11
-            ],
-            "unindexed": [
-                1
-            ],
-            "outdated": [
-                1
+                10
             ],
             "__typename": [
                 1
@@ -180,7 +154,7 @@ export default {
                 1
             ],
             "args": [
-                12
+                11
             ],
             "returns": [
                 1
@@ -203,87 +177,18 @@ export default {
                 1
             ]
         },
-        "IndexStatus": {
-            "configured": [
-                2
-            ],
-            "embeds": [
-                2
-            ],
-            "indexed": [
-                2
-            ],
-            "upToDate": [
-                2
-            ],
-            "model": [
-                1
-            ],
-            "storedModel": [
-                1
-            ],
-            "indexedAt": [
-                1
-            ],
-            "countStored": [
-                3
-            ],
-            "countLive": [
-                3
-            ],
-            "estimate": [
-                14
-            ],
-            "diff": [
-                15
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "IndexEstimate": {
-            "chunks": [
-                3
-            ],
-            "tokens": [
-                3
-            ],
-            "cost": [
-                6
-            ],
-            "free": [
-                2
-            ],
-            "unpriced": [
-                2
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "IndexDiff": {
-            "added": [
-                1
-            ],
-            "changed": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
         "Usage": {
             "totals": [
-                17
+                13
             ],
             "byModel": [
-                18
+                14
             ],
             "byDay": [
-                19
+                15
             ],
             "recent": [
-                20
+                16
             ],
             "account": [
                 5
@@ -403,10 +308,10 @@ export default {
                 3
             ],
             "messages": [
-                23
+                19
             ],
             "usage": [
-                26
+                22
             ],
             "__typename": [
                 1
@@ -420,7 +325,7 @@ export default {
                 1
             ],
             "attachments": [
-                24
+                20
             ],
             "kind": [
                 1
@@ -432,7 +337,7 @@ export default {
                 1
             ],
             "variables": [
-                25
+                21
             ],
             "summary": [
                 1
@@ -441,7 +346,7 @@ export default {
                 1
             ],
             "result": [
-                25
+                21
             ],
             "pendingId": [
                 3
@@ -490,7 +395,7 @@ export default {
                 4,
                 {
                     "input": [
-                        28,
+                        24,
                         "SettingsInput!"
                     ]
                 }
@@ -510,17 +415,14 @@ export default {
             "deactivateLicense": [
                 4
             ],
-            "reindex": [
-                29
-            ],
             "resetUsage": [
                 2
             ],
             "billingCheckout": [
-                31,
+                26,
                 {
                     "kind": [
-                        30,
+                        25,
                         "BillingKind!"
                     ]
                 }
@@ -548,24 +450,7 @@ export default {
             "chatModel": [
                 1
             ],
-            "embeddingModel": [
-                1
-            ],
             "siteToken": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "ReindexResult": {
-            "status": [
-                1
-            ],
-            "chunks": [
-                3
-            ],
-            "message": [
                 1
             ],
             "__typename": [

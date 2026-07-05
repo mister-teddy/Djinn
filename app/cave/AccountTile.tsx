@@ -98,11 +98,9 @@ function ensurePolarEmbed(): Promise<PolarCheckout | null> {
 const REGISTRY: ProviderInfo[] = config.providers || [];
 const PROVIDERS = REGISTRY.map((p) => ({ value: p.value, label: p.label }));
 const KEY_PROVIDERS = REGISTRY.filter((p) => p.needsKey).map((p) => p.value);
-const HAS_EMBEDDINGS: Record<string, boolean> = {};
 const DESC: Record<string, string> = {};
 const KEY_HINT: Record<string, string> = {};
 REGISTRY.forEach((p) => {
-	HAS_EMBEDDINGS[p.value] = p.embeddings !== false;
 	DESC[p.value] = p.description || '';
 	KEY_HINT[p.value] = p.keyHint || '';
 });
@@ -118,7 +116,6 @@ export function AccountTile() {
 	const [provider, setProvider] = useState('');
 	const [apiKey, setApiKey] = useState('');
 	const [chatModel, setChatModel] = useState('');
-	const [embedModel, setEmbedModel] = useState('');
 	const [models, setModels] = useState<ModelsData | null>(null);
 	const [saving, setSaving] = useState(false);
 
@@ -129,7 +126,6 @@ export function AccountTile() {
 				setAccount(a);
 				setProvider(s.provider);
 				setChatModel(s.chatModel || '');
-				setEmbedModel(s.embeddingModel || '');
 			})
 			.catch(() => {});
 	}, []);
@@ -157,7 +153,6 @@ export function AccountTile() {
 			const input = {
 				provider,
 				chatModel,
-				embeddingModel: embedModel,
 				...(apiKey ? { apiKey } : {}),
 			};
 			const s = await saveSettings(input);
@@ -195,8 +190,6 @@ export function AccountTile() {
 					setApiKey={setApiKey}
 					chatModel={chatModel}
 					setChatModel={setChatModel}
-					embedModel={embedModel}
-					setEmbedModel={setEmbedModel}
 					models={models}
 					hasApiKey={settings.hasApiKey}
 				/>
@@ -468,8 +461,6 @@ function KeyView({
 	setApiKey,
 	chatModel,
 	setChatModel,
-	embedModel,
-	setEmbedModel,
 	models,
 	hasApiKey,
 }: {
@@ -478,8 +469,6 @@ function KeyView({
 	setApiKey: (v: string) => void;
 	chatModel: string;
 	setChatModel: (v: string) => void;
-	embedModel: string;
-	setEmbedModel: (v: string) => void;
 	models: ModelsData | null;
 	hasApiKey: boolean;
 }) {
@@ -496,8 +485,6 @@ function KeyView({
 		label: TIER_LABELS[t],
 		options: chatList.filter((m) => m.tier === t).map(withPrice),
 	}));
-	const embedOptions = (models?.embed || []).map(withPrice);
-	const hasEmbeddings = HAS_EMBEDDINGS[provider] !== false;
 	return (
 		<div>
 			<Field
@@ -525,22 +512,6 @@ function KeyView({
 					placeholder="Provider default"
 				/>
 			</Field>
-			{hasEmbeddings ? (
-				<Field label="Embedding model" htmlFor="djinn-embed">
-					<Select
-						id="djinn-embed"
-						value={embedModel}
-						onChange={setEmbedModel}
-						options={embedOptions}
-						placeholder="Provider default"
-					/>
-				</Field>
-			) : (
-				<p className="text-[#787c82]">
-					This provider has no embeddings API — schema search runs on
-					the full schema (no index needed).
-				</p>
-			)}
 			{models?.error && (
 				<p className="text-[#787c82]">
 					⚠ {models.error} Showing known models as a fallback.

@@ -20,7 +20,7 @@ class Transcript {
 	/** @return array<int,array<string,mixed>> */
 	public static function of( int $chatId ): array {
 		$out      = array();
-		$awaiting = -1; // index in $out of a run_graphql action awaiting its result; -2 = ignore (search_schema)
+		$awaiting = -1; // index in $out of a run_graphql action awaiting its result; -2 = ignore
 
 		foreach ( Repository::getMessages( $chatId ) as $entry ) {
 			$role = $entry['role'] ?? '';
@@ -65,7 +65,7 @@ class Transcript {
 					$out[]    = self::baseAction( $call );
 					$awaiting = count( $out ) - 1;
 				} elseif ( $name !== '' ) {
-					$awaiting = -2; // e.g. search_schema — consume its result, don't surface it
+					$awaiting = -2; // e.g. rest_call — consume its result, don't surface it
 				}
 			}
 		}

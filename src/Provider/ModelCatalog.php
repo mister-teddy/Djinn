@@ -7,9 +7,9 @@ namespace Djinn\Provider;
 use Djinn\Usage\Pricing;
 
 /**
- * Discovers which models a provider key can actually use, so Settings can offer a dropdown
+ * Discovers which chat models a provider key can actually use, so Settings can offer a dropdown
  * instead of error-prone free text. Providers expose capabilities (not prices) via their list
- * endpoints; we map those to Djinn's two roles — chat (generation) and embed.
+ * endpoints.
  *
  * Results are cached per provider+key for a few hours. If discovery fails (bad key, network),
  * we fall back to the priced models we know about so the dropdown is never empty.
@@ -19,7 +19,7 @@ class ModelCatalog {
 	private const TTL = 6 * HOUR_IN_SECONDS;
 
 	/**
-	 * @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool}
+	 * @return array{chat:array<int,string>,error:?string,live:bool}
 	 */
 	public static function forProvider( string $provider, string $apiKey ): array {
 		if ( $apiKey === '' ) {
@@ -55,10 +55,10 @@ class ModelCatalog {
 	}
 
 	/**
-	 * Anthropic models via GET /v1/models. All are chat models; there are no embeddings.
-	 * For claude-max the key is an OAuth token (Bearer); for anthropic it's an x-api-key.
+	 * Anthropic models via GET /v1/models. For claude-max the key is an OAuth token (Bearer); for
+	 * anthropic it's an x-api-key.
 	 *
-	 * @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool}
+	 * @return array{chat:array<int,string>,error:?string,live:bool}
 	 */
 	private static function discoverAnthropic( string $apiKey, bool $oauth ): array {
 		$headers  = $oauth
@@ -92,10 +92,10 @@ class ModelCatalog {
 				$chat[] = $id;
 			}
 		}
-		return self::finish( $chat, array() );
+		return self::finish( $chat );
 	}
 
-	/** @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool} */
+	/** @return array{chat:array<int,string>,error:?string,live:bool} */
 	private static function discoverGemini( string $apiKey ): array {
 		$url      = 'https://generativelanguage.googleapis.com/v1beta/models?key=' . rawurlencode( $apiKey ) . '&pageSize=200';
 		$response = wp_remote_get( $url, array( 'timeout' => 20 ) );
@@ -107,24 +107,21 @@ class ModelCatalog {
 			return self::fallback( 'gemini', 'Gemini rejected the key: ' . ( $json['error']['message'] ?? 'unknown error' ) );
 		}
 
-		$chat  = array();
-		$embed = array();
+		$chat = array();
 		foreach ( $json['models'] ?? array() as $model ) {
 			$id      = preg_replace( '#^models/#', '', (string) ( $model['name'] ?? '' ) );
 			$methods = (array) ( $model['supportedGenerationMethods'] ?? array() );
 			if ( $id === '' ) {
 				continue;
 			}
-			if ( in_array( 'embedContent', $methods, true ) ) {
-				$embed[] = $id;
-			} elseif ( in_array( 'generateContent', $methods, true ) && ! preg_match( '/tts|image|vision|audio|aqa/i', $id ) ) {
+			if ( in_array( 'generateContent', $methods, true ) && ! preg_match( '/embedding|tts|image|vision|audio|aqa/i', $id ) ) {
 				$chat[] = $id;
 			}
 		}
-		return self::finish( $chat, $embed );
+		return self::finish( $chat );
 	}
 
-	/** @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool} */
+	/** @return array{chat:array<int,string>,error:?string,live:bool} */
 	private static function discoverOpenAI( string $apiKey ): array {
 		$response = wp_remote_get(
 			'https://api.openai.com/v1/models',
@@ -141,20 +138,17 @@ class ModelCatalog {
 			return self::fallback( 'openai', 'OpenAI rejected the key: ' . ( $json['error']['message'] ?? 'unknown error' ) );
 		}
 
-		$chat  = array();
-		$embed = array();
+		$chat = array();
 		foreach ( $json['data'] ?? array() as $model ) {
 			$id = (string) ( $model['id'] ?? '' );
 			if ( $id === '' ) {
 				continue;
 			}
-			if ( str_contains( $id, 'embedding' ) ) {
-				$embed[] = $id;
-			} elseif ( preg_match( '/^(gpt-|o[0-9]|chatgpt)/', $id ) && ! preg_match( '/audio|realtime|transcribe|tts|image|search|moderation/i', $id ) ) {
+			if ( preg_match( '/^(gpt-|o[0-9]|chatgpt)/', $id ) && ! preg_match( '/embedding|audio|realtime|transcribe|tts|image|search|moderation/i', $id ) ) {
 				$chat[] = $id;
 			}
 		}
-		return self::finish( $chat, $embed );
+		return self::finish( $chat );
 	}
 
 	/**
@@ -162,13 +156,11 @@ class ModelCatalog {
 	 * unpriced ones after — so the familiar, cost-known options surface at the top.
 	 *
 	 * @param array<int,string> $chat
-	 * @param array<int,string> $embed
-	 * @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool}
+	 * @return array{chat:array<int,string>,error:?string,live:bool}
 	 */
-	private static function finish( array $chat, array $embed ): array {
+	private static function finish( array $chat ): array {
 		return array(
 			'chat'  => self::order( $chat ),
-			'embed' => self::order( $embed ),
 			'error' => null,
 			'live'  => true,
 		);
@@ -213,40 +205,29 @@ class ModelCatalog {
 	}
 
 	/**
-	 * Offline fallback: the models we have prices for, split by role (embedding models are the
-	 * ones with no output price). Keeps the dropdown usable when discovery fails.
+	 * Offline fallback: the models we have prices for. Keeps the dropdown usable when discovery
+	 * fails.
 	 *
-	 * @return array{chat:array<int,string>,embed:array<int,string>,error:?string,live:bool}
+	 * @return array{chat:array<int,string>,error:?string,live:bool}
 	 */
 	private static function fallback( string $provider, string $error ): array {
 		$prefixes = array(
 			'gemini'    => array( 'gemini', 'gemma' ),
 			'anthropic' => array( 'claude' ),
-			'openai'    => array( 'gpt', 'o1', 'o3', 'o4', 'chatgpt', 'text-embedding' ),
+			'openai'    => array( 'gpt', 'o1', 'o3', 'o4', 'chatgpt' ),
 		);
 		$prefix   = $prefixes[ Providers::family( $provider ) ] ?? $prefixes['openai'];
 		$chat     = array();
-		$embed    = array();
 		foreach ( Pricing::table() as $model => $rates ) {
-			$matches = false;
 			foreach ( $prefix as $p ) {
 				if ( str_starts_with( $model, $p ) ) {
-					$matches = true;
+					$chat[] = $model;
 					break;
 				}
-			}
-			if ( ! $matches ) {
-				continue;
-			}
-			if ( str_contains( $model, 'embedding' ) ) {
-				$embed[] = $model;
-			} else {
-				$chat[] = $model;
 			}
 		}
 		return array(
 			'chat'  => self::order( $chat ),
-			'embed' => self::order( $embed ),
 			'error' => $error,
 			'live'  => false,
 		);

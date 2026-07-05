@@ -14,7 +14,7 @@ class ProxyProvider extends OpenAIProvider {
 	private static string $conversationId = '';
 
 	public function __construct( string $token, string $proxyUrl ) {
-		parent::__construct( $token, 'djinn', 'djinn', rtrim( $proxyUrl, '/' ) . '/v1' );
+		parent::__construct( $token, 'djinn', rtrim( $proxyUrl, '/' ) . '/v1' );
 	}
 
 	/** Tag every subsequent proxy call with the conversation (chat) it belongs to, for analytics. */

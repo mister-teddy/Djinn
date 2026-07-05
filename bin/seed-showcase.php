@@ -6,8 +6,8 @@
  *
  * Drift-free by design: it writes RAW chat messages in the exact shape Engine\AgentLoop persists,
  * so the live transcript() + React UI render them identically — no mock components to fall out of
- * date. No LLM calls are made; the conversation text is authored here. It flips the two UI flags a
- * clean screenshot needs (configured + indexed) without contacting any provider.
+ * date. No LLM calls are made; the conversation text is authored here. It flips the UI flag a
+ * clean screenshot needs (configured) without contacting any provider.
  *
  * Showcase-only: it truncates existing Djinn conversations first, so run it on a throwaway site.
  */
@@ -21,23 +21,13 @@ if ( ! class_exists( Repository::class ) ) {
 
 global $wpdb;
 
-// --- 1. Make the UI render the chat (configured) with no slumber notice (indexed) -------------
+// --- 1. Make the UI render the chat (configured) -----------------------------------------------
 $opt = get_option( 'djinn_settings', [] );
 $opt = is_array( $opt ) ? $opt : [];
 if ( empty( $opt['api_key'] ) && empty( $opt['site_token'] ) ) {
 	$opt['provider'] = $opt['provider'] ?? 'openai';
 	$opt['api_key']  = 'showcase-demo-key'; // only flips isConfigured(); no calls are ever made
 	update_option( 'djinn_settings', $opt );
-}
-$chunks = $wpdb->prefix . 'djinn_schema_chunks';
-if ( (int) $wpdb->get_var( "SELECT COUNT(*) FROM $chunks" ) === 0 ) {
-	$wpdb->insert( $chunks, [
-		'name'       => 'showcase',
-		'fragment'   => 'showcase placeholder',
-		'embedding'  => '[]',
-		'model'      => 'showcase',
-		'updated_at' => current_time( 'mysql', true ),
-	] );
 }
 
 // --- 2. Clean slate (showcase env only) -------------------------------------------------------

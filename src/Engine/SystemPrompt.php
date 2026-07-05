@@ -4,9 +4,11 @@ declare( strict_types=1 );
 
 namespace Djinn\Engine;
 
+use Djinn\GraphQL\SchemaFactory;
 use Djinn\Provider\ProxyClient;
 use Djinn\Provider\ProxyException;
 use Djinn\Settings;
+use GraphQL\Utils\SchemaPrinter;
 
 class SystemPrompt {
 
@@ -20,7 +22,8 @@ class SystemPrompt {
 	 * Free proxy install keeps the scope-accurate local prompt from build().
 	 *
 	 * An override replaces the static instructions only; SystemPrompt::context() (site, master, date,
-	 * theme shape) is always appended after it, so the per-site facts the model needs are never lost.
+	 * theme shape) and SystemPrompt::schema() are always appended after it, so the per-site facts and
+	 * operations the model needs are never lost.
 	 */
 	public static function proxyOverride(): string {
 		if ( ! Settings::usesProxy() || ! Settings::isPro() || Settings::siteToken() === '' ) {
@@ -41,9 +44,9 @@ class SystemPrompt {
 		return $prompt;
 	}
 
-	/** The full prompt: static instructions plus the per-site context block. */
+	/** The full prompt: static instructions, the per-site context block, and the schema. */
 	public static function build(): string {
-		return self::instructions() . "\n\n" . self::context();
+		return self::instructions() . "\n\n" . self::context() . "\n\n" . self::schema();
 	}
 
 	/**
@@ -93,11 +96,10 @@ Work the wish to the end on your own. Emit one tool call per message and read it
 next, but that is not a handoff: keep calling tools across as many steps as it takes. A turn ends
 only when you have the answer, or you hit a write awaiting a Grant, or you have genuinely exhausted
 every path. Never stop to offer ("I can list…, would you like me to?"); run the query instead.
-1. Discover the operation with `search_schema`. Always start here.
-2. {$act} Chain reads freely and follow each lead: a footer template part to the `wp_navigation`
+1. {$act} Chain reads freely and follow each lead: a footer template part to the `wp_navigation`
    post its Navigation block references, a term to its posts. Read whatever it takes to actually
    have what was asked.
-3. Once you have it, answer plainly: a sentence or two for an action, a short list when the wish
+2. Once you have it, answer plainly: a sentence or two for an action, a short list when the wish
    asks for one. Add View/Edit links when useful.
 
 {$reads}
@@ -106,20 +108,21 @@ each a clear `summary`; that card is the confirmation, so never ask "shall I pro
 wish is how you act on it.
 
 ## Finding the operation
-Take the highest rung that fits:
-1. A native field from `search_schema`. Example: `createPost` for a blog post.
-2. Generic content ops for a custom post type, taxonomy, or field that `search_schema` reports:
+The full schema is in the Schema section below. It is complete: every operation, field, and
+argument available to you is listed there, and anything missing from it does not exist on this
+site. Take the highest rung that fits:
+1. A native field from the schema. Example: `createPost` for a blog post.
+2. Generic content ops for a custom post type or taxonomy the Schema section's site notes list:
    `posts`/`createPost` with its `postType`, `terms` with its `taxonomy`.{$restRung}
 
-Run discovery before concluding anything is beyond reach. Never assert a limitation, or ask the
-user for a detail, that `search_schema` or a query could settle for you. Only when all {$rungCount}
-come back empty is a wish impossible.
+Never assert a limitation, or ask the user for a detail, that the schema or a query could settle
+for you. Only when all {$rungCount} come up empty is a wish impossible.
 
 ## Constraints
-- Use only real identifiers, taken from `search_schema` or query results; query for any you lack.
+- Use only real identifiers, taken from the schema or query results; query for any you lack.
 - This is Djinn's own schema, not WPGraphQL: list queries return the objects directly, with no
-  `nodes`/`edges` wrapper. Pass only the arguments, and select only the fields, that `search_schema`
-  shows for that operation — don't reach for `where`, `first`, or `search` unless they are listed.
+  `nodes`/`edges` wrapper. Pass only the arguments, and select only the fields, that the schema
+  defines for that operation — don't reach for `where`, `first`, or `search` unless they are listed.
 - A wish is granted only when its mutation returns success. Report nothing you haven't verified.
 - A replacing write (such as `setAdditionalCss`) overwrites the whole value. First read the current
   value and keep what should remain.
@@ -166,5 +169,71 @@ PROMPT;
 - Today: {$date} (UTC).
 - Theme: {$shape}
 PROMPT;
+	}
+
+	/**
+	 * The complete GraphQL schema as SDL, plus notes on this site's custom post types and
+	 * taxonomies. Always appended — to build()'s instructions or, for proxy sites, after the prompt
+	 * override — so the model composes operations from real fields with no discovery round-trip.
+	 */
+	public static function schema(): string {
+		// Build the schema first — this also registers features (e.g. WooCommerce) that claim
+		// post types via the djinn_curated_post_types filter siteNotes() reads below.
+		$sdl   = SchemaPrinter::doPrint( SchemaFactory::build() );
+		$notes = self::siteNotes();
+
+		$out = "## Schema\n```graphql\n" . $sdl . '```';
+		if ( $notes ) {
+			$out .= "\n\n### This site's custom types\n" . implode( "\n", $notes );
+		}
+		return $out;
+	}
+
+	/**
+	 * Natural-language notes on the custom post types and taxonomies *this* site registers (via
+	 * plugins), so the Djinn drives them with the generic post/term operations — no plugin
+	 * cooperation needed. Skips WordPress built-ins (already covered by the core schema) and any
+	 * type a curated feature has claimed.
+	 *
+	 * @return array<int,string>
+	 */
+	private static function siteNotes(): array {
+		$out          = array();
+		$curatedTypes = (array) apply_filters( 'djinn_curated_post_types', array() );
+		$curatedTax   = (array) apply_filters( 'djinn_curated_taxonomies', array() );
+
+		foreach ( get_post_types( array( '_builtin' => false ), 'objects' ) as $pt ) {
+			if ( ( ! $pt->public && ! $pt->show_ui ) || in_array( $pt->name, $curatedTypes, true ) ) {
+				continue;
+			}
+			$taxes = get_object_taxonomies( $pt->name );
+			$out[] = sprintf(
+				'- Custom content type "%s" — post type `%s`%s. Work with it using the generic post '
+				. 'operations and this exact postType: list with posts(postType: "%1$s"), read with '
+				. 'post(id), create with createPost(input: { postType: "%2$s", ... }), edit with '
+				. 'updatePost, delete with deletePost. Custom fields via postMeta / setPostMeta.%s%s',
+				$pt->labels->name ?? $pt->label ?? $pt->name,
+				$pt->name,
+				$pt->hierarchical ? ' (hierarchical, page-like)' : '',
+				$taxes ? ' Taxonomies: ' . implode( ', ', $taxes ) . '.' : '',
+				$pt->description ? ' ' . $pt->description : ''
+			);
+		}
+
+		foreach ( get_taxonomies( array( '_builtin' => false ), 'objects' ) as $tax ) {
+			if ( ( ! $tax->public && ! $tax->show_ui ) || in_array( $tax->name, $curatedTax, true ) ) {
+				continue;
+			}
+			$out[] = sprintf(
+				'- Custom taxonomy "%s" — `%s`%s, applies to: %s. List terms with terms(taxonomy: '
+				. '"%2$s"), create with createTerm, attach to a post with assignTerms.',
+				$tax->labels->name ?? $tax->label ?? $tax->name,
+				$tax->name,
+				$tax->hierarchical ? ' (hierarchical, category-like)' : ' (flat, tag-like)',
+				implode( ', ', (array) $tax->object_type ) ?: 'posts'
+			);
+		}
+
+		return $out;
 	}
 }

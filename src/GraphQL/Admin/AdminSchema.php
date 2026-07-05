@@ -12,9 +12,9 @@ use GraphQL\Type\Definition\Type;
 use GraphQL\Type\Schema;
 
 /**
- * The admin control-plane schema for the Cave + Lamp SPAs: settings, account, billing, the RAG
- * index, usage, and chat CRUD. Hand-built and separate from the AI's content schema
- * (SchemaFactory) — this surface is small, fixed, and never third-party extended or RAG-indexed.
+ * The admin control-plane schema for the Cave + Lamp SPAs: settings, account, billing, usage,
+ * and chat CRUD. Hand-built and separate from the AI's content schema (SchemaFactory) — this
+ * surface is small, fixed, and never third-party extended.
  */
 class AdminSchema {
 
@@ -39,15 +39,14 @@ class AdminSchema {
 			array(
 				'name'   => 'Settings',
 				'fields' => array(
-					'edition'        => Type::nonNull( Type::string() ),
-					'isPro'          => Type::nonNull( Type::boolean() ),
-					'provider'       => Type::nonNull( Type::string() ),
-					'chatModel'      => Type::string(),
-					'embeddingModel' => Type::string(),
-					'hasApiKey'      => Type::nonNull( Type::boolean() ),
-					'hasSiteToken'   => Type::nonNull( Type::boolean() ),
-					'usesProxy'      => Type::nonNull( Type::boolean() ),
-					'configured'     => Type::nonNull( Type::boolean() ),
+					'edition'      => Type::nonNull( Type::string() ),
+					'isPro'        => Type::nonNull( Type::boolean() ),
+					'provider'     => Type::nonNull( Type::string() ),
+					'chatModel'    => Type::string(),
+					'hasApiKey'    => Type::nonNull( Type::boolean() ),
+					'hasSiteToken' => Type::nonNull( Type::boolean() ),
+					'usesProxy'    => Type::nonNull( Type::boolean() ),
+					'configured'   => Type::nonNull( Type::boolean() ),
 				),
 			)
 		);
@@ -76,21 +75,11 @@ class AdminSchema {
 				),
 			)
 		);
-		$embedModel   = new ObjectType(
-			array(
-				'name'   => 'EmbedModel',
-				'fields' => array(
-					'id'    => Type::nonNull( Type::string() ),
-					'price' => Type::string(),
-				),
-			)
-		);
 		$modelCatalog = new ObjectType(
 			array(
 				'name'   => 'ModelCatalog',
 				'fields' => array(
 					'chat'  => Type::nonNull( Type::listOf( Type::nonNull( $chatModel ) ) ),
-					'embed' => Type::nonNull( Type::listOf( Type::nonNull( $embedModel ) ) ),
 					'live'  => Type::nonNull( Type::boolean() ),
 					'error' => Type::string(),
 				),
@@ -125,48 +114,6 @@ class AdminSchema {
 				'name'   => 'OperationsReport',
 				'fields' => array(
 					'operations' => Type::nonNull( Type::listOf( Type::nonNull( $operation ) ) ),
-					'unindexed'  => Type::nonNull( Type::listOf( Type::nonNull( Type::string() ) ) ),
-					'outdated'   => Type::nonNull( Type::listOf( Type::nonNull( Type::string() ) ) ),
-				),
-			)
-		);
-
-		$indexEstimate = new ObjectType(
-			array(
-				'name'   => 'IndexEstimate',
-				'fields' => array(
-					'chunks'   => Type::nonNull( Type::int() ),
-					'tokens'   => Type::nonNull( Type::int() ),
-					'cost'     => Type::nonNull( Type::float() ),
-					'free'     => Type::nonNull( Type::boolean() ),
-					'unpriced' => Type::nonNull( Type::boolean() ),
-				),
-			)
-		);
-		$indexDiff     = new ObjectType(
-			array(
-				'name'   => 'IndexDiff',
-				'fields' => array(
-					'added'   => Type::nonNull( Type::listOf( Type::nonNull( Type::string() ) ) ),
-					'changed' => Type::nonNull( Type::listOf( Type::nonNull( Type::string() ) ) ),
-				),
-			)
-		);
-		$indexStatus   = new ObjectType(
-			array(
-				'name'   => 'IndexStatus',
-				'fields' => array(
-					'configured'  => Type::nonNull( Type::boolean() ),
-					'embeds'      => Type::nonNull( Type::boolean() ),
-					'indexed'     => Type::boolean(),
-					'upToDate'    => Type::boolean(),
-					'model'       => Type::string(),
-					'storedModel' => Type::string(),
-					'indexedAt'   => Type::string(),
-					'countStored' => Type::int(),
-					'countLive'   => Type::int(),
-					'estimate'    => $indexEstimate,
-					'diff'        => $indexDiff,
 				),
 			)
 		);
@@ -304,11 +251,10 @@ class AdminSchema {
 			array(
 				'name'   => 'SettingsInput',
 				'fields' => array(
-					'provider'       => Type::string(),
-					'apiKey'         => Type::string(),
-					'chatModel'      => Type::string(),
-					'embeddingModel' => Type::string(),
-					'siteToken'      => Type::string(),
+					'provider'  => Type::string(),
+					'apiKey'    => Type::string(),
+					'chatModel' => Type::string(),
+					'siteToken' => Type::string(),
 				),
 			)
 		);
@@ -318,16 +264,6 @@ class AdminSchema {
 				'values' => array(
 					'credit'       => array( 'value' => 'credit' ),
 					'subscription' => array( 'value' => 'subscription' ),
-				),
-			)
-		);
-		$reindexResult   = new ObjectType(
-			array(
-				'name'   => 'ReindexResult',
-				'fields' => array(
-					'status'  => Type::nonNull( Type::string() ),
-					'chunks'  => Type::int(),
-					'message' => Type::string(),
 				),
 			)
 		);
@@ -342,15 +278,15 @@ class AdminSchema {
 			array(
 				'name'   => 'Query',
 				'fields' => array(
-					'settings'    => array(
+					'settings'   => array(
 						'type'    => Type::nonNull( $settings ),
 						'resolve' => static fn() => AdminResolvers::settings(),
 					),
-					'account'     => array(
+					'account'    => array(
 						'type'    => Type::nonNull( $account ),
 						'resolve' => static fn() => AdminResolvers::account(),
 					),
-					'models'      => array(
+					'models'     => array(
 						'type'    => Type::nonNull( $modelCatalog ),
 						'args'    => array(
 							'provider' => Type::string(),
@@ -358,23 +294,19 @@ class AdminSchema {
 						),
 						'resolve' => static fn( $root, $args ) => AdminResolvers::models( $args['provider'] ?? null, ! empty( $args['refresh'] ) ),
 					),
-					'operations'  => array(
+					'operations' => array(
 						'type'    => Type::nonNull( $operationsReport ),
 						'resolve' => static fn() => AdminResolvers::operations(),
 					),
-					'indexStatus' => array(
-						'type'    => Type::nonNull( $indexStatus ),
-						'resolve' => static fn() => AdminResolvers::indexStatus(),
-					),
-					'usage'       => array(
+					'usage'      => array(
 						'type'    => Type::nonNull( $usage ),
 						'resolve' => static fn() => AdminResolvers::usage(),
 					),
-					'chats'       => array(
+					'chats'      => array(
 						'type'    => Type::nonNull( Type::listOf( Type::nonNull( $chat ) ) ),
 						'resolve' => static fn() => AdminResolvers::chats(),
 					),
-					'chat'        => array(
+					'chat'       => array(
 						'type'    => $chatDetail,
 						'args'    => array( 'id' => Type::nonNull( Type::int() ) ),
 						'resolve' => static fn( $root, $args ) => AdminResolvers::chat( (int) $args['id'] ),
@@ -404,10 +336,6 @@ class AdminSchema {
 					'deactivateLicense' => array(
 						'type'    => Type::nonNull( $settings ),
 						'resolve' => static fn() => AdminResolvers::deactivateLicense(),
-					),
-					'reindex'           => array(
-						'type'    => Type::nonNull( $reindexResult ),
-						'resolve' => static fn() => AdminResolvers::reindex(),
 					),
 					'resetUsage'        => array(
 						'type'    => Type::nonNull( Type::boolean() ),

@@ -12,8 +12,8 @@ Nothing is sent until you make a wish. When you do, Djinn transmits, for that re
 
 - **Your wish** — the message you type.
 - **Conversation context** — earlier messages in the same chat, so the assistant has continuity.
-- **Relevant schema fragments** — small slices of your site's GraphQL schema (type names and
-  fields) selected for the wish. This is structure, not your content.
+- **The site's schema** — your site's GraphQL schema (type names and fields). This is structure,
+  not your content.
 - **Tool results** — the data returned by read queries the assistant runs to fulfil the wish
   (e.g. a list of post titles). Depending on your wish, this can include site content.
 
@@ -41,7 +41,7 @@ In all cases your data is also subject to the chosen provider's terms:
 
 ## Retention
 
-- **Locally:** your conversations, the schema index, and per-call usage totals are stored in your
+- **Locally:** your conversations and per-call usage totals are stored in your
   own WordPress database (tables prefixed `djinn_`). You control them; deleting a chat or
   uninstalling removes them.
 - **Proxy (ORG):** we retain only the **usage metadata** needed to meter and bill — token counts,
@@ -59,7 +59,7 @@ In all cases your data is also subject to the chosen provider's terms:
 
 ## Summary for `readme.txt`
 
-> Djinn sends your typed requests, recent chat context, selected GraphQL schema fragments, and the
+> Djinn sends your typed requests, recent chat context, the site's GraphQL schema, and the
 > results of any read queries it runs to an LLM in order to fulfil your request. Free edition: via
 > Djinn's hosted proxy (https://djinn-proxy-351601184057.asia-northeast1.run.app — terms: /terms,
 > privacy: /privacy) to Google Gemini. BYO edition: directly to the provider you configure (OpenAI,

@@ -6,16 +6,15 @@ namespace Djinn\Store;
 
 /**
  * All persistence for Djinn, backed by custom wpdb tables:
- *   - chats         : one row per conversation
- *   - messages      : the normalized turn history (replayed to the LLM)
- *   - pending       : wishes (mutations) awaiting human confirmation
- *   - schema_chunks : RAG index (SDL fragment + embedding) of the GraphQL schema
- *   - usage         : one row per provider call (tokens + estimated cost)
+ *   - chats    : one row per conversation
+ *   - messages : the normalized turn history (replayed to the LLM)
+ *   - pending  : wishes (mutations) awaiting human confirmation
+ *   - usage    : one row per provider call (tokens + estimated cost)
  */
 class Repository {
 
 	/** Bumped whenever the table layout changes; drives maybeUpgrade(). */
-	private const DB_VERSION = 4;
+	private const DB_VERSION = 5;
 
 	private const DB_VERSION_OPTION = 'djinn_db_version';
 
@@ -38,7 +37,6 @@ class Repository {
 		$chats   = $wpdb->prefix . 'djinn_chats';
 		$msgs    = $wpdb->prefix . 'djinn_messages';
 		$pending = $wpdb->prefix . 'djinn_pending';
-		$chunks  = $wpdb->prefix . 'djinn_schema_chunks';
 		$usage   = $wpdb->prefix . 'djinn_usage';
 
 		dbDelta(
@@ -81,19 +79,6 @@ class Repository {
 		);
 
 		dbDelta(
-			"CREATE TABLE $chunks (
-				id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-				name VARCHAR(190) NOT NULL,
-				fragment LONGTEXT NOT NULL,
-				embedding LONGTEXT NOT NULL,
-				model VARCHAR(100) NOT NULL,
-				updated_at DATETIME NOT NULL,
-				PRIMARY KEY (id),
-				KEY name (name)
-			) $charset;"
-		);
-
-		dbDelta(
 			"CREATE TABLE $usage (
 				id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 				user_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
@@ -112,6 +97,10 @@ class Repository {
 				KEY chat_id (chat_id)
 			) $charset;"
 		);
+
+		// v5: the schema rides in the system prompt now, so the RAG index table is gone.
+		$wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'djinn_schema_chunks' );
+		delete_option( 'djinn_index_meta' );
 
 		update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
 	}
@@ -244,49 +233,6 @@ class Repository {
 			ARRAY_A
 		);
 		return $row ?: null;
-	}
-
-	// ---- Schema chunks (RAG index) ----------------------------------------
-
-	/** @param array<int,array{name:string,fragment:string,embedding:array<int,float>}> $chunks */
-	public static function replaceChunks( array $chunks, string $model ): void {
-		global $wpdb;
-		$table = $wpdb->prefix . 'djinn_schema_chunks';
-		$wpdb->query( "TRUNCATE TABLE $table" );
-		$now = current_time( 'mysql', true );
-		foreach ( $chunks as $chunk ) {
-			$wpdb->insert(
-				$table,
-				array(
-					'name'       => mb_substr( $chunk['name'], 0, 190 ),
-					'fragment'   => $chunk['fragment'],
-					'embedding'  => wp_json_encode( $chunk['embedding'] ),
-					'model'      => $model,
-					'updated_at' => $now,
-				)
-			);
-		}
-	}
-
-	/** @return array<int,array{name:string,fragment:string,embedding:array<int,float>}> */
-	public static function getChunks(): array {
-		global $wpdb;
-		$table = $wpdb->prefix . 'djinn_schema_chunks';
-		$rows  = $wpdb->get_results( "SELECT name, fragment, embedding FROM $table", ARRAY_A );
-		return array_map(
-			static fn( $r ) => array(
-				'name'      => $r['name'],
-				'fragment'  => $r['fragment'],
-				'embedding' => json_decode( $r['embedding'], true ) ?: array(),
-			),
-			$rows ?: array()
-		);
-	}
-
-	public static function chunkCount(): int {
-		global $wpdb;
-		$table = $wpdb->prefix . 'djinn_schema_chunks';
-		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM $table" );
 	}
 
 	// ---- Usage (token + cost telemetry) -----------------------------------

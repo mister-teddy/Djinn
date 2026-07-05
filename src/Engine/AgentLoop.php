@@ -7,7 +7,6 @@ namespace Djinn\Engine;
 use Djinn\GraphQL\Runner;
 use Djinn\Provider\ProviderFactory;
 use Djinn\Provider\ProxyProvider;
-use Djinn\Rag\Retriever;
 use Djinn\Security\Guard;
 use Djinn\Store\Repository;
 use Djinn\Usage\UsageRecorder;
@@ -77,8 +76,6 @@ class AgentLoop {
 
 	private function stepLabel( string $tool ): string {
 		switch ( $tool ) {
-			case 'search_schema':
-				return 'Consulting the schema…';
 			case 'run_graphql':
 				return 'Composing the incantation…';
 			case 'rest_call':
@@ -210,13 +207,15 @@ class AgentLoop {
 	}
 
 	private function loop( int $chatId, ?callable $emit = null ): array {
-		// Attribute every provider call in this run (chat + schema-search embeddings) to the chat.
+		// Attribute every provider call in this run to the chat.
 		UsageRecorder::forChat( $chatId );
 
 		$provider = ProviderFactory::make();
 		ProxyProvider::setConversation( (string) $chatId );
 		$override = SystemPrompt::proxyOverride();
-		$system   = $override !== '' ? $override . "\n\n" . SystemPrompt::context() : SystemPrompt::build();
+		$system   = $override !== ''
+			? $override . "\n\n" . SystemPrompt::context() . "\n\n" . SystemPrompt::schema()
+			: SystemPrompt::build();
 		$tools    = Tools::specs();
 		$stalls   = 0;
 
@@ -281,12 +280,6 @@ class AgentLoop {
 					'tool_calls' => array( $call ),
 				)
 			);
-
-			if ( $call['name'] === 'search_schema' ) {
-				$fragments = Retriever::search( (string) ( $call['arguments']['query'] ?? '' ) );
-				$this->addToolResult( $chatId, $call, array( 'schema' => $fragments ) );
-				continue;
-			}
 
 			if ( $call['name'] === 'run_graphql' ) {
 				$operation = (string) ( $call['arguments']['operation'] ?? '' );

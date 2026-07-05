@@ -17,20 +17,11 @@ class OpenAIProvider implements Provider {
 	public function __construct(
 		private string $apiKey,
 		private string $chatModel,
-		private string $embeddingModel,
 		private string $baseUrl = 'https://api.openai.com/v1'
 	) {}
 
-	public function embeddingModel(): string {
-		return $this->embeddingModel;
-	}
-
 	protected function chatUrl(): string {
 		return rtrim( $this->baseUrl, '/' ) . '/chat/completions';
-	}
-
-	protected function embedUrl(): string {
-		return rtrim( $this->baseUrl, '/' ) . '/embeddings';
 	}
 
 	/** Label recorded in usage telemetry (overridden by the proxy adapter). */
@@ -194,25 +185,6 @@ class OpenAIProvider implements Provider {
 			'content'    => $content !== '' ? $content : null,
 			'tool_calls' => $toolCalls,
 		);
-	}
-
-	public function embed( array $texts ): array {
-		if ( empty( $texts ) ) {
-			return array();
-		}
-		$json = $this->postJson(
-			$this->embedUrl(),
-			$this->headers(),
-			array(
-				'model' => $this->embeddingModel,
-				'input' => array_values( $texts ),
-			)
-		);
-
-		$usage = $json['usage'] ?? array();
-		UsageRecorder::record( $this->providerLabel(), $this->embeddingModel, 'embed', (int) ( $usage['prompt_tokens'] ?? 0 ), 0, false, $this->reportedCost( $usage ) );
-
-		return array_map( static fn( $row ) => $row['embedding'], $json['data'] ?? array() );
 	}
 
 	/**

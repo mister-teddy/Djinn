@@ -13,7 +13,7 @@ use Throwable;
  */
 class UsageRecorder {
 
-	/** The conversation provider calls are currently attributed to (0 = none, e.g. reindex). */
+	/** The conversation provider calls are currently attributed to (0 = none). */
 	private static int $chatId = 0;
 
 	/** Set by the agent loop so each provider call is billed to the right conversation. */
@@ -22,9 +22,8 @@ class UsageRecorder {
 	}
 
 	/**
-	 * @param string     $kind         'chat' or 'embed'
-	 * @param bool       $estimated    True when token counts were inferred (e.g. Gemini embeddings,
-	 *                                 whose API returns no usage metadata).
+	 * @param string     $kind         The call type, e.g. 'chat'.
+	 * @param bool       $estimated    True when token counts were inferred rather than reported.
 	 * @param float|null $costOverride The authoritative charge for this call, when the source knows it
 	 *                                 (the hosted proxy reports its post-markup charge). Stored verbatim
 	 *                                 so the row is frozen at the rate charged — immune to later pricing

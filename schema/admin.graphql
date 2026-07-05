@@ -3,7 +3,6 @@ type Query {
   account: Account!
   models(provider: String, refresh: Boolean): ModelCatalog!
   operations: OperationsReport!
-  indexStatus: IndexStatus!
   usage: Usage!
   chats: [Chat!]!
   chat(id: Int!): ChatDetail
@@ -14,7 +13,6 @@ type Settings {
   isPro: Boolean!
   provider: String!
   chatModel: String
-  embeddingModel: String
   hasApiKey: Boolean!
   hasSiteToken: Boolean!
   usesProxy: Boolean!
@@ -32,7 +30,6 @@ type Account {
 
 type ModelCatalog {
   chat: [ChatModel!]!
-  embed: [EmbedModel!]!
   live: Boolean!
   error: String
 }
@@ -43,15 +40,8 @@ type ChatModel {
   price: String
 }
 
-type EmbedModel {
-  id: String!
-  price: String
-}
-
 type OperationsReport {
   operations: [Operation!]!
-  unindexed: [String!]!
-  outdated: [String!]!
 }
 
 type Operation {
@@ -67,33 +57,6 @@ type OpArg {
   name: String!
   type: String!
   required: Boolean!
-}
-
-type IndexStatus {
-  configured: Boolean!
-  embeds: Boolean!
-  indexed: Boolean
-  upToDate: Boolean
-  model: String
-  storedModel: String
-  indexedAt: String
-  countStored: Int
-  countLive: Int
-  estimate: IndexEstimate
-  diff: IndexDiff
-}
-
-type IndexEstimate {
-  chunks: Int!
-  tokens: Int!
-  cost: Float!
-  free: Boolean!
-  unpriced: Boolean!
-}
-
-type IndexDiff {
-  added: [String!]!
-  changed: [String!]!
 }
 
 type Usage {
@@ -188,7 +151,6 @@ type Mutation {
   connect: Account!
   activateLicense(key: String!): Settings!
   deactivateLicense: Settings!
-  reindex: ReindexResult!
   resetUsage: Boolean!
   billingCheckout(kind: BillingKind!): CheckoutSession!
   deleteChat(id: Int!): Boolean!
@@ -198,14 +160,7 @@ input SettingsInput {
   provider: String
   apiKey: String
   chatModel: String
-  embeddingModel: String
   siteToken: String
-}
-
-type ReindexResult {
-  status: String!
-  chunks: Int
-  message: String
 }
 
 enum BillingKind {

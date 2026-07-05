@@ -8,18 +8,14 @@ use Djinn\GraphQL\PairingSchema;
 use Djinn\GraphQL\SchemaFactory;
 use Djinn\License\LicenseClient;
 use Djinn\Provider\ModelCatalog;
-use Djinn\Provider\Providers;
 use Djinn\Provider\ProxyAccount;
 use Djinn\Provider\ProxyClient;
 use Djinn\Provider\ProxyException;
-use Djinn\Rag\Indexer;
-use Djinn\Rag\IndexStatus;
 use Djinn\Settings;
 use Djinn\Store\Repository;
 use Djinn\Store\Transcript;
 use Djinn\Usage\Pricing;
 use GraphQL\Error\UserError;
-use Throwable;
 
 /**
  * Resolvers for the admin control-plane schema. Each is a thin wrapper over the same service the
@@ -32,15 +28,14 @@ class AdminResolvers {
 	public static function settings(): array {
 		$s = Settings::all();
 		return array(
-			'edition'        => Settings::edition(),
-			'isPro'          => Settings::isPro(),
-			'provider'       => Settings::provider(),
-			'chatModel'      => $s['chat_model'],
-			'embeddingModel' => $s['embedding_model'],
-			'hasApiKey'      => Settings::apiKey() !== '',
-			'hasSiteToken'   => Settings::siteToken() !== '',
-			'usesProxy'      => Settings::usesProxy(),
-			'configured'     => Settings::isConfigured(),
+			'edition'      => Settings::edition(),
+			'isPro'        => Settings::isPro(),
+			'provider'     => Settings::provider(),
+			'chatModel'    => $s['chat_model'],
+			'hasApiKey'    => Settings::apiKey() !== '',
+			'hasSiteToken' => Settings::siteToken() !== '',
+			'usesProxy'    => Settings::usesProxy(),
+			'configured'   => Settings::isConfigured(),
 		);
 	}
 
@@ -81,13 +76,6 @@ class AdminResolvers {
 				),
 				$catalog['chat']
 			),
-			'embed' => array_map(
-				static fn( $m ) => array(
-					'id'    => $m,
-					'price' => Pricing::describe( $m ),
-				),
-				$catalog['embed']
-			),
 			'live'  => (bool) $catalog['live'],
 			'error' => $catalog['error'] ?: null,
 		);
@@ -95,56 +83,8 @@ class AdminResolvers {
 
 	/** @return array<string,mixed> */
 	public static function operations(): array {
-		$diff = array(
-			'added'   => array(),
-			'changed' => array(),
-		);
-		if ( Settings::isConfigured() ) {
-			$diff = IndexStatus::summary()['diff'];
-		}
 		return array(
 			'operations' => SchemaFactory::operations(),
-			'unindexed'  => $diff['added'],
-			'outdated'   => $diff['changed'],
-		);
-	}
-
-	/** @return array<string,mixed> */
-	public static function indexStatus(): array {
-		$embeds = Providers::hasEmbeddings( Settings::provider() );
-		$base   = array(
-			'configured'  => Settings::isConfigured(),
-			'embeds'      => $embeds,
-			'indexed'     => null,
-			'upToDate'    => null,
-			'model'       => null,
-			'storedModel' => null,
-			'indexedAt'   => null,
-			'countStored' => null,
-			'countLive'   => null,
-			'estimate'    => null,
-			'diff'        => null,
-		);
-		if ( ! Settings::isConfigured() || ! $embeds ) {
-			return $base;
-		}
-		$s = IndexStatus::summary();
-		return array_merge(
-			$base,
-			array(
-				'indexed'     => $s['indexed'],
-				'upToDate'    => $s['up_to_date'],
-				'model'       => $s['model'],
-				'storedModel' => $s['stored_model'],
-				'indexedAt'   => $s['indexed_at'],
-				'countStored' => $s['count_stored'],
-				'countLive'   => $s['count_live'],
-				'estimate'    => $s['estimate'],
-				'diff'        => array(
-					'added'   => $s['diff']['added'],
-					'changed' => $s['diff']['changed'],
-				),
-			)
 		);
 	}
 
@@ -225,11 +165,10 @@ class AdminResolvers {
 	 */
 	public static function saveSettings( array $input ): array {
 		$map    = array(
-			'provider'       => 'provider',
-			'apiKey'         => 'api_key',
-			'chatModel'      => 'chat_model',
-			'embeddingModel' => 'embedding_model',
-			'siteToken'      => 'site_token',
+			'provider'  => 'provider',
+			'apiKey'    => 'api_key',
+			'chatModel' => 'chat_model',
+			'siteToken' => 'site_token',
 		);
 		$update = array();
 		foreach ( $map as $in => $key ) {
@@ -285,23 +224,6 @@ class AdminResolvers {
 			throw new UserError( 'The Djinn service could not complete pairing. Make sure this site is publicly reachable, then try again.' );
 		}
 		return self::account();
-	}
-
-	/** @return array<string,mixed> */
-	public static function reindex(): array {
-		try {
-			return array(
-				'status'  => 'ok',
-				'chunks'  => Indexer::reindex(),
-				'message' => null,
-			);
-		} catch ( Throwable $e ) {
-			return array(
-				'status'  => 'error',
-				'chunks'  => null,
-				'message' => $e->getMessage(),
-			);
-		}
 	}
 
 	public static function resetUsage(): bool {

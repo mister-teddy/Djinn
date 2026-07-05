@@ -34,7 +34,7 @@ The two editions differ only in **scope** — every model option works in both.
 
 To fulfil a wish, Djinn sends data to a large language model. This happens **only when you make a wish** — Djinn does not phone home in the background.
 
-**What is sent (per wish):** your typed request; recent messages in the same chat (context); small GraphQL **schema fragments** (type/field names) selected for the wish; and the **results of read queries** Djinn runs to fulfil it (which may include site content). Djinn does **not** send your password, stored API key, or database wholesale.
+**What is sent (per wish):** your typed request; recent messages in the same chat (context); the site's GraphQL **schema** (type/field names); and the **results of read queries** Djinn runs to fulfil it (which may include site content). Djinn does **not** send your password, stored API key, or database wholesale.
 
 **Where it goes:**
 
@@ -51,7 +51,7 @@ The hosted gateway retains only usage metadata (token counts, model, timestamps,
 2. In **Djinn → Cave of Wonders** (Account tile), pick how to pay for LLM calls:
    **Your own key:** choose a provider and paste your API key (or define `DJINN_API_KEY` in `wp-config.php`).
    **Managed proxy:** choose *Djinn key* — your site links to the hosted gateway automatically; add prepaid credit via Polar to start. If your site isn't publicly reachable, paste an account token instead.
-3. Open **Djinn → Lamp**, click **Build RAG** to build the schema index, then make a wish.
+3. Open **Djinn → Lamp** and make a wish.
 
 == Frequently Asked Questions ==
 

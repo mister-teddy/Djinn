@@ -13,8 +13,8 @@ use GraphQL\Type\Definition\Type;
 /**
  * Generic custom-field (post meta) access. Plugins store much of their per-post data here, so this
  * reaches them with no plugin cooperation. Post-type/taxonomy *discovery* is not here — it lives as
- * synthetic chunks in the RAG index (Rag\Indexer::siteChunks), so the Djinn learns what a site
- * exposes through search_schema rather than a round-trip query. Meta writes refuse protected keys.
+ * site notes in the system prompt (SystemPrompt::siteNotes), so the Djinn learns what a site
+ * exposes without a round-trip query. Meta writes refuse protected keys.
  */
 class MetaFeature implements Feature {
 

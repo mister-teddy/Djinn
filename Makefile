@@ -1,7 +1,6 @@
 # Djinn local environment. `make up` takes you from clone to a running, configured site.
 #
 #   make up      composer install + start wp-env + activate Djinn + seed settings from .env
-#   make lamp    build the RAG schema index ("Awaken the lamp") — needs a valid API key
 #   make cli ...  run an arbitrary WP-CLI command, e.g. `make cli "plugin list"`
 #   make logs    tail the WordPress debug log
 #   make down    stop the environment (keeps data)
@@ -20,12 +19,12 @@ WP := $(WPENV) run cli wp
 # wp-env mounts this directory as a plugin under its folder name (case-sensitive).
 SLUG := $(notdir $(CURDIR))
 
-.PHONY: up start restart check activate seed lamp cli logs down destroy open docs dist release build watch schema fmt
+.PHONY: up start restart check activate seed cli logs down destroy open docs dist release build watch schema fmt
 
 up: start activate seed
 	@echo ""
 	@echo "Djinn is awake → http://localhost:8888/wp-admin (admin / password)"
-	@echo "Next: 'make lamp' to build the schema index, then visit Djinn → Lamp and make a wish."
+	@echo "Next: visit Djinn → Lamp and make a wish."
 
 # Factory reset: wipe the local WordPress (database + uploads + volumes) and rebuild from scratch —
 # fresh core, composer install, re-activate, re-seed, and re-apply .wp-env config (incl. the ORG
@@ -73,8 +72,8 @@ activate:
 # The key is written to a short-lived, gitignored file (mounted into the container) and loaded
 # via its path — so it never appears in the command line, process list, or wp-env's echo.
 seed:
-	@printf '{"provider":"%s","api_key":"%s","chat_model":"%s","embedding_model":"%s"}' \
-		'$(DJINN_PROVIDER)' '$(DJINN_API_KEY)' '$(DJINN_CHAT_MODEL)' '$(DJINN_EMBEDDING_MODEL)' > .djinn-seed.json
+	@printf '{"provider":"%s","api_key":"%s","chat_model":"%s"}' \
+		'$(DJINN_PROVIDER)' '$(DJINN_API_KEY)' '$(DJINN_CHAT_MODEL)' > .djinn-seed.json
 	@$(WP) eval 'update_option("djinn_settings", json_decode(file_get_contents(ABSPATH."wp-content/plugins/$(SLUG)/.djinn-seed.json"), true));' >/dev/null
 	@rm -f .djinn-seed.json
 	@if [ -z "$(strip $(DJINN_API_KEY))" ]; then \
@@ -82,10 +81,6 @@ seed:
 	else \
 		echo "✔  Seeded provider=$(DJINN_PROVIDER) and API key into djinn_settings (key not echoed)."; \
 	fi
-
-# "Awaken the lamp": build the RAG index. Makes real embedding API calls, so it needs a key.
-lamp:
-	$(WP) eval 'echo \Djinn\Rag\Indexer::reindex(), " chunks indexed\n";'
 
 cli:
 	$(WP) $(filter-out $@,$(MAKECMDGOALS))

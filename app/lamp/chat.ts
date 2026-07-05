@@ -43,21 +43,6 @@ export interface ChatDetail {
 	usage: ChatUsage;
 }
 
-export interface IndexEstimate {
-	chunks: number;
-	tokens: number;
-	cost: number;
-	free: boolean;
-	unpriced: boolean;
-}
-export interface IndexStatusData {
-	configured: boolean;
-	embeds: boolean;
-	model: string | null;
-	countLive: number | null;
-	estimate: IndexEstimate | null;
-}
-
 const MESSAGE_FIELDS = {
 	role: true,
 	content: true,
@@ -99,38 +84,4 @@ export async function loadTranscript(id: number): Promise<ChatDetail> {
 
 export async function deleteChat(id: number): Promise<void> {
 	await gql.mutation({ deleteChat: { __args: { id } } });
-}
-
-export async function loadIndexStatus(): Promise<IndexStatusData> {
-	const d = await gql.query({
-		indexStatus: {
-			configured: true,
-			embeds: true,
-			model: true,
-			countLive: true,
-			estimate: {
-				chunks: true,
-				tokens: true,
-				cost: true,
-				free: true,
-				unpriced: true,
-			},
-		},
-	});
-	return d.indexStatus as IndexStatusData;
-}
-
-export async function reindex(): Promise<{
-	status: string;
-	chunks: number | null;
-	message: string | null;
-}> {
-	const d = await gql.mutation({
-		reindex: { status: true, chunks: true, message: true },
-	});
-	return d.reindex as {
-		status: string;
-		chunks: number | null;
-		message: string | null;
-	};
 }

@@ -37,14 +37,4 @@ interface Provider {
 	 * @return array{content:?string,tool_calls:array<int,array{id:string,name:string,arguments:array}>}
 	 */
 	public function chatStream( string $system, array $messages, array $tools, callable $onDelta ): array;
-
-	/**
-	 * Embed a batch of texts.
-	 *
-	 * @param array<int,string> $texts
-	 * @return array<int,array<int,float>>
-	 */
-	public function embed( array $texts ): array;
-
-	public function embeddingModel(): string;
 }

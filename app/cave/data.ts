@@ -5,7 +5,6 @@ export interface SettingsData {
 	isPro: boolean;
 	provider: string;
 	chatModel: string | null;
-	embeddingModel: string | null;
 	hasApiKey: boolean;
 	hasSiteToken: boolean;
 	usesProxy: boolean;
@@ -28,7 +27,6 @@ export interface ChatModelInfo {
 }
 export interface ModelsData {
 	chat: ChatModelInfo[];
-	embed: { id: string; price: string | null }[];
 	live: boolean;
 	error: string | null;
 }
@@ -48,8 +46,6 @@ export interface OperationInfo {
 }
 export interface OperationsData {
 	operations: OperationInfo[];
-	unindexed: string[];
-	outdated: string[];
 }
 
 export interface UsageRow {
@@ -89,7 +85,6 @@ export interface SettingsInput {
 	provider?: string;
 	apiKey?: string;
 	chatModel?: string;
-	embeddingModel?: string;
 }
 
 const ACCOUNT_FIELDS = {
@@ -106,7 +101,6 @@ const SETTINGS_FIELDS = {
 	isPro: true,
 	provider: true,
 	chatModel: true,
-	embeddingModel: true,
 	hasApiKey: true,
 	hasSiteToken: true,
 	usesProxy: true,
@@ -115,7 +109,6 @@ const SETTINGS_FIELDS = {
 
 const MODELS_FIELDS = {
 	chat: { id: true, tier: true, price: true },
-	embed: { id: true, price: true },
 	live: true,
 	error: true,
 } as const;
@@ -178,8 +171,6 @@ export async function loadOperations(): Promise<OperationsData> {
 				args: { name: true, type: true, required: true },
 				returns: true,
 			},
-			unindexed: true,
-			outdated: true,
 		},
 	});
 	return d.operations as OperationsData;

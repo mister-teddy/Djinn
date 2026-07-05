@@ -7,7 +7,7 @@ namespace Djinn\Usage;
 /**
  * Per-model price table in USD per 1,000,000 tokens. These are public list prices and they
  * drift, so the dashboard presents totals as estimates. Extend or correct them with the
- * `djinn_model_pricing` filter. Embedding models have no output price.
+ * `djinn_model_pricing` filter.
  */
 class Pricing {
 
@@ -30,15 +30,6 @@ class Pricing {
 			'gpt-4.1-mini'             => array(
 				'input'  => 0.40,
 				'output' => 1.60,
-			),
-			// OpenAI — embeddings
-			'text-embedding-3-small'   => array(
-				'input'  => 0.02,
-				'output' => 0.0,
-			),
-			'text-embedding-3-large'   => array(
-				'input'  => 0.13,
-				'output' => 0.0,
 			),
 			// Gemini — chat
 			'gemini-2.5-pro'           => array(
@@ -69,12 +60,7 @@ class Pricing {
 				'input'  => 1.25,
 				'output' => 5.00,
 			),
-			// Gemini — embeddings
-			'gemini-embedding-001'     => array(
-				'input'  => 0.15,
-				'output' => 0.0,
-			),
-			// Anthropic Claude (chat; no embeddings). `-latest` aliases share their family's price.
+			// Anthropic Claude. `-latest` aliases share their family's price.
 			'claude-opus-4-1'          => array(
 				'input'  => 15.00,
 				'output' => 75.00,

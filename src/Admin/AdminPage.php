@@ -5,9 +5,7 @@ declare( strict_types=1 );
 namespace Djinn\Admin;
 
 use Djinn\Provider\Providers;
-use Djinn\Rag\IndexStatus;
 use Djinn\Settings;
-use Djinn\Store\Repository;
 
 /**
  * Registers the admin menu (Lamp + Cave of Wonders) and enqueues the compiled React/Tailwind SPA
@@ -28,7 +26,7 @@ class AdminPage {
 	public function menu(): void {
 		add_menu_page(
 			'Djinn',
-			'Djinn' . IndexStatus::menuBubble(),
+			'Djinn',
 			'manage_options',
 			self::SLUG,
 			array( $this, 'renderApp' ),
@@ -147,10 +145,7 @@ class AdminPage {
 				'nonce'       => wp_create_nonce( 'wp_rest' ),
 				'usesProxy'   => Settings::usesProxy(),
 				'configured'  => Settings::isConfigured(),
-				'indexed'     => Repository::chunkCount() > 0,
-				'indexStale'  => IndexStatus::needsReindex(),
 				'settingsUrl' => admin_url( 'admin.php?page=' . self::CAVE_SLUG ),
-				'indexUrl'    => admin_url( 'admin.php?page=' . self::CAVE_SLUG ),
 				'siteName'    => get_option( 'blogname' ),
 				'privacyUrl'  => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
 			)

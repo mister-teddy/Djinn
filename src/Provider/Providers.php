@@ -7,7 +7,7 @@ namespace Djinn\Provider;
 final class Providers {
 
 	/**
-	 * @return array<string,array{label:string,class:class-string<Provider>,needsKey:bool,family:string,embeddings:bool,description:string,keyHint:string}>
+	 * @return array<string,array{label:string,class:class-string<Provider>,needsKey:bool,family:string,description:string,keyHint:string}>
 	 */
 	public static function all(): array {
 		return array(
@@ -16,7 +16,6 @@ final class Providers {
 				'class'       => ProxyProvider::class,
 				'needsKey'    => false,
 				'family'      => 'openai',
-				'embeddings'  => true,
 				'description' => 'No config needed - Pay as you go - via Polar.',
 				'keyHint'     => '',
 			),
@@ -25,7 +24,6 @@ final class Providers {
 				'class'       => OpenAIProvider::class,
 				'needsKey'    => true,
 				'family'      => 'openai',
-				'embeddings'  => true,
 				'description' => 'Use your own OpenAI API key.',
 				'keyHint'     => 'Paste your OpenAI key (sk-…), or define DJINN_API_KEY in wp-config.php.',
 			),
@@ -34,7 +32,6 @@ final class Providers {
 				'class'       => GeminiProvider::class,
 				'needsKey'    => true,
 				'family'      => 'gemini',
-				'embeddings'  => true,
 				'description' => 'Use your own Google Gemini API key.',
 				'keyHint'     => 'Paste your Google AI Studio key (AIza…), or define DJINN_API_KEY in wp-config.php.',
 			),
@@ -43,8 +40,7 @@ final class Providers {
 				'class'       => AnthropicProvider::class,
 				'needsKey'    => true,
 				'family'      => 'anthropic',
-				'embeddings'  => false,
-				'description' => 'Use your own Anthropic API key. No embeddings — schema search runs on the full schema.',
+				'description' => 'Use your own Anthropic API key.',
 				'keyHint'     => 'Paste your Anthropic key (sk-ant-…), or define DJINN_API_KEY in wp-config.php.',
 			),
 			'claude-max' => array(
@@ -52,7 +48,6 @@ final class Providers {
 				'class'       => ClaudeMaxProvider::class,
 				'needsKey'    => true,
 				'family'      => 'anthropic',
-				'embeddings'  => false,
 				'description' => 'Use your Claude Max subscription. Experimental.',
 				'keyHint'     => 'Paste your key, or define DJINN_API_KEY in wp-config.php.',
 			),
@@ -72,16 +67,12 @@ final class Providers {
 		return self::all()[ $id ]['family'] ?? 'openai';
 	}
 
-	public static function hasEmbeddings( string $id ): bool {
-		return self::all()[ $id ]['embeddings'] ?? true;
-	}
-
 	public static function adapterClass( string $id ): string {
 		return self::all()[ $id ]['class'] ?? OpenAIProvider::class;
 	}
 
 	/**
-	 * @return array<int,array{value:string,label:string,needsKey:bool,embeddings:bool,description:string,keyHint:string}>
+	 * @return array<int,array{value:string,label:string,needsKey:bool,description:string,keyHint:string}>
 	 */
 	public static function forClient(): array {
 		$out = array();
@@ -90,7 +81,6 @@ final class Providers {
 				'value'       => $id,
 				'label'       => $p['label'],
 				'needsKey'    => $p['needsKey'],
-				'embeddings'  => $p['embeddings'],
 				'description' => $p['description'],
 				'keyHint'     => $p['keyHint'],
 			);

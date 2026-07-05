@@ -13,25 +13,20 @@ import {
 	Notice,
 	Lamp,
 	Sparkle,
-	Popover,
 	ResizeHandle,
 	ToastHost,
-	toast,
 } from '@shared/ui';
 import { usePanelResize } from '@shared/usePanelResize';
-import { formatCost, formatBytes } from '@shared/format';
+import { formatBytes } from '@shared/format';
 import { Message } from './cards';
 import { Sidebar, Meter } from './Sidebar';
 import {
 	loadChats,
 	loadTranscript,
 	deleteChat as deleteChatApi,
-	loadIndexStatus,
-	reindex as reindexApi,
 	type ChatSummary,
 	type ChatUsage,
 	type TranscriptMessage,
-	type IndexStatusData,
 } from './chat';
 
 const ACTIVE_CHAT_KEY = 'djinn_active_chat:' + config.restUrl;
@@ -83,10 +78,6 @@ export function App() {
 	const [chatId, setChatId] = useState(0);
 	const [chats, setChats] = useState<ChatSummary[]>([]);
 	const [usage, setUsage] = useState<ChatUsage | null>(null);
-	const [indexed, setIndexed] = useState(!!config.indexed);
-	const [stale, setStale] = useState(!!config.indexStale);
-	const [indexing, setIndexing] = useState(false);
-	const [indexInfo, setIndexInfo] = useState<IndexStatusData | null>(null);
 	const [error, setError] = useState('');
 	const [attachment, setAttachment] = useState<Attachment | null>(null);
 	const [step, setStep] = useState('');
@@ -130,9 +121,6 @@ export function App() {
 			setChatId(saved);
 			refreshTranscript(saved);
 		}
-		loadIndexStatus()
-			.then(setIndexInfo)
-			.catch(() => {});
 	}, []);
 
 	useEffect(() => {
@@ -411,73 +399,6 @@ export function App() {
 		}
 	}
 
-	async function buildIndex() {
-		if (indexing) return;
-		setIndexing(true);
-		try {
-			const r = await reindexApi();
-			if (r.status === 'ok') {
-				toast(
-					(indexed ? 'Index updated' : 'Index built') +
-						' — ' +
-						(r.chunks || 0) +
-						' schema chunks embedded.',
-				);
-				setIndexed(true);
-				setStale(false);
-				document
-					.querySelectorAll('.djinn-reindex')
-					.forEach((n) => n.remove());
-				loadIndexStatus()
-					.then(setIndexInfo)
-					.catch(() => {});
-			} else {
-				toast(r.message || 'Could not build the index.', 'error');
-			}
-		} catch (e) {
-			toast(String(e), 'error');
-		} finally {
-			setIndexing(false);
-		}
-	}
-
-	function indexPopover() {
-		if (indexInfo && indexInfo.embeds === false) {
-			return (
-				<div>
-					This provider has no embeddings, so schema search runs on
-					the full schema — no index needed.
-				</div>
-			);
-		}
-		const est = indexInfo?.estimate;
-		const cost = est
-			? est.unpriced
-				? 'unknown'
-				: est.free || est.cost === 0
-					? 'free'
-					: formatCost(est.cost)
-			: '…';
-		const detail = est
-			? ` (~${est.tokens.toLocaleString()} tokens · ${est.chunks} chunks)`
-			: '';
-		return (
-			<dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-				<dt className="text-ivory-muted">Embedding model</dt>
-				<dd className="m-0 text-right">{indexInfo?.model || '…'}</dd>
-				<dt className="text-ivory-muted">Schema types</dt>
-				<dd className="m-0 text-right">
-					{indexInfo ? String(indexInfo.countLive) : '…'}
-				</dd>
-				<dt className="text-ivory-muted">Estimated cost</dt>
-				<dd className="m-0 text-right">
-					{cost}
-					{detail}
-				</dd>
-			</dl>
-		);
-	}
-
 	if (!config.configured) {
 		return (
 			<div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(251,191,36,0.16),transparent_50%),linear-gradient(135deg,var(--djinn-midnight),var(--djinn-violet))]">
@@ -503,30 +424,6 @@ export function App() {
 	}
 
 	const empty = messages.length === 0;
-	const buildLabel = indexing
-		? indexed
-			? 'Updating…'
-			: 'Building…'
-		: indexed
-			? 'Update RAG'
-			: 'Build RAG';
-	const buildBtn = (
-		<Popover key="build" placement="top" content={indexPopover()}>
-			<Button
-				variant={indexed ? 'tertiary' : 'primary'}
-				className={
-					indexed
-						? 'h-11 px-[18px] bg-white/[0.06] text-ivory hover:bg-white/[0.12]'
-						: 'h-11 px-[18px]'
-				}
-				busy={indexing}
-				onClick={buildIndex}
-			>
-				{!indexed && <Sparkle />}
-				{buildLabel}
-			</Button>
-		</Popover>
-	);
 
 	return (
 		<div
@@ -692,40 +589,27 @@ export function App() {
 							className={INPUT_CLASS}
 							value={input}
 							ref={inputRef}
-							placeholder={
-								indexed
-									? 'Whisper your wish…  (Enter to send · Shift+Enter for newline)'
-									: 'Build the RAG index to begin granting wishes…'
-							}
+							placeholder="Whisper your wish…  (Enter to send · Shift+Enter for newline)"
 							rows={1}
 							disabled={busy}
 							onChange={(e) => setInput(e.target.value)}
 							onKeyDown={(e) => {
 								if (e.key === 'Enter' && !e.shiftKey) {
 									e.preventDefault();
-									if (indexed) send();
+									send();
 								}
 							}}
 						/>
-						{!indexed ? (
-							buildBtn
-						) : (
-							<>
-								{stale && buildBtn}
-								<Button
-									key="send"
-									variant="primary"
-									className="h-11 px-[18px]"
-									disabled={
-										busy || (!input.trim() && !attachment)
-									}
-									onClick={send}
-								>
-									<Sparkle />
-									Make wish
-								</Button>
-							</>
-						)}
+						<Button
+							key="send"
+							variant="primary"
+							className="h-11 px-[18px]"
+							disabled={busy || (!input.trim() && !attachment)}
+							onClick={send}
+						>
+							<Sparkle />
+							Make wish
+						</Button>
 					</div>
 				</div>
 			</div>

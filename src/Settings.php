@@ -28,14 +28,13 @@ class Settings {
 		return self::edition() === 'pro' && \Djinn\License\LicenseClient::active();
 	}
 
-	/** @return array{provider:string,api_key:string,site_token:string,chat_model:string,embedding_model:string} */
+	/** @return array{provider:string,api_key:string,site_token:string,chat_model:string} */
 	public static function all(): array {
 		$defaults = array(
-			'provider'        => 'openai',
-			'api_key'         => '',
-			'site_token'      => '',
-			'chat_model'      => '',
-			'embedding_model' => '',
+			'provider'   => 'openai',
+			'api_key'    => '',
+			'site_token' => '',
+			'chat_model' => '',
 		);
 		$stored   = get_option( self::OPTION, array() );
 		return array_merge( $defaults, is_array( $stored ) ? $stored : array() );
@@ -106,17 +105,6 @@ class Settings {
 		return self::all()['chat_model'];
 	}
 
-	public static function embeddingModel(): string {
-		$model = self::all()['embedding_model'];
-		if ( $model ) {
-			return $model;
-		}
-		if ( self::usesProxy() ) {
-			return 'gemini-embedding-001'; // the proxy embeds via Gemini server-side
-		}
-		return self::provider() === 'gemini' ? 'gemini-embedding-001' : 'text-embedding-3-small';
-	}
-
 	public static function isConfigured(): bool {
 		return self::usesProxy() ? self::siteToken() !== '' : self::apiKey() !== '';
 	}
@@ -152,11 +140,10 @@ class Settings {
 			: $current['site_token'];
 
 		return array(
-			'provider'        => $provider,
-			'api_key'         => $api_key,
-			'site_token'      => $site_token,
-			'chat_model'      => isset( $input['chat_model'] ) ? sanitize_text_field( (string) $input['chat_model'] ) : '',
-			'embedding_model' => isset( $input['embedding_model'] ) ? sanitize_text_field( (string) $input['embedding_model'] ) : '',
+			'provider'   => $provider,
+			'api_key'    => $api_key,
+			'site_token' => $site_token,
+			'chat_model' => isset( $input['chat_model'] ) ? sanitize_text_field( (string) $input['chat_model'] ) : '',
 		);
 	}
 }
