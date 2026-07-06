@@ -4,7 +4,7 @@ Tags: ai, assistant, automation, content, gemini
 Requires at least: 6.6
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.7.0
+Stable tag: 0.7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,9 @@ Djinn is developed in the open at https://github.com/mister-teddy/Djinn — incl
 5. "Write and publish a welcome post for the site" — content drafted and published on request.
 
 == Changelog ==
+
+= 0.7.1 =
+* Corrected the plugin header URIs for the plugin directory.
 
 = 0.7.0 =
 * New: import a web page's content into a post — say "import <url> into a new post" and Djinn fetches, cleans, and drafts it. Available in Free.
