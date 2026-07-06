@@ -89,7 +89,7 @@ class Settings {
 		if ( defined( 'DJINN_PROXY_URL' ) && DJINN_PROXY_URL ) {
 			return rtrim( (string) DJINN_PROXY_URL, '/' );
 		}
-		return 'https://proxy.djinn.app';
+		return 'https://djinn-proxy-351601184057.asia-northeast1.run.app';
 	}
 
 	/** Polar checkout URL for the Pro upgrade. Baked at build (DJINN_PRO_URL); defaults to the live link. */
