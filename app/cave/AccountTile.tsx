@@ -104,6 +104,12 @@ export function AccountTile() {
 			setSettings(s);
 			setProvider(s.provider);
 			setApiKey('');
+			// The proxy connect() requires the saved provider to be 'proxy', so refresh the account
+			// after saving — that flips usesProxy and lets ProxyView link without a manual reload.
+			if (s.provider === 'proxy') {
+				const { account: a } = await loadAccountSettings();
+				setAccount(a);
+			}
 			toast('Settings saved.');
 		} catch (e) {
 			toast(String((e as Error)?.message || e), 'error');
@@ -198,10 +204,14 @@ function ProxyView({
 			.finally(() => setConnecting(false));
 	}
 
-	// This view only renders once Djinn is the selected provider, so link on mount whenever the site
-	// isn't connected yet — the saved `usesProxy` flag is still false while switching before a save.
+	// Link once the provider is actually saved as proxy (usesProxy) — connect() rejects otherwise.
 	useEffect(() => {
-		if (!tried.current && account && !account.connected) {
+		if (
+			!tried.current &&
+			account &&
+			account.usesProxy &&
+			!account.connected
+		) {
 			tried.current = true;
 			link();
 		}
@@ -209,6 +219,13 @@ function ProxyView({
 
 	if (!account) {
 		return <CardsSkeleton count={1} />;
+	}
+	if (!account.usesProxy) {
+		return (
+			<Notice status="info">
+				<span>Click “Save settings” to link this site to Djinn.</span>
+			</Notice>
+		);
 	}
 	if (!account.connected) {
 		if (error) {
