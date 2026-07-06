@@ -67,6 +67,10 @@ No. Reads run immediately, but every write (create/update/delete, plugin/theme/c
 
 See *External services* above — only what a given wish requires, and only when you make a wish.
 
+= Where is the source code? =
+
+Djinn is developed in the open at https://github.com/mister-teddy/Djinn — including the un-minified JavaScript/TypeScript behind the compiled assets, and the build steps to reproduce them.
+
 == Changelog ==
 
 = 0.6.0 =
