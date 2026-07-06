@@ -71,6 +71,14 @@ See *External services* above — only what a given wish requires, and only when
 
 Djinn is developed in the open at https://github.com/mister-teddy/Djinn — including the un-minified JavaScript/TypeScript behind the compiled assets, and the build steps to reproduce them.
 
+== Screenshots ==
+
+1. "Is my site healthy and up to date?" — Djinn reads your site and reports back.
+2. "Add the product 'Aladdin's Brass Lamp'" — one wish creates a WooCommerce product.
+3. "Make About my homepage, and blog at /news" — settings changed, shown for approval first.
+4. "Install and activate Yoast SEO" — plugin management from a plain-language request.
+5. "Write and publish a welcome post for the site" — content drafted and published on request.
+
 == Changelog ==
 
 = 0.6.0 =
