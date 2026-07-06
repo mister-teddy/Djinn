@@ -119,7 +119,7 @@ class TaxonomyFeature implements Feature {
 	private function taxOrFail( string $taxonomy ): \WP_Taxonomy {
 		$tax = get_taxonomy( $taxonomy );
 		if ( ! $tax ) {
-			throw new UserError( "No such taxonomy: '$taxonomy'." );
+			throw new UserError( esc_html( "No such taxonomy: '$taxonomy'." ) );
 		}
 		return $tax;
 	}
@@ -128,7 +128,7 @@ class TaxonomyFeature implements Feature {
 	public function terms( $root, array $args ): array {
 		$tax = $this->taxOrFail( (string) ( $args['taxonomy'] ?? 'category' ) );
 		if ( ! current_user_can( $tax->cap->assign_terms ) && ! current_user_can( $tax->cap->manage_terms ) ) {
-			throw new UserError( 'You do not have permission to view these terms.' );
+			throw new UserError( esc_html( 'You do not have permission to view these terms.' ) );
 		}
 		$terms = get_terms(
 			array(
@@ -139,7 +139,7 @@ class TaxonomyFeature implements Feature {
 			)
 		);
 		if ( is_wp_error( $terms ) ) {
-			throw new UserError( $terms->get_error_message() );
+			throw new UserError( esc_html( $terms->get_error_message() ) );
 		}
 		return array_map( array( $this, 'shape' ), $terms );
 	}
@@ -148,7 +148,7 @@ class TaxonomyFeature implements Feature {
 	public function createTerm( $root, array $args ): array {
 		$tax = $this->taxOrFail( (string) $args['taxonomy'] );
 		if ( ! current_user_can( $tax->cap->edit_terms ) ) {
-			throw new UserError( "You do not have permission to create '{$tax->name}' terms." );
+			throw new UserError( esc_html( "You do not have permission to create '{$tax->name}' terms." ) );
 		}
 		$res = wp_insert_term(
 			(string) $args['name'],
@@ -163,7 +163,7 @@ class TaxonomyFeature implements Feature {
 			)
 		);
 		if ( is_wp_error( $res ) ) {
-			throw new UserError( $res->get_error_message() );
+			throw new UserError( esc_html( $res->get_error_message() ) );
 		}
 		return $this->shape( get_term( $res['term_id'], $tax->name ) );
 	}
@@ -172,11 +172,11 @@ class TaxonomyFeature implements Feature {
 	public function deleteTerm( $root, array $args ): bool {
 		$tax = $this->taxOrFail( (string) $args['taxonomy'] );
 		if ( ! current_user_can( $tax->cap->delete_terms ) ) {
-			throw new UserError( "You do not have permission to delete '{$tax->name}' terms." );
+			throw new UserError( esc_html( "You do not have permission to delete '{$tax->name}' terms." ) );
 		}
 		$res = wp_delete_term( (int) $args['id'], $tax->name );
 		if ( is_wp_error( $res ) ) {
-			throw new UserError( $res->get_error_message() );
+			throw new UserError( esc_html( $res->get_error_message() ) );
 		}
 		return (bool) $res;
 	}
@@ -186,12 +186,12 @@ class TaxonomyFeature implements Feature {
 		$postId = (int) $args['postId'];
 		$tax    = $this->taxOrFail( (string) $args['taxonomy'] );
 		if ( ! current_user_can( 'edit_post', $postId ) || ! current_user_can( $tax->cap->assign_terms ) ) {
-			throw new UserError( 'You do not have permission to assign these terms.' );
+			throw new UserError( esc_html( 'You do not have permission to assign these terms.' ) );
 		}
 		$ids = array_map( 'intval', (array) $args['termIds'] );
 		$res = wp_set_object_terms( $postId, $ids, $tax->name, (bool) ( $args['append'] ?? false ) );
 		if ( is_wp_error( $res ) ) {
-			throw new UserError( $res->get_error_message() );
+			throw new UserError( esc_html( $res->get_error_message() ) );
 		}
 		return true;
 	}

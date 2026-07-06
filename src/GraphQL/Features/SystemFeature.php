@@ -171,7 +171,7 @@ class SystemFeature implements Feature {
 	/** @return array<int,array<string,mixed>> */
 	public function plugins(): array {
 		if ( ! current_user_can( 'activate_plugins' ) ) {
-			throw new UserError( 'You do not have permission to view plugins.' );
+			throw new UserError( esc_html( 'You do not have permission to view plugins.' ) );
 		}
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		require_once ABSPATH . 'wp-admin/includes/update.php';
@@ -191,7 +191,7 @@ class SystemFeature implements Feature {
 
 	public function availableUpdates(): array {
 		if ( ! current_user_can( 'update_core' ) ) {
-			throw new UserError( 'You do not have permission to view updates.' );
+			throw new UserError( esc_html( 'You do not have permission to view updates.' ) );
 		}
 		require_once ABSPATH . 'wp-admin/includes/update.php';
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -219,12 +219,12 @@ class SystemFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function activatePlugin( $root, array $args ): bool {
 		if ( ! current_user_can( 'activate_plugins' ) ) {
-			throw new UserError( 'You do not have permission to activate plugins.' );
+			throw new UserError( esc_html( 'You do not have permission to activate plugins.' ) );
 		}
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$result = activate_plugin( (string) $args['file'] );
 		if ( is_wp_error( $result ) ) {
-			throw new UserError( $result->get_error_message() );
+			throw new UserError( esc_html( $result->get_error_message() ) );
 		}
 		return true;
 	}
@@ -232,7 +232,7 @@ class SystemFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function deactivatePlugin( $root, array $args ): bool {
 		if ( ! current_user_can( 'activate_plugins' ) ) {
-			throw new UserError( 'You do not have permission to deactivate plugins.' );
+			throw new UserError( esc_html( 'You do not have permission to deactivate plugins.' ) );
 		}
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		deactivate_plugins( array( (string) $args['file'] ) );
@@ -244,7 +244,7 @@ class SystemFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function installPlugin( $root, array $args ): bool {
 		if ( ! current_user_can( 'install_plugins' ) ) {
-			throw new UserError( 'You do not have permission to install plugins.' );
+			throw new UserError( esc_html( 'You do not have permission to install plugins.' ) );
 		}
 		$this->bootstrapUpgrader();
 		$slug = sanitize_key( (string) $args['slug'] );
@@ -256,15 +256,15 @@ class SystemFeature implements Feature {
 			)
 		);
 		if ( is_wp_error( $api ) ) {
-			throw new UserError( "Couldn't find plugin '$slug' on WordPress.org: " . $api->get_error_message() );
+			throw new UserError( esc_html( "Couldn't find plugin '$slug' on WordPress.org: " . $api->get_error_message() ) );
 		}
 		$upgrader = new Plugin_Upgrader( new Automatic_Upgrader_Skin() );
 		$result   = $upgrader->install( $api->download_link );
 		if ( is_wp_error( $result ) ) {
-			throw new UserError( $result->get_error_message() );
+			throw new UserError( esc_html( $result->get_error_message() ) );
 		}
 		if ( ! $result ) {
-			throw new UserError( 'Plugin installation failed: ' . implode( ' ', $upgrader->skin->get_upgrade_messages() ) );
+			throw new UserError( esc_html( 'Plugin installation failed: ' . implode( ' ', $upgrader->skin->get_upgrade_messages() ) ) );
 		}
 		if ( ! empty( $args['activate'] ) ) {
 			$file = $upgrader->plugin_info();
@@ -278,14 +278,14 @@ class SystemFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function updatePlugin( $root, array $args ): bool {
 		if ( ! current_user_can( 'update_plugins' ) ) {
-			throw new UserError( 'You do not have permission to update plugins.' );
+			throw new UserError( esc_html( 'You do not have permission to update plugins.' ) );
 		}
 		$this->bootstrapUpgrader();
 		wp_update_plugins();
 		$upgrader = new Plugin_Upgrader( new Automatic_Upgrader_Skin() );
 		$result   = $upgrader->upgrade( (string) $args['file'] );
 		if ( is_wp_error( $result ) ) {
-			throw new UserError( $result->get_error_message() );
+			throw new UserError( esc_html( $result->get_error_message() ) );
 		}
 		return (bool) $result;
 	}
@@ -293,7 +293,7 @@ class SystemFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function installTheme( $root, array $args ): bool {
 		if ( ! current_user_can( 'install_themes' ) ) {
-			throw new UserError( 'You do not have permission to install themes.' );
+			throw new UserError( esc_html( 'You do not have permission to install themes.' ) );
 		}
 		$this->bootstrapUpgrader();
 		$slug = sanitize_key( (string) $args['slug'] );
@@ -305,12 +305,12 @@ class SystemFeature implements Feature {
 			)
 		);
 		if ( is_wp_error( $api ) ) {
-			throw new UserError( "Couldn't find theme '$slug' on WordPress.org: " . $api->get_error_message() );
+			throw new UserError( esc_html( "Couldn't find theme '$slug' on WordPress.org: " . $api->get_error_message() ) );
 		}
 		$upgrader = new Theme_Upgrader( new Automatic_Upgrader_Skin() );
 		$result   = $upgrader->install( $api->download_link );
 		if ( is_wp_error( $result ) ) {
-			throw new UserError( $result->get_error_message() );
+			throw new UserError( esc_html( $result->get_error_message() ) );
 		}
 		return (bool) $result;
 	}
@@ -318,14 +318,14 @@ class SystemFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function updateTheme( $root, array $args ): bool {
 		if ( ! current_user_can( 'update_themes' ) ) {
-			throw new UserError( 'You do not have permission to update themes.' );
+			throw new UserError( esc_html( 'You do not have permission to update themes.' ) );
 		}
 		$this->bootstrapUpgrader();
 		wp_update_themes();
 		$upgrader = new Theme_Upgrader( new Automatic_Upgrader_Skin() );
 		$result   = $upgrader->upgrade( (string) $args['slug'] );
 		if ( is_wp_error( $result ) ) {
-			throw new UserError( $result->get_error_message() );
+			throw new UserError( esc_html( $result->get_error_message() ) );
 		}
 		return (bool) $result;
 	}
@@ -333,16 +333,16 @@ class SystemFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function deletePlugin( $root, array $args ): bool {
 		if ( ! current_user_can( 'delete_plugins' ) ) {
-			throw new UserError( 'You do not have permission to delete plugins.' );
+			throw new UserError( esc_html( 'You do not have permission to delete plugins.' ) );
 		}
 		$this->bootstrapUpgrader();
 		$file = (string) $args['file'];
 		if ( is_plugin_active( $file ) ) {
-			throw new UserError( 'Deactivate the plugin before deleting it.' );
+			throw new UserError( esc_html( 'Deactivate the plugin before deleting it.' ) );
 		}
 		$result = delete_plugins( array( $file ) );
 		if ( is_wp_error( $result ) ) {
-			throw new UserError( $result->get_error_message() );
+			throw new UserError( esc_html( $result->get_error_message() ) );
 		}
 		return (bool) $result;
 	}
@@ -350,23 +350,23 @@ class SystemFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function deleteTheme( $root, array $args ): bool {
 		if ( ! current_user_can( 'delete_themes' ) ) {
-			throw new UserError( 'You do not have permission to delete themes.' );
+			throw new UserError( esc_html( 'You do not have permission to delete themes.' ) );
 		}
 		$this->bootstrapUpgrader();
 		$slug = (string) $args['slug'];
 		if ( get_stylesheet() === $slug || get_template() === $slug ) {
-			throw new UserError( 'You cannot delete the active theme.' );
+			throw new UserError( esc_html( 'You cannot delete the active theme.' ) );
 		}
 		$result = delete_theme( $slug );
 		if ( is_wp_error( $result ) ) {
-			throw new UserError( $result->get_error_message() );
+			throw new UserError( esc_html( $result->get_error_message() ) );
 		}
 		return (bool) $result;
 	}
 
 	public function updateCore(): string {
 		if ( ! current_user_can( 'update_core' ) ) {
-			throw new UserError( 'You do not have permission to update WordPress core.' );
+			throw new UserError( esc_html( 'You do not have permission to update WordPress core.' ) );
 		}
 		$this->bootstrapUpgrader();
 		require_once ABSPATH . 'wp-admin/includes/class-core-upgrader.php';
@@ -380,13 +380,13 @@ class SystemFeature implements Feature {
 			}
 		}
 		if ( ! $update ) {
-			throw new UserError( 'WordPress core is already up to date.' );
+			throw new UserError( esc_html( 'WordPress core is already up to date.' ) );
 		}
 
 		$upgrader = new Core_Upgrader( new Automatic_Upgrader_Skin() );
 		$result   = $upgrader->upgrade( $update );
 		if ( is_wp_error( $result ) ) {
-			throw new UserError( $result->get_error_message() );
+			throw new UserError( esc_html( $result->get_error_message() ) );
 		}
 		return (string) $update->current;
 	}
@@ -405,7 +405,7 @@ class SystemFeature implements Feature {
 			require_once ABSPATH . 'wp-admin/includes/class-automatic-upgrader-skin.php';
 		}
 		if ( ! \WP_Filesystem() ) {
-			throw new UserError( 'Could not get filesystem access to install/update. The server may need FTP credentials or direct write access.' );
+			throw new UserError( esc_html( 'Could not get filesystem access to install/update. The server may need FTP credentials or direct write access.' ) );
 		}
 	}
 }

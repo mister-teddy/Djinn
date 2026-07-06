@@ -78,13 +78,13 @@ class CustomizerFeature implements Feature {
 
 	private function gate(): void {
 		if ( ! current_user_can( 'edit_theme_options' ) ) {
-			throw new UserError( 'You do not have permission to change the site identity.' );
+			throw new UserError( esc_html( 'You do not have permission to change the site identity.' ) );
 		}
 	}
 
 	private function mediaOrFail( int $id ): void {
 		if ( get_post_type( $id ) !== 'attachment' ) {
-			throw new UserError( "Media item $id was not found." );
+			throw new UserError( esc_html( "Media item $id was not found." ) );
 		}
 	}
 

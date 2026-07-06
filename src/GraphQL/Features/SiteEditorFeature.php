@@ -120,7 +120,7 @@ class SiteEditorFeature implements Feature {
 
 	private function gate(): void {
 		if ( ! current_user_can( 'edit_theme_options' ) ) {
-			throw new UserError( 'You do not have permission to edit templates.' );
+			throw new UserError( esc_html( 'You do not have permission to edit templates.' ) );
 		}
 	}
 
@@ -158,7 +158,7 @@ class SiteEditorFeature implements Feature {
 		$request->set_body_params( array( 'content' => $content ) );
 		$response = rest_do_request( $request );
 		if ( $response->is_error() ) {
-			throw new UserError( $response->as_error()->get_error_message() );
+			throw new UserError( esc_html( $response->as_error()->get_error_message() ) );
 		}
 		return true;
 	}

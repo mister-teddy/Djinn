@@ -76,10 +76,10 @@ class MetaFeature implements Feature {
 	public function postMeta( $root, array $args ): array {
 		$id = (int) $args['postId'];
 		if ( ! get_post( $id ) ) {
-			throw new UserError( "No post with id $id." );
+			throw new UserError( esc_html( "No post with id $id." ) );
 		}
 		if ( ! current_user_can( 'edit_post', $id ) ) {
-			throw new UserError( 'You do not have permission to read this post\'s custom fields.' );
+			throw new UserError( esc_html( 'You do not have permission to read this post\'s custom fields.' ) );
 		}
 		$key = isset( $args['key'] ) ? (string) $args['key'] : null;
 		$out = array();
@@ -103,13 +103,13 @@ class MetaFeature implements Feature {
 		$id  = (int) $args['postId'];
 		$key = (string) $args['key'];
 		if ( ! get_post( $id ) ) {
-			throw new UserError( "No post with id $id." );
+			throw new UserError( esc_html( "No post with id $id." ) );
 		}
 		if ( ! current_user_can( 'edit_post', $id ) ) {
-			throw new UserError( 'You do not have permission to edit this post.' );
+			throw new UserError( esc_html( 'You do not have permission to edit this post.' ) );
 		}
 		if ( is_protected_meta( $key, 'post' ) ) {
-			throw new UserError( "'$key' is protected meta and cannot be set this way." );
+			throw new UserError( esc_html( "'$key' is protected meta and cannot be set this way." ) );
 		}
 		return (bool) update_post_meta( $id, $key, (string) $args['value'] );
 	}

@@ -83,6 +83,7 @@ class SystemPrompt {
 		$restRung  = $pro ? "\n3. A REST endpoint: find it with the `restRoutes` query, then call it with `rest_call`." : '';
 		$rungCount = $pro ? 'three rungs' : 'rungs';
 
+		// phpcs:ignore PluginCheck.CodeAnalysis.Heredoc.NotAllowed -- prompt template, never output as HTML.
 		return <<<PROMPT
 You are the Djinn, a wish-granting assistant in this WordPress site's admin. You fulfil
 {$lead}
@@ -163,6 +164,7 @@ PROMPT;
 			$shape = $isBlock ? "{$themeName}, a block (FSE) theme." : "{$themeName}, a classic theme.";
 		}
 
+		// phpcs:ignore PluginCheck.CodeAnalysis.Heredoc.NotAllowed -- prompt template, never output as HTML.
 		return <<<PROMPT
 ## Context
 - Site: "{$siteName}".

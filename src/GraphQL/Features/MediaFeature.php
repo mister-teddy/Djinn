@@ -143,7 +143,7 @@ class MediaFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function media( $root, array $args ): array {
 		if ( ! current_user_can( 'upload_files' ) ) {
-			throw new UserError( 'You do not have permission to view the media library.' );
+			throw new UserError( esc_html( 'You do not have permission to view the media library.' ) );
 		}
 		$items = get_posts(
 			array(
@@ -159,7 +159,7 @@ class MediaFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function sideloadMedia( $root, array $args ): array {
 		if ( ! current_user_can( 'upload_files' ) ) {
-			throw new UserError( 'You do not have permission to upload files.' );
+			throw new UserError( esc_html( 'You do not have permission to upload files.' ) );
 		}
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/media.php';
@@ -167,7 +167,7 @@ class MediaFeature implements Feature {
 
 		$id = media_sideload_image( (string) $args['url'], 0, $args['title'] ?? null, 'id' );
 		if ( is_wp_error( $id ) ) {
-			throw new UserError( $id->get_error_message() );
+			throw new UserError( esc_html( $id->get_error_message() ) );
 		}
 		return $this->shape( get_post( (int) $id ) );
 	}
@@ -181,15 +181,15 @@ class MediaFeature implements Feature {
 	 */
 	public function importMedia( $root, array $args ): array {
 		if ( ! current_user_can( 'upload_files' ) ) {
-			throw new UserError( 'You do not have permission to upload files.' );
+			throw new UserError( esc_html( 'You do not have permission to upload files.' ) );
 		}
 		$file = Downloads::resolve( (string) $args['token'] );
 		if ( ! $file ) {
-			throw new UserError( 'That attachment was not found or has expired — ask the user to attach the file again.' );
+			throw new UserError( esc_html( 'That attachment was not found or has expired — ask the user to attach the file again.' ) );
 		}
 		$postId = isset( $args['postId'] ) ? (int) $args['postId'] : 0;
 		if ( $postId > 0 && ! current_user_can( 'edit_post', $postId ) ) {
-			throw new UserError( 'You do not have permission to edit that post.' );
+			throw new UserError( esc_html( 'You do not have permission to edit that post.' ) );
 		}
 
 		require_once ABSPATH . 'wp-admin/includes/file.php';
@@ -206,7 +206,7 @@ class MediaFeature implements Feature {
 			array( 'test_form' => false )
 		);
 		if ( is_wp_error( $id ) ) {
-			throw new UserError( $id->get_error_message() );
+			throw new UserError( esc_html( $id->get_error_message() ) );
 		}
 		$id = (int) $id;
 		if ( $postId > 0 ) {
@@ -219,10 +219,10 @@ class MediaFeature implements Feature {
 	public function updateMedia( $root, array $args ): array {
 		$id = (int) $args['id'];
 		if ( get_post_type( $id ) !== 'attachment' ) {
-			throw new UserError( "No media item with id $id." );
+			throw new UserError( esc_html( "No media item with id $id." ) );
 		}
 		if ( ! current_user_can( 'edit_post', $id ) ) {
-			throw new UserError( 'You do not have permission to edit this media item.' );
+			throw new UserError( esc_html( 'You do not have permission to edit this media item.' ) );
 		}
 		$post = array( 'ID' => $id );
 		if ( isset( $args['title'] ) ) {
@@ -237,7 +237,7 @@ class MediaFeature implements Feature {
 		if ( count( $post ) > 1 ) {
 			$res = wp_update_post( $post, true );
 			if ( is_wp_error( $res ) ) {
-				throw new UserError( $res->get_error_message() );
+				throw new UserError( esc_html( $res->get_error_message() ) );
 			}
 		}
 		if ( isset( $args['altText'] ) ) {
@@ -250,7 +250,7 @@ class MediaFeature implements Feature {
 	public function setFeaturedImage( $root, array $args ): bool {
 		$postId = (int) $args['postId'];
 		if ( ! current_user_can( 'edit_post', $postId ) ) {
-			throw new UserError( 'You do not have permission to edit this post.' );
+			throw new UserError( esc_html( 'You do not have permission to edit this post.' ) );
 		}
 		return (bool) set_post_thumbnail( $postId, (int) $args['mediaId'] );
 	}
@@ -259,7 +259,7 @@ class MediaFeature implements Feature {
 	public function deleteMedia( $root, array $args ): bool {
 		$id = (int) $args['id'];
 		if ( ! current_user_can( 'delete_post', $id ) ) {
-			throw new UserError( 'You do not have permission to delete this media item.' );
+			throw new UserError( esc_html( 'You do not have permission to delete this media item.' ) );
 		}
 		return (bool) wp_delete_attachment( $id, (bool) ( $args['force'] ?? true ) );
 	}

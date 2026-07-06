@@ -184,7 +184,7 @@ class WooCommerceFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function products( $root, array $args ): array {
 		if ( ! current_user_can( 'edit_products' ) ) {
-			throw new UserError( 'You do not have permission to manage products.' );
+			throw new UserError( esc_html( 'You do not have permission to manage products.' ) );
 		}
 		$products = wc_get_products(
 			array(
@@ -199,7 +199,7 @@ class WooCommerceFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function product( $root, array $args ): ?array {
 		if ( ! current_user_can( 'edit_products' ) ) {
-			throw new UserError( 'You do not have permission to view products.' );
+			throw new UserError( esc_html( 'You do not have permission to view products.' ) );
 		}
 		$p = wc_get_product( (int) $args['id'] );
 		return $p ? $this->shapeProduct( $p ) : null;
@@ -208,7 +208,7 @@ class WooCommerceFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function orders( $root, array $args ): array {
 		if ( ! current_user_can( 'edit_shop_orders' ) ) {
-			throw new UserError( 'You do not have permission to view orders.' );
+			throw new UserError( esc_html( 'You do not have permission to view orders.' ) );
 		}
 		$orders = wc_get_orders(
 			array(
@@ -236,7 +236,7 @@ class WooCommerceFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function createProduct( $root, array $args ): array {
 		if ( ! current_user_can( 'publish_products' ) && ! current_user_can( 'edit_products' ) ) {
-			throw new UserError( 'You do not have permission to create products.' );
+			throw new UserError( esc_html( 'You do not have permission to create products.' ) );
 		}
 		$p = new \WC_Product_Simple();
 		$p->set_name( (string) $args['name'] );
@@ -256,7 +256,7 @@ class WooCommerceFeature implements Feature {
 		}
 		$id = $p->save();
 		if ( ! $id ) {
-			throw new UserError( 'Could not create the product.' );
+			throw new UserError( esc_html( 'Could not create the product.' ) );
 		}
 		return $this->shapeProduct( wc_get_product( $id ) );
 	}
@@ -265,11 +265,11 @@ class WooCommerceFeature implements Feature {
 	public function updateProduct( $root, array $args ): array {
 		$id = (int) $args['id'];
 		if ( ! current_user_can( 'edit_post', $id ) ) {
-			throw new UserError( 'You do not have permission to edit this product.' );
+			throw new UserError( esc_html( 'You do not have permission to edit this product.' ) );
 		}
 		$p = wc_get_product( $id );
 		if ( ! $p ) {
-			throw new UserError( "No product with id $id." );
+			throw new UserError( esc_html( "No product with id $id." ) );
 		}
 		if ( isset( $args['name'] ) ) {
 			$p->set_name( (string) $args['name'] );

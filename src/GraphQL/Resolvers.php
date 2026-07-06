@@ -61,7 +61,7 @@ class Resolvers {
 			return null;
 		}
 		if ( ! current_user_can( 'read_post', $post->ID ) ) {
-			throw new UserError( 'You do not have permission to read this post.' );
+			throw new UserError( esc_html( 'You do not have permission to read this post.' ) );
 		}
 		return $this->shapePost( $post );
 	}
@@ -69,7 +69,7 @@ class Resolvers {
 	/** @param array<string,mixed> $args */
 	public function users( $root, array $args ): array {
 		if ( ! current_user_can( 'list_users' ) ) {
-			throw new UserError( 'You do not have permission to list users.' );
+			throw new UserError( esc_html( 'You do not have permission to list users.' ) );
 		}
 		$users = get_users(
 			array(
@@ -91,7 +91,7 @@ class Resolvers {
 	/** @param array<string,mixed> $args */
 	public function option( $root, array $args ): ?string {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			throw new UserError( 'You do not have permission to read options.' );
+			throw new UserError( esc_html( 'You do not have permission to read options.' ) );
 		}
 		$value = get_option( $args['name'] );
 		if ( $value === false ) {
@@ -111,11 +111,11 @@ class Resolvers {
 	 */
 	public function fetchUrl( $root, array $args ): array {
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			throw new UserError( 'You do not have permission to import content.' );
+			throw new UserError( esc_html( 'You do not have permission to import content.' ) );
 		}
 		$url = esc_url_raw( (string) $args['url'] );
 		if ( ! $url || ! wp_http_validate_url( $url ) ) {
-			throw new UserError( 'That does not look like a fetchable URL.' );
+			throw new UserError( esc_html( 'That does not look like a fetchable URL.' ) );
 		}
 		$resp = wp_remote_get(
 			$url,
@@ -126,15 +126,15 @@ class Resolvers {
 			)
 		);
 		if ( is_wp_error( $resp ) ) {
-			throw new UserError( 'Could not fetch that URL: ' . $resp->get_error_message() );
+			throw new UserError( esc_html( 'Could not fetch that URL: ' . $resp->get_error_message() ) );
 		}
 		$code = (int) wp_remote_retrieve_response_code( $resp );
 		if ( $code < 200 || $code >= 300 ) {
-			throw new UserError( "That URL returned HTTP $code." );
+			throw new UserError( esc_html( "That URL returned HTTP $code." ) );
 		}
 		$ctype = (string) wp_remote_retrieve_header( $resp, 'content-type' );
 		if ( $ctype && ! preg_match( '#(html|text|xml)#i', $ctype ) ) {
-			throw new UserError( "That URL is not a web page (content-type: $ctype)." );
+			throw new UserError( esc_html( "That URL is not a web page (content-type: $ctype)." ) );
 		}
 		$html = (string) wp_remote_retrieve_body( $resp );
 
@@ -197,7 +197,7 @@ class Resolvers {
 		$postType = $input['postType'] ?? 'post';
 		$capObj   = get_post_type_object( $postType );
 		if ( ! $capObj || ! current_user_can( $capObj->cap->create_posts ) ) {
-			throw new UserError( "You do not have permission to create '$postType' entries." );
+			throw new UserError( esc_html( "You do not have permission to create '$postType' entries." ) );
 		}
 		$id = wp_insert_post(
 			array(
@@ -210,7 +210,7 @@ class Resolvers {
 			true
 		);
 		if ( is_wp_error( $id ) ) {
-			throw new UserError( $id->get_error_message() );
+			throw new UserError( esc_html( $id->get_error_message() ) );
 		}
 		return $this->shapePost( get_post( $id ) );
 	}
@@ -219,10 +219,10 @@ class Resolvers {
 	public function updatePost( $root, array $args ): array {
 		$id = (int) $args['id'];
 		if ( ! get_post( $id ) ) {
-			throw new UserError( "No post with id $id." );
+			throw new UserError( esc_html( "No post with id $id." ) );
 		}
 		if ( ! current_user_can( 'edit_post', $id ) ) {
-			throw new UserError( 'You do not have permission to edit this post.' );
+			throw new UserError( esc_html( 'You do not have permission to edit this post.' ) );
 		}
 		$input  = $args['input'];
 		$update = array( 'ID' => $id );
@@ -238,7 +238,7 @@ class Resolvers {
 		}
 		$res = wp_update_post( $update, true );
 		if ( is_wp_error( $res ) ) {
-			throw new UserError( $res->get_error_message() );
+			throw new UserError( esc_html( $res->get_error_message() ) );
 		}
 		return $this->shapePost( get_post( $id ) );
 	}
@@ -247,7 +247,7 @@ class Resolvers {
 	public function deletePost( $root, array $args ): bool {
 		$id = (int) $args['id'];
 		if ( ! current_user_can( 'delete_post', $id ) ) {
-			throw new UserError( 'You do not have permission to delete this post.' );
+			throw new UserError( esc_html( 'You do not have permission to delete this post.' ) );
 		}
 		return (bool) wp_delete_post( $id, (bool) ( $args['force'] ?? false ) );
 	}
@@ -255,7 +255,7 @@ class Resolvers {
 	/** @param array<string,mixed> $args */
 	public function updateOption( $root, array $args ): bool {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			throw new UserError( 'You do not have permission to change options.' );
+			throw new UserError( esc_html( 'You do not have permission to change options.' ) );
 		}
 		return (bool) update_option( $args['name'], $args['value'] );
 	}
@@ -263,7 +263,7 @@ class Resolvers {
 	/** @param array<string,mixed> $args */
 	public function updateSiteInfo( $root, array $args ): bool {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			throw new UserError( 'You do not have permission to change site settings.' );
+			throw new UserError( esc_html( 'You do not have permission to change site settings.' ) );
 		}
 		if ( isset( $args['title'] ) ) {
 			update_option( 'blogname', $args['title'] );

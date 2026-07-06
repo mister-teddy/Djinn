@@ -106,7 +106,7 @@ class ToolsFeature implements Feature {
 
 	private function gate(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			throw new UserError( 'You do not have permission to use site tools.' );
+			throw new UserError( esc_html( 'You do not have permission to use site tools.' ) );
 		}
 	}
 
@@ -149,12 +149,12 @@ class ToolsFeature implements Feature {
 		export_wp( array( 'content' => $content ) );
 		$xml = (string) ob_get_clean();
 		if ( $xml === '' ) {
-			throw new UserError( 'The export produced no data.' );
+			throw new UserError( esc_html( 'The export produced no data.' ) );
 		}
 
 		$path = $this->file( 'djinn-content-' . gmdate( 'Ymd-His' ) . '.xml' );
 		if ( file_put_contents( $path, $xml ) === false ) {
-			throw new UserError( 'Could not write the export file.' );
+			throw new UserError( esc_html( 'Could not write the export file.' ) );
 		}
 		return $this->result( $path, 'text/xml' );
 	}
@@ -170,9 +170,10 @@ class ToolsFeature implements Feature {
 		global $wpdb;
 
 		$path = $this->file( 'djinn-db-' . gmdate( 'Ymd-His' ) . '.sql' );
+		// phpcs:disable WordPress.WP.AlternativeFunctions, WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL, PluginCheck.Security.DirectDB -- DB export streams to disk in batches (no incremental WP_Filesystem writer); table names come from SHOW TABLES and values are prepared.
 		$fh   = fopen( $path, 'w' );
 		if ( ! $fh ) {
-			throw new UserError( 'Could not open the dump file for writing.' );
+			throw new UserError( esc_html( 'Could not open the dump file for writing.' ) );
 		}
 		fwrite( $fh, '-- Djinn database export — ' . gmdate( 'c' ) . "\nSET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n" );
 
@@ -200,6 +201,7 @@ class ToolsFeature implements Feature {
 		}
 		fwrite( $fh, "\nSET FOREIGN_KEY_CHECKS=1;\n" );
 		fclose( $fh );
+		// phpcs:enable WordPress.WP.AlternativeFunctions, WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL, PluginCheck.Security.DirectDB
 
 		return $this->result( $path, 'application/sql' );
 	}
@@ -214,18 +216,18 @@ class ToolsFeature implements Feature {
 	public function importWxr( $root, array $args ): string {
 		$this->gate();
 		if ( ! current_user_can( 'import' ) ) {
-			throw new UserError( 'You do not have permission to import content.' );
+			throw new UserError( esc_html( 'You do not have permission to import content.' ) );
 		}
 		$file = Downloads::resolve( (string) $args['token'] );
 		if ( ! $file ) {
-			throw new UserError( 'That uploaded file has expired or is gone — attach it again.' );
+			throw new UserError( esc_html( 'That uploaded file has expired or is gone — attach it again.' ) );
 		}
 
 		$prev = libxml_use_internal_errors( true );
 		$xml  = simplexml_load_file( $file['path'] );
 		libxml_use_internal_errors( $prev );
 		if ( ! $xml || ! isset( $xml->channel ) ) {
-			throw new UserError( 'That does not look like a valid WordPress export (WXR) file.' );
+			throw new UserError( esc_html( 'That does not look like a valid WordPress export (WXR) file.' ) );
 		}
 
 		$created = 0;

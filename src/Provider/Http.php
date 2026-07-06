@@ -27,7 +27,7 @@ trait Http {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			throw new RuntimeException( 'LLM request failed: ' . $response->get_error_message() );
+			throw new RuntimeException( esc_html( 'LLM request failed: ' . $response->get_error_message() ) );
 		}
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
@@ -38,11 +38,11 @@ trait Http {
 			$msg = is_array( $json ) && isset( $json['error']['message'] )
 				? $json['error']['message']
 				: substr( $raw, 0, 300 );
-			throw new RuntimeException( "LLM request returned HTTP $code: $msg" . self::modelHint( $code ) );
+			throw new RuntimeException( esc_html( "LLM request returned HTTP $code: $msg" . self::modelHint( $code ) ) );
 		}
 
 		if ( ! is_array( $json ) ) {
-			throw new RuntimeException( 'LLM returned a non-JSON response.' );
+			throw new RuntimeException( esc_html( 'LLM returned a non-JSON response.' ) );
 		}
 		return $json;
 	}
@@ -58,12 +58,13 @@ trait Http {
 	 */
 	protected function postStream( string $url, array $headers, array $body, callable $onChunk ): void {
 		if ( ! function_exists( 'curl_init' ) ) {
-			throw new RuntimeException( 'Streaming requires the cURL PHP extension.' );
+			throw new RuntimeException( esc_html( 'Streaming requires the cURL PHP extension.' ) );
 		}
 		$hdr = array( 'Content-Type: application/json' );
 		foreach ( $headers as $k => $v ) {
 			$hdr[] = $k . ': ' . $v;
 		}
+		// phpcs:disable WordPress.WP.AlternativeFunctions -- WP HTTP API cannot stream a response body; cURL is required for SSE token streaming (postJson() is the non-streaming fallback).
 		$ch = curl_init( $url );
 		curl_setopt_array(
 			$ch,
@@ -83,12 +84,13 @@ trait Http {
 		$err  = curl_error( $ch );
 		$code = (int) curl_getinfo( $ch, CURLINFO_HTTP_CODE );
 		curl_close( $ch );
+		// phpcs:enable WordPress.WP.AlternativeFunctions
 
 		if ( $ok === false && $err ) {
-			throw new RuntimeException( 'LLM stream failed: ' . $err );
+			throw new RuntimeException( esc_html( 'LLM stream failed: ' . $err ) );
 		}
 		if ( $code >= 400 ) {
-			throw new RuntimeException( "LLM stream returned HTTP $code." . self::modelHint( $code ) );
+			throw new RuntimeException( esc_html( "LLM stream returned HTTP $code." . self::modelHint( $code ) ) );
 		}
 	}
 

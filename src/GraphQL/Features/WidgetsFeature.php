@@ -95,7 +95,7 @@ class WidgetsFeature implements Feature {
 
 	private function gate(): void {
 		if ( ! current_user_can( 'edit_theme_options' ) ) {
-			throw new UserError( 'You do not have permission to manage widgets.' );
+			throw new UserError( esc_html( 'You do not have permission to manage widgets.' ) );
 		}
 	}
 
@@ -109,7 +109,7 @@ class WidgetsFeature implements Feature {
 		$this->gate();
 		global $wp_registered_sidebars, $wp_registered_widgets;
 		$only = isset( $args['id'] ) ? (string) $args['id'] : '';
-		$map  = wp_get_sidebars_widgets();
+		$map  = wp_get_sidebars_widgets(); // phpcs:ignore Generic.PHP.ForbiddenFunctions.Found -- reading the sidebar->widget map; core normalizes legacy option shapes.
 		$out  = array();
 		foreach ( $wp_registered_sidebars as $id => $sb ) {
 			if ( $id === 'wp_inactive_widgets' || ( $only !== '' && $id !== $only ) ) {
@@ -138,12 +138,12 @@ class WidgetsFeature implements Feature {
 		global $wp_registered_sidebars;
 		$sidebar = (string) $args['sidebar'];
 		if ( ! isset( $wp_registered_sidebars[ $sidebar ] ) ) {
-			throw new UserError( "No such sidebar '$sidebar'." );
+			throw new UserError( esc_html( "No such sidebar '$sidebar'." ) );
 		}
 		$idBase   = (string) $args['idBase'];
 		$settings = isset( $args['settings'] ) ? json_decode( (string) $args['settings'], true ) : array();
 		if ( ! is_array( $settings ) ) {
-			throw new UserError( 'settings must be a JSON object.' );
+			throw new UserError( esc_html( 'settings must be a JSON object.' ) );
 		}
 
 		$option    = 'widget_' . $idBase;
@@ -160,7 +160,7 @@ class WidgetsFeature implements Feature {
 		update_option( $option, $instances );
 
 		$widgetId          = $idBase . '-' . $index;
-		$map               = wp_get_sidebars_widgets();
+		$map               = wp_get_sidebars_widgets(); // phpcs:ignore Generic.PHP.ForbiddenFunctions.Found -- reading the sidebar->widget map; core normalizes legacy option shapes.
 		$map[ $sidebar ][] = $widgetId;
 		wp_set_sidebars_widgets( $map );
 		return $widgetId;
@@ -173,7 +173,7 @@ class WidgetsFeature implements Feature {
 		$idBase   = $this->idBase( $widgetId );
 		$index    = (int) substr( $widgetId, strlen( $idBase ) + 1 );
 
-		$map   = wp_get_sidebars_widgets();
+		$map   = wp_get_sidebars_widgets(); // phpcs:ignore Generic.PHP.ForbiddenFunctions.Found -- reading the sidebar->widget map; core normalizes legacy option shapes.
 		$found = false;
 		foreach ( $map as $sb => $ids ) {
 			if ( ! is_array( $ids ) ) {

@@ -13,6 +13,8 @@ namespace Djinn\Store;
  */
 class Repository {
 
+	// phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL, PluginCheck.Security.DirectDB -- Djinn's own custom tables; identifiers are trusted $wpdb->prefix constants and all user values are prepared. No core API covers these; rows are request-scoped and intentionally uncached.
+
 	/** Bumped whenever the table layout changes; drives maybeUpgrade(). */
 	private const DB_VERSION = 5;
 

@@ -195,8 +195,10 @@ class Controller {
 
 		$this->openStream();
 		$emit = static function ( string $event, array $data ): void {
+			// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- SSE stream (text/event-stream), not HTML; $event is a fixed code and $data is wp_json_encode()d.
 			echo 'event: ' . $event . "\n";
 			echo 'data: ' . wp_json_encode( $data ) . "\n\n";
+			// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
 			@ob_flush();
 			@flush();
 		};
@@ -207,9 +209,11 @@ class Controller {
 
 	/** Prepare the request for Server-Sent Events: kill buffering, set streaming headers. */
 	private function openStream(): void {
+		// phpcs:disable Squiz.PHP.DiscouragedFunctions.Discouraged -- SSE requires buffering/compression off; @-silenced for hosts that lock these.
 		@ini_set( 'zlib.output_compression', '0' );
 		@ini_set( 'output_buffering', '0' );
 		@ini_set( 'implicit_flush', '1' );
+		// phpcs:enable Squiz.PHP.DiscouragedFunctions.Discouraged
 		while ( ob_get_level() ) {
 			ob_end_clean();
 		}
@@ -243,7 +247,8 @@ class Controller {
 	 * to import tools (e.g. importWxr). Type-restricted; nonce + manage_options enforced.
 	 */
 	public function upload( WP_REST_Request $req ): WP_REST_Response {
-		$f = $_FILES['file'] ?? null; // phpcs:ignore WordPress.Security.NonceVerification — REST nonce already checked
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- REST cookie nonce is verified before permission_callback; the file fields are validated below via wp_check_filetype_and_ext(), sanitize_file_name(), and move_uploaded_file().
+		$f = $_FILES['file'] ?? null;
 		if ( ! is_array( $f ) || ( $f['error'] ?? UPLOAD_ERR_NO_FILE ) !== UPLOAD_ERR_OK ) {
 			return new WP_REST_Response( array( 'message' => 'No file was uploaded.' ), 400 );
 		}
@@ -260,6 +265,7 @@ class Controller {
 		$dir  = Downloads::dir();
 		$name = wp_unique_filename( $dir, sanitize_file_name( $f['name'] ) );
 		$path = trailingslashit( $dir ) . $name;
+		// phpcs:ignore Generic.PHP.ForbiddenFunctions.Found -- storing to Djinn's private dir, not the public uploads library; wp_handle_upload() would relocate it.
 		if ( ! @move_uploaded_file( $f['tmp_name'], $path ) ) {
 			return new WP_REST_Response( array( 'message' => 'Could not store the upload.' ), 500 );
 		}
@@ -295,6 +301,7 @@ class Controller {
 		while ( ob_get_level() ) {
 			ob_end_clean();
 		}
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- streaming a private file to the client; WP_Filesystem has no streaming read-to-output.
 		readfile( $file['path'] );
 		exit;
 	}

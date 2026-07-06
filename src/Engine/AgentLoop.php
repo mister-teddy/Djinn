@@ -224,6 +224,7 @@ class AgentLoop {
 			// the per-request execution clock each round so a long multi-round wish isn't killed
 			// mid-turn by max_execution_time. Hosts that disable set_time_limit simply skip this.
 			if ( function_exists( 'set_time_limit' ) ) {
+				// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- reset the execution clock each round so a long multi-round wish isn't killed mid-turn.
 				set_time_limit( 120 );
 			}
 			$history = $this->expandAttachments( Repository::getMessages( $chatId ) );

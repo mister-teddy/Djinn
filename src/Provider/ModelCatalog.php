@@ -51,6 +51,7 @@ class ModelCatalog {
 	/** Drop cached catalogs so the next Settings render re-discovers. */
 	public static function flush(): void {
 		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- bulk transient cleanup by name prefix; no core API deletes transients by pattern.
 		$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '_transient_djinn_models_%' OR option_name LIKE '_transient_timeout_djinn_models_%'" );
 	}
 

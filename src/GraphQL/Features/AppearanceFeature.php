@@ -80,7 +80,7 @@ class AppearanceFeature implements Feature {
 	/** @return array<int,array<string,mixed>> */
 	public function themes(): array {
 		if ( ! current_user_can( 'switch_themes' ) && ! current_user_can( 'edit_theme_options' ) ) {
-			throw new UserError( 'You do not have permission to view themes.' );
+			throw new UserError( esc_html( 'You do not have permission to view themes.' ) );
 		}
 		$active = get_stylesheet();
 		$out    = array();
@@ -99,7 +99,7 @@ class AppearanceFeature implements Feature {
 
 	public function additionalCss(): ?string {
 		if ( ! current_user_can( 'edit_theme_options' ) ) {
-			throw new UserError( 'You do not have permission to read theme options.' );
+			throw new UserError( esc_html( 'You do not have permission to read theme options.' ) );
 		}
 		return wp_get_custom_css();
 	}
@@ -107,15 +107,15 @@ class AppearanceFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function activateTheme( $root, array $args ): bool {
 		if ( ! current_user_can( 'switch_themes' ) ) {
-			throw new UserError( 'You do not have permission to switch themes.' );
+			throw new UserError( esc_html( 'You do not have permission to switch themes.' ) );
 		}
 		$slug  = (string) $args['slug'];
 		$theme = wp_get_theme( $slug );
 		if ( ! $theme->exists() ) {
-			throw new UserError( "No theme with slug '$slug' is installed." );
+			throw new UserError( esc_html( "No theme with slug '$slug' is installed." ) );
 		}
 		if ( ! $theme->is_allowed() ) {
-			throw new UserError( "Theme '$slug' is not allowed on this site." );
+			throw new UserError( esc_html( "Theme '$slug' is not allowed on this site." ) );
 		}
 		switch_theme( $slug );
 		return get_stylesheet() === $slug;
@@ -124,11 +124,11 @@ class AppearanceFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function setAdditionalCss( $root, array $args ): bool {
 		if ( ! current_user_can( 'edit_theme_options' ) ) {
-			throw new UserError( 'You do not have permission to edit theme options.' );
+			throw new UserError( esc_html( 'You do not have permission to edit theme options.' ) );
 		}
 		$result = wp_update_custom_css_post( (string) $args['css'] );
 		if ( is_wp_error( $result ) ) {
-			throw new UserError( $result->get_error_message() );
+			throw new UserError( esc_html( $result->get_error_message() ) );
 		}
 		return true;
 	}

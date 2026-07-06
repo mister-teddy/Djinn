@@ -44,11 +44,11 @@ class ProxyClient {
 		}
 		$json = json_decode( (string) wp_remote_retrieve_body( $res ), true );
 		if ( ! is_array( $json ) ) {
-			throw new ProxyException( 'The Djinn service returned an invalid response.' );
+			throw new ProxyException( esc_html( 'The Djinn service returned an invalid response.' ) );
 		}
 		if ( ! empty( $json['errors'] ) ) {
 			$msg = $json['errors'][0]['message'] ?? 'The Djinn service returned an error.';
-			throw new ProxyException( (string) $msg );
+			throw new ProxyException( esc_html( (string) $msg ) );
 		}
 		return is_array( $json['data'] ?? null ) ? $json['data'] : array();
 	}

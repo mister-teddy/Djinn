@@ -63,7 +63,7 @@ class CronFeature implements Feature {
 
 	private function gate(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			throw new UserError( 'You do not have permission to manage scheduled events.' );
+			throw new UserError( esc_html( 'You do not have permission to manage scheduled events.' ) );
 		}
 	}
 
@@ -95,7 +95,7 @@ class CronFeature implements Feature {
 		$this->gate();
 		$cleared = wp_clear_scheduled_hook( (string) $args['hook'] );
 		if ( is_wp_error( $cleared ) ) {
-			throw new UserError( $cleared->get_error_message() );
+			throw new UserError( esc_html( $cleared->get_error_message() ) );
 		}
 		return (int) $cleared;
 	}

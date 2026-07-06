@@ -189,7 +189,7 @@ class MenusFeature implements Feature {
 
 	private function gate(): void {
 		if ( ! current_user_can( 'edit_theme_options' ) ) {
-			throw new UserError( 'You do not have permission to manage menus.' );
+			throw new UserError( esc_html( 'You do not have permission to manage menus.' ) );
 		}
 	}
 
@@ -227,7 +227,7 @@ class MenusFeature implements Feature {
 	private function menuOrFail( string $ref ): \WP_Term {
 		$menu = wp_get_nav_menu_object( is_numeric( $ref ) ? (int) $ref : $ref );
 		if ( ! $menu ) {
-			throw new UserError( "No navigation menu matching '$ref'." );
+			throw new UserError( esc_html( "No navigation menu matching '$ref'." ) );
 		}
 		return $menu;
 	}
@@ -278,7 +278,7 @@ class MenusFeature implements Feature {
 		$this->gate();
 		$id = wp_create_nav_menu( (string) $args['name'] );
 		if ( is_wp_error( $id ) ) {
-			throw new UserError( $id->get_error_message() );
+			throw new UserError( esc_html( $id->get_error_message() ) );
 		}
 		return $this->shapeMenu( wp_get_nav_menu_object( $id ) );
 	}
@@ -304,7 +304,7 @@ class MenusFeature implements Feature {
 
 		$itemId = wp_update_nav_menu_item( $menu->term_id, 0, $itemArgs );
 		if ( is_wp_error( $itemId ) ) {
-			throw new UserError( $itemId->get_error_message() );
+			throw new UserError( esc_html( $itemId->get_error_message() ) );
 		}
 		$items = wp_get_nav_menu_items( $menu->term_id );
 		foreach ( $items ?: array() as $i ) {
@@ -312,7 +312,7 @@ class MenusFeature implements Feature {
 				return $this->shapeItem( $i );
 			}
 		}
-		throw new UserError( 'The item was added but could not be read back.' );
+		throw new UserError( esc_html( 'The item was added but could not be read back.' ) );
 	}
 
 	/** @param array<string,mixed> $args */
@@ -320,7 +320,7 @@ class MenusFeature implements Feature {
 		$this->gate();
 		$id = (int) $args['itemId'];
 		if ( ! is_nav_menu_item( $id ) ) {
-			throw new UserError( "Item $id is not a menu item." );
+			throw new UserError( esc_html( "Item $id is not a menu item." ) );
 		}
 		return (bool) wp_delete_post( $id, true );
 	}
@@ -330,7 +330,7 @@ class MenusFeature implements Feature {
 		$this->gate();
 		$location = (string) $args['location'];
 		if ( ! array_key_exists( $location, get_registered_nav_menus() ) ) {
-			throw new UserError( "No registered menu location '$location'." );
+			throw new UserError( esc_html( "No registered menu location '$location'." ) );
 		}
 		$menu      = $this->menuOrFail( (string) $args['menu'] );
 		$locations = get_theme_mod( 'nav_menu_locations', array() );

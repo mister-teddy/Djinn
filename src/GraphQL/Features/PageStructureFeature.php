@@ -97,7 +97,7 @@ class PageStructureFeature implements Feature {
 
 	private function gate(): void {
 		if ( ! current_user_can( 'edit_theme_options' ) ) {
-			throw new UserError( 'You do not have permission to read site templates.' );
+			throw new UserError( esc_html( 'You do not have permission to read site templates.' ) );
 		}
 	}
 
@@ -108,14 +108,14 @@ class PageStructureFeature implements Feature {
 	public function renderedPage( $root, array $args ): array {
 		$this->gate();
 		if ( ! function_exists( 'get_block_templates' ) ) {
-			throw new UserError( 'This site is not a block theme, so pages are not composed from templates. Read navMenus, sidebars, or the post/page content instead.' );
+			throw new UserError( esc_html( 'This site is not a block theme, so pages are not composed from templates. Read navMenus, sidebars, or the post/page content instead.' ) );
 		}
 
 		[ $hierarchy, $postId, $desc ] = $this->resolve( $args );
 
 		$template = $this->pickTemplate( $hierarchy );
 		if ( ! $template ) {
-			throw new UserError( "No template found for $desc (looked for: " . implode( ', ', $hierarchy ) . ').' );
+			throw new UserError( esc_html( "No template found for $desc (looked for: " . implode( ', ', $hierarchy ) . ').' ) );
 		}
 
 		$markup = (string) $template->content;
@@ -174,7 +174,7 @@ class PageStructureFeature implements Feature {
 		if ( $postId ) {
 			$post = get_post( $postId );
 			if ( ! $post ) {
-				throw new UserError( "No post or page with id $postId." );
+				throw new UserError( esc_html( "No post or page with id $postId." ) );
 			}
 			$slug = $post->post_name;
 			$type = $post->post_type;

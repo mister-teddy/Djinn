@@ -191,7 +191,7 @@ class AdminResolvers {
 	 */
 	public static function connect(): array {
 		if ( ! Settings::usesProxy() ) {
-			throw new UserError( 'This site is not using the Djinn proxy.' );
+			throw new UserError( esc_html( 'This site is not using the Djinn proxy.' ) );
 		}
 		if ( Settings::siteToken() !== '' ) {
 			return self::account();
@@ -215,13 +215,13 @@ class AdminResolvers {
 			);
 		} catch ( ProxyException $e ) {
 			delete_transient( PairingSchema::PENDING );
-			throw new UserError( $e->getMessage() );
+			throw new UserError( esc_html( $e->getMessage() ) );
 		}
 		delete_transient( PairingSchema::PENDING );
 		// The claim callback wrote the token in another request, so our option cache is stale here.
 		Settings::flushCache();
 		if ( Settings::siteToken() === '' ) {
-			throw new UserError( 'The Djinn service could not complete pairing. Make sure this site is publicly reachable, then try again.' );
+			throw new UserError( esc_html( 'The Djinn service could not complete pairing. Make sure this site is publicly reachable, then try again.' ) );
 		}
 		return self::account();
 	}
@@ -234,10 +234,10 @@ class AdminResolvers {
 	/** Activate a Polar license key to unlock Pro scope on this site. @return array<string,mixed> */
 	public static function activateLicense( string $key ): array {
 		if ( Settings::edition() !== 'pro' ) {
-			throw new UserError( 'Licensing applies to the Pro edition.' );
+			throw new UserError( esc_html( 'Licensing applies to the Pro edition.' ) );
 		}
 		if ( ! LicenseClient::activate( $key ) ) {
-			throw new UserError( 'That license key could not be activated. Check the key and that your plan has a spare activation.' );
+			throw new UserError( esc_html( 'That license key could not be activated. Check the key and that your plan has a spare activation.' ) );
 		}
 		return self::settings();
 	}
@@ -252,7 +252,7 @@ class AdminResolvers {
 	public static function billingCheckout( string $kind ): array {
 		$token = Settings::siteToken();
 		if ( $token === '' ) {
-			throw new UserError( 'Connect a Djinn account first.' );
+			throw new UserError( esc_html( 'Connect a Djinn account first.' ) );
 		}
 		$kind = $kind === 'subscription' ? 'subscription' : 'credit';
 		try {
@@ -262,11 +262,11 @@ class AdminResolvers {
 				$token
 			);
 		} catch ( ProxyException $e ) {
-			throw new UserError( $e->unreachable ? 'Could not reach billing.' : $e->getMessage() );
+			throw new UserError( esc_html( $e->unreachable ? 'Could not reach billing.' : $e->getMessage() ) );
 		}
 		$url = (string) ( $data['billingCheckout']['url'] ?? '' );
 		if ( $url === '' ) {
-			throw new UserError( 'Billing is not available yet.' );
+			throw new UserError( esc_html( 'Billing is not available yet.' ) );
 		}
 		return array( 'url' => $url );
 	}
@@ -279,7 +279,7 @@ class AdminResolvers {
 
 	private static function assertOwns( int $chatId ): void {
 		if ( Repository::chatOwner( $chatId ) !== get_current_user_id() ) {
-			throw new UserError( 'Not your lamp.' );
+			throw new UserError( esc_html( 'Not your lamp.' ) );
 		}
 	}
 }

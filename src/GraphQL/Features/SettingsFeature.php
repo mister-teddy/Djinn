@@ -135,7 +135,7 @@ class SettingsFeature implements Feature {
 
 	private function gate(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			throw new UserError( 'You do not have permission to change site settings.' );
+			throw new UserError( esc_html( 'You do not have permission to change site settings.' ) );
 		}
 	}
 
@@ -175,11 +175,11 @@ class SettingsFeature implements Feature {
 			return true;
 		}
 		if ( $mode !== 'page' ) {
-			throw new UserError( 'mode must be "posts" or "page".' );
+			throw new UserError( esc_html( 'mode must be "posts" or "page".' ) );
 		}
 		$pageId = (int) ( $args['pageId'] ?? 0 );
 		if ( ! $pageId || get_post_type( $pageId ) !== 'page' ) {
-			throw new UserError( 'pageId must be the id of an existing page.' );
+			throw new UserError( esc_html( 'pageId must be the id of an existing page.' ) );
 		}
 		update_option( 'show_on_front', 'page' );
 		update_option( 'page_on_front', $pageId );
@@ -218,7 +218,7 @@ class SettingsFeature implements Feature {
 		if ( isset( $args['timezone'] ) ) {
 			$tz = (string) $args['timezone'];
 			if ( ! in_array( $tz, timezone_identifiers_list(), true ) ) {
-				throw new UserError( "Invalid timezone '$tz'." );
+				throw new UserError( esc_html( "Invalid timezone '$tz'." ) );
 			}
 			update_option( 'timezone_string', $tz );
 			update_option( 'gmt_offset', '' );

@@ -117,7 +117,7 @@ class CommentsFeature implements Feature {
 	/** @param array<string,mixed> $args */
 	public function comments( $root, array $args ): array {
 		if ( ! current_user_can( 'moderate_comments' ) ) {
-			throw new UserError( 'You do not have permission to view comments.' );
+			throw new UserError( esc_html( 'You do not have permission to view comments.' ) );
 		}
 		$comments = get_comments(
 			array(
@@ -134,10 +134,10 @@ class CommentsFeature implements Feature {
 		$id     = (int) $args['id'];
 		$status = (string) $args['status'];
 		if ( ! in_array( $status, self::STATUSES, true ) ) {
-			throw new UserError( 'Status must be one of: ' . implode( ', ', self::STATUSES ) . '.' );
+			throw new UserError( esc_html( 'Status must be one of: ' . implode( ', ', self::STATUSES ) . '.' ) );
 		}
 		if ( ! current_user_can( 'edit_comment', $id ) ) {
-			throw new UserError( 'You do not have permission to moderate this comment.' );
+			throw new UserError( esc_html( 'You do not have permission to moderate this comment.' ) );
 		}
 		return (bool) wp_set_comment_status( $id, $status );
 	}
@@ -146,10 +146,10 @@ class CommentsFeature implements Feature {
 	public function replyToComment( $root, array $args ): array {
 		$parent = get_comment( (int) $args['commentId'] );
 		if ( ! $parent ) {
-			throw new UserError( 'No such comment.' );
+			throw new UserError( esc_html( 'No such comment.' ) );
 		}
 		if ( ! current_user_can( 'moderate_comments' ) ) {
-			throw new UserError( 'You do not have permission to reply to comments.' );
+			throw new UserError( esc_html( 'You do not have permission to reply to comments.' ) );
 		}
 		$user = wp_get_current_user();
 		$id   = wp_insert_comment(
@@ -164,7 +164,7 @@ class CommentsFeature implements Feature {
 			)
 		);
 		if ( ! $id ) {
-			throw new UserError( 'Could not post the reply.' );
+			throw new UserError( esc_html( 'Could not post the reply.' ) );
 		}
 		return $this->shape( get_comment( $id ) );
 	}
@@ -173,7 +173,7 @@ class CommentsFeature implements Feature {
 	public function deleteComment( $root, array $args ): bool {
 		$id = (int) $args['id'];
 		if ( ! current_user_can( 'edit_comment', $id ) ) {
-			throw new UserError( 'You do not have permission to delete this comment.' );
+			throw new UserError( esc_html( 'You do not have permission to delete this comment.' ) );
 		}
 		return (bool) wp_delete_comment( $id, (bool) ( $args['force'] ?? false ) );
 	}
