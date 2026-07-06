@@ -22,6 +22,7 @@ export function Sidebar({
 	onOpen,
 	onDelete,
 	width,
+	collapsed,
 }: {
 	chats: ChatSummary[];
 	activeId: number;
@@ -30,11 +31,17 @@ export function Sidebar({
 	onOpen: (id: number) => void;
 	onDelete: (id: number) => void;
 	width: number;
+	collapsed: boolean;
 }) {
 	return (
 		<aside
-			className="flex min-h-0 flex-none flex-col gap-3 overflow-hidden bg-gradient-to-b from-midnight to-violet px-3.5 py-4 transition-[width,padding] duration-200"
-			style={{ width }}
+			className={`flex min-h-0 flex-none flex-col gap-3 overflow-hidden bg-gradient-to-b from-midnight to-violet py-4 transition-[width,padding,opacity] duration-200 ${collapsed ? 'pointer-events-none opacity-0' : 'px-3.5 opacity-100'}`}
+			style={{
+				width,
+				paddingLeft: collapsed ? 0 : undefined,
+				paddingRight: collapsed ? 0 : undefined,
+			}}
+			aria-hidden={collapsed}
 		>
 			<Button
 				variant="primary"
@@ -57,11 +64,11 @@ export function Sidebar({
 					chats.map((c) => (
 						<div
 							key={c.id}
-							className={`group flex items-stretch rounded-[9px] transition ${c.id === activeId ? 'bg-gold/[0.16]' : 'hover:bg-violet-soft'}`}
+							className={`group flex items-stretch rounded-[9px] transition-colors ${c.id === activeId ? 'bg-gold/[0.16]' : 'hover:bg-white/[0.08]'}`}
 						>
 							<button
 								type="button"
-								className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 bg-transparent px-2.5 py-2 text-left text-ivory disabled:cursor-default disabled:opacity-60"
+								className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 rounded-l-[9px] bg-transparent px-2.5 py-2 text-left text-ivory transition-colors focus:bg-white/[0.10] focus:outline-none disabled:cursor-default disabled:opacity-60"
 								disabled={busy}
 								onClick={() => onOpen(c.id)}
 								title={c.title || undefined}

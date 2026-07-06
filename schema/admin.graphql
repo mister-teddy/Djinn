@@ -133,6 +133,7 @@ type Attachment {
   filename: String
   token: String
   size: Int
+  mime: String
 }
 
 "Arbitrary JSON (a GraphQL operation's variables or result)."

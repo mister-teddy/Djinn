@@ -349,7 +349,10 @@ export function renderMarkdown(text: string): ReactNode[] {
 		blocks.push(
 			h(
 				'p',
-				{ key: key++, className: 'mb-2 leading-relaxed' },
+				{
+					key: key++,
+					className: 'mb-2 mt-0 text-[14px] leading-[1.45]',
+				},
 				...inline,
 			),
 		);

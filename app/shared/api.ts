@@ -17,6 +17,9 @@ export interface DjinnConfig {
 	usesProxy: boolean;
 	configured: boolean;
 	privacyUrl?: string;
+	provider?: string;
+	providerLabel?: string;
+	chatModel?: string;
 	// Lamp
 	settingsUrl?: string;
 	siteName?: string;
@@ -58,6 +61,7 @@ export interface Attachment {
 	filename: string;
 	token: string;
 	size: number;
+	mime?: string | null;
 }
 
 export interface UploadResult {
@@ -86,6 +90,11 @@ export async function uploadFile(file: File): Promise<UploadResult> {
 /** A short-lived, nonce-bearing URL the browser can navigate to for a generated download. */
 export function downloadUrl(token: string): string {
 	return `${config.restUrl}/download?token=${encodeURIComponent(token)}&_wpnonce=${encodeURIComponent(config.nonce)}`;
+}
+
+/** Inline preview URL for uploaded images. Falls back to the same gated private-file route. */
+export function previewUrl(token: string): string {
+	return `${downloadUrl(token)}&inline=1`;
 }
 
 /** Non-streaming wish (fallback when SSE is unavailable); returns the turn's final result. */

@@ -190,6 +190,7 @@ class AdminSchema {
 					'filename' => Type::string(),
 					'token'    => Type::string(),
 					'size'     => Type::int(),
+					'mime'     => Type::string(),
 				),
 			)
 		);

@@ -365,6 +365,9 @@ export default {
             "size": [
                 3
             ],
+            "mime": [
+                1
+            ],
             "__typename": [
                 1
             ]

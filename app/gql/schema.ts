@@ -162,6 +162,7 @@ export interface Attachment {
     filename: (Scalars['String'] | null)
     token: (Scalars['String'] | null)
     size: (Scalars['Int'] | null)
+    mime: (Scalars['String'] | null)
     __typename: 'Attachment'
 }
 
@@ -359,6 +360,7 @@ export interface AttachmentGenqlSelection{
     filename?: boolean | number
     token?: boolean | number
     size?: boolean | number
+    mime?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }

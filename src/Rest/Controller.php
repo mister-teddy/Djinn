@@ -283,9 +283,13 @@ class Controller {
 		if ( ! $file ) {
 			return new WP_REST_Response( array( 'message' => 'That download has expired or does not exist.' ), 404 );
 		}
+		$mime        = (string) ( $file['mime'] ?: 'application/octet-stream' );
+		$disposition = ( $req->get_param( 'inline' ) && str_starts_with( $mime, 'image/' ) )
+			? 'inline'
+			: 'attachment';
 		nocache_headers();
-		header( 'Content-Type: ' . ( $file['mime'] ?: 'application/octet-stream' ) );
-		header( 'Content-Disposition: attachment; filename="' . basename( $file['filename'] ) . '"' );
+		header( 'Content-Type: ' . $mime );
+		header( 'Content-Disposition: ' . $disposition . '; filename="' . basename( $file['filename'] ) . '"' );
 		header( 'Content-Length: ' . filesize( $file['path'] ) );
 		header( 'X-Content-Type-Options: nosniff' );
 		while ( ob_get_level() ) {
@@ -300,10 +304,10 @@ class Controller {
 	}
 
 	/**
-	 * Parsed, sanitized chat attachments from the request body: an array of {filename, token, size}.
+	 * Parsed, sanitized chat attachments from the request body: an array of {filename, token, size, mime}.
 	 * The token came from /upload; entries without one are dropped.
 	 *
-	 * @return array<int,array{filename:string,token:string,size:int}>
+	 * @return array<int,array{filename:string,token:string,size:int,mime:string}>
 	 */
 	private function attachmentsParam( WP_REST_Request $req ): array {
 		$raw = $req->get_param( 'attachments' );
@@ -320,6 +324,7 @@ class Controller {
 				'filename' => sanitize_file_name( (string) ( $a['filename'] ?? 'file' ) ),
 				'token'    => $token,
 				'size'     => isset( $a['size'] ) ? max( 0, (int) $a['size'] ) : 0,
+				'mime'     => sanitize_mime_type( (string) ( $a['mime'] ?? '' ) ),
 			);
 		}
 		return $out;

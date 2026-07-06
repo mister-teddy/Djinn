@@ -4,7 +4,7 @@ import { renderMarkdown } from '@shared/markdown';
 import { highlightGraphql, highlightJson } from '@shared/highlight';
 import { safeUrl } from '@shared/url';
 import { formatBytes } from '@shared/format';
-import { downloadUrl } from '@shared/api';
+import { downloadUrl, previewUrl } from '@shared/api';
 import type { TranscriptMessage } from './chat';
 
 const CODE =
@@ -145,6 +145,84 @@ const GLYPH_TONE: Record<string, string> = {
 	error: 'text-[#f87171]',
 	refused: 'text-ivory-muted',
 };
+
+interface AttachmentLike {
+	filename?: string | null;
+	token?: string | null;
+	size?: number | null;
+	mime?: string | null;
+}
+
+function isImageAttachment(a: AttachmentLike): boolean {
+	const mime = String(a.mime || '').toLowerCase();
+	const filename = String(a.filename || '').toLowerCase();
+	return (
+		mime.startsWith('image/') ||
+		/\.(png|jpe?g|gif|webp)$/i.test(filename)
+	);
+}
+
+export function AttachmentPreview({
+	attachment,
+	onRemove,
+}: {
+	attachment: AttachmentLike;
+	onRemove?: () => void;
+}) {
+	const filename = attachment.filename || 'Attached file';
+	const size =
+		attachment.size && attachment.size > 0
+			? formatBytes(attachment.size)
+			: '';
+	const token = attachment.token || '';
+	const isImage = token !== '' && isImageAttachment(attachment);
+	const removeButton = onRemove ? (
+		<button
+			type="button"
+			className="inline-flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full bg-black/25 text-[13px] leading-none text-ivory transition hover:bg-[rgba(248,113,113,0.5)] hover:text-white"
+			onClick={onRemove}
+			title="Remove"
+			aria-label="Remove attachment"
+		>
+			×
+		</button>
+	) : null;
+
+	if (!isImage) {
+		return (
+			<span className="inline-flex max-w-full items-center gap-2 self-start rounded-full bg-gold/[0.16] px-3 py-1 text-xs text-ivory">
+				<span aria-hidden>📎</span>
+				<span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+					{filename}
+					{size ? ` (${size})` : ''}
+				</span>
+				{removeButton}
+			</span>
+		);
+	}
+
+	return (
+		<div className="inline-flex max-w-full items-center gap-2 self-start rounded-[10px] bg-gold/[0.14] p-1.5 pr-2 text-xs text-ivory shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]">
+			<img
+				className="h-12 w-12 flex-none rounded-[7px] border border-white/10 bg-black/25 object-cover"
+				src={previewUrl(token)}
+				alt={filename}
+				loading="lazy"
+			/>
+			<span className="min-w-0">
+				<span className="block max-w-[190px] overflow-hidden text-ellipsis whitespace-nowrap font-semibold">
+					{filename}
+				</span>
+				{size && (
+					<span className="block text-[11px] text-ivory-muted">
+						{size}
+					</span>
+				)}
+			</span>
+			{removeButton}
+		</div>
+	);
+}
 
 function IncantationCard({ action }: { action: TranscriptMessage }) {
 	const [open, setOpen] = useState(false);
@@ -287,10 +365,10 @@ export function Message({
 	const isAssistant = msg.role === 'assistant';
 	const hasText = (msg.content || '') !== '';
 	const bubbleBase =
-		'max-w-full whitespace-pre-wrap rounded-2xl px-[15px] py-2.5 text-sm leading-relaxed';
+		'max-w-full whitespace-pre-wrap rounded-2xl px-[15px] py-2.5 text-[14px] leading-[1.45]';
 	const bubble = isAssistant ? (
 		<div
-			className={`${bubbleBase} rounded-bl-[4px] bg-white/[0.07] text-ivory`}
+			className={`${bubbleBase} rounded-bl-[4px] bg-white/[0.07] text-ivory [&>p:last-child]:mb-0 [&_p]:leading-[inherit]`}
 		>
 			{renderMarkdown(msg.content || '')}
 		</div>
@@ -302,13 +380,7 @@ export function Message({
 		</div>
 	) : null;
 	const chips = (msg.attachments || []).map((a, i) => (
-		<span
-			key={'att' + i}
-			className="inline-flex max-w-full items-center gap-2 self-start rounded-full bg-gold/[0.16] px-3 py-1 text-xs text-ivory"
-		>
-			📎 {a.filename}
-			{a.size ? ` (${formatBytes(a.size)})` : ''}
-		</span>
+		<AttachmentPreview key={'att' + i} attachment={a} />
 	));
 	return (
 		<div

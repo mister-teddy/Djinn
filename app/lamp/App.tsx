@@ -17,8 +17,7 @@ import {
 	ToastHost,
 } from '@shared/ui';
 import { usePanelResize } from '@shared/usePanelResize';
-import { formatBytes } from '@shared/format';
-import { Message } from './cards';
+import { AttachmentPreview, Message } from './cards';
 import { Sidebar, Meter } from './Sidebar';
 import {
 	loadChats,
@@ -70,6 +69,20 @@ const HEADER_BG =
 	'bg-[radial-gradient(circle_at_8%_50%,rgba(251,191,36,0.18),transparent_38%),linear-gradient(135deg,var(--djinn-midnight),var(--djinn-violet))]';
 const THREAD_BG =
 	'bg-[radial-gradient(circle_at_80%_8%,rgba(251,191,36,0.08),transparent_42%),linear-gradient(180deg,var(--djinn-midnight),var(--djinn-midnight-2))]';
+const SUGGESTIONS = [
+	'Create a draft page titled About',
+	'List my 5 newest posts',
+	'Set the tagline to Built with Djinn',
+];
+
+function modelSummary(): string {
+	if (config.usesProxy) {
+		return 'Using Djinn gateway · managed model routing';
+	}
+	const provider = config.providerLabel || config.provider || 'AI provider';
+	const model = config.chatModel || 'choose a chat model';
+	return `Using ${provider} · ${model}`;
+}
 
 export function App() {
 	const [messages, setMessages] = useState<TranscriptMessage[]>([]);
@@ -160,10 +173,20 @@ export function App() {
 				token: r.token,
 				filename: r.filename,
 				size: r.size,
+				mime: r.mime,
 			});
 		} catch (e) {
 			setError((e as Error)?.message || 'Upload failed.');
 		}
+	}
+
+	function prefillSuggestion(text: string) {
+		if (busy) return;
+		setInput(text);
+		requestAnimationFrame(() => {
+			inputRef.current?.focus();
+			autosize(inputRef.current);
+		});
 	}
 
 	function dragHasFile(e: React.DragEvent): boolean {
@@ -452,6 +475,7 @@ export function App() {
 				onOpen={openChat}
 				onDelete={deleteChat}
 				width={collapsed ? 0 : sidebar.size}
+				collapsed={collapsed}
 			/>
 			<ResizeHandle axis="x" onMouseDown={startResize}>
 				<button
@@ -474,24 +498,16 @@ export function App() {
 							<Lamp size={32} glow={!empty || busy} />
 						</span>
 						<div>
-							<h1 className="text-[22px] font-semibold tracking-wide text-ivory">
+							<h1 className="font-serif text-[24px] font-bold tracking-wide text-ivory">
 								Djinn
 							</h1>
-							<p className="mt-0.5 max-w-[520px] text-[11.5px] leading-snug text-ivory-muted">
-								{config.usesProxy
-									? 'Wishes and the relevant site content travel through Djinn’s gateway to Google Gemini. '
-									: 'Wishes and the relevant site content are sent to your AI provider. '}
-								{config.usesProxy && (
-									<a
-										className="text-gold hover:underline"
-										href={config.privacyUrl}
-										target="_blank"
-										rel="noopener"
-									>
-										Privacy
-									</a>
-								)}
-							</p>
+							<a
+								className="mt-0.5 block max-w-[520px] text-[11.5px] leading-snug text-ivory-muted no-underline transition hover:text-gold hover:underline focus:text-gold focus:outline-none"
+								href={config.settingsUrl || '#'}
+								title="Open Cave of Wonders"
+							>
+								{modelSummary()}
+							</a>
 						</div>
 					</div>
 					<div className="flex items-center gap-3">
@@ -513,18 +529,25 @@ export function App() {
 							</p>
 							<p className="mx-auto max-w-[480px] text-[13px] text-ivory-muted">
 								Try:{' '}
-								<em className="not-italic text-gold">
-									&quot;Create a draft page titled About&quot;
-								</em>{' '}
-								·{' '}
-								<em className="not-italic text-gold">
-									&quot;List my 5 newest posts&quot;
-								</em>{' '}
-								·{' '}
-								<em className="not-italic text-gold">
-									&quot;Set the tagline to Built with
-									Djinn&quot;
-								</em>
+								{SUGGESTIONS.map((suggestion, i) => (
+									<span key={suggestion}>
+										{i > 0 && (
+											<span className="text-ivory-muted">
+												{' '}
+												·{' '}
+											</span>
+										)}
+										<button
+											type="button"
+											className="cursor-pointer bg-transparent p-0 text-[13px] text-gold underline-offset-2 transition hover:underline focus:underline focus:outline-none"
+											onClick={() =>
+												prefillSuggestion(suggestion)
+											}
+										>
+											&quot;{suggestion}&quot;
+										</button>
+									</span>
+								))}
 							</p>
 						</div>
 					) : (
@@ -549,21 +572,10 @@ export function App() {
 					className={`flex flex-none flex-col items-stretch gap-2 px-4 py-3.5 bg-gradient-to-br from-midnight to-violet`}
 				>
 					{attachment && (
-						<div className="inline-flex max-w-full items-center gap-2 self-start rounded-full bg-gold/[0.16] px-3 py-1 text-xs text-ivory">
-							📎 {attachment.filename}
-							{attachment.size
-								? ` (${formatBytes(attachment.size)})`
-								: ''}
-							<button
-								type="button"
-								className="inline-flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full bg-black/25 text-[13px] leading-none text-ivory transition hover:bg-[rgba(248,113,113,0.5)] hover:text-white"
-								onClick={() => setAttachment(null)}
-								title="Remove"
-								aria-label="Remove attachment"
-							>
-								×
-							</button>
-						</div>
+						<AttachmentPreview
+							attachment={attachment}
+							onRemove={() => setAttachment(null)}
+						/>
 					)}
 					<div className="flex items-start gap-2.5">
 						<input

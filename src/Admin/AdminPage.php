@@ -135,19 +135,25 @@ class AdminPage {
 			return;
 		}
 		$this->registerFont();
-		$handle = $this->enqueueEntry( 'lamp' );
+		$handle    = $this->enqueueEntry( 'lamp' );
+		$settings  = Settings::all();
+		$provider  = (string) ( $settings['provider'] ?? Settings::provider() );
+		$providers = Providers::all();
 		wp_localize_script(
 			$handle,
 			'Djinn',
 			array(
-				'restUrl'     => esc_url_raw( rest_url( 'djinn/v1' ) ),
-				'gqlUrl'      => esc_url_raw( rest_url( 'djinn/v1/graphql' ) ),
-				'nonce'       => wp_create_nonce( 'wp_rest' ),
-				'usesProxy'   => Settings::usesProxy(),
-				'configured'  => Settings::isConfigured(),
-				'settingsUrl' => admin_url( 'admin.php?page=' . self::CAVE_SLUG ),
-				'siteName'    => get_option( 'blogname' ),
-				'privacyUrl'  => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
+				'restUrl'       => esc_url_raw( rest_url( 'djinn/v1' ) ),
+				'gqlUrl'        => esc_url_raw( rest_url( 'djinn/v1/graphql' ) ),
+				'nonce'         => wp_create_nonce( 'wp_rest' ),
+				'usesProxy'     => Settings::usesProxy(),
+				'configured'    => Settings::isConfigured(),
+				'settingsUrl'   => admin_url( 'admin.php?page=' . self::CAVE_SLUG ),
+				'siteName'      => get_option( 'blogname' ),
+				'privacyUrl'    => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
+				'provider'      => $provider,
+				'providerLabel' => $providers[ $provider ]['label'] ?? $provider,
+				'chatModel'     => (string) ( $settings['chat_model'] ?? '' ),
 			)
 		);
 	}

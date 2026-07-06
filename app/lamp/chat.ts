@@ -18,6 +18,7 @@ export interface MsgAttachment {
 	filename: string | null;
 	token: string | null;
 	size: number | null;
+	mime?: string | null;
 }
 
 // A transcript entry — heterogeneous by `role` (user | assistant | action | pending).
@@ -46,7 +47,7 @@ export interface ChatDetail {
 const MESSAGE_FIELDS = {
 	role: true,
 	content: true,
-	attachments: { filename: true, token: true, size: true },
+	attachments: { filename: true, token: true, size: true, mime: true },
 	kind: true,
 	status: true,
 	operation: true,

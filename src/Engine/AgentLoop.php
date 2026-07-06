@@ -164,7 +164,7 @@ class AgentLoop {
 	 * typed text stays verbatim; expandAttachments() folds the import token into the content only
 	 * when the turn is replayed to the provider.
 	 *
-	 * @param array<int,array{filename:string,token:string,size:int}> $attachments
+	 * @param array<int,array{filename:string,token:string,size:int,mime:string}> $attachments
 	 * @return array<string,mixed>
 	 */
 	private function userEntry( string $userText, array $attachments ): array {
