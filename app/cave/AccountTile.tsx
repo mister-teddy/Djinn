@@ -28,72 +28,6 @@ import {
 	type ModelsData,
 } from './data';
 
-interface PolarCheckoutInstance {
-	addEventListener: (ev: string, fn: () => void) => void;
-	close: () => void;
-}
-interface PolarCheckout {
-	create: (
-		url: string,
-		opts?: { theme?: 'light' | 'dark' },
-	) => Promise<PolarCheckoutInstance>;
-}
-declare global {
-	interface Window {
-		Polar?: { EmbedCheckout?: PolarCheckout };
-	}
-}
-
-// Polar's embedded-checkout SDK exposes `window.Polar.EmbedCheckout` (the Cave preloads the script).
-// Resolve it if it's ready, else load it on demand — and always settle (a timeout falls back to a
-// redirect) so the button can never get stuck spinning.
-const POLAR_EMBED_SRC =
-	'https://cdn.jsdelivr.net/npm/@polar-sh/checkout@latest/dist/embed.global.js';
-let polarEmbedPromise: Promise<PolarCheckout | null> | null = null;
-function ensurePolarEmbed(): Promise<PolarCheckout | null> {
-	if (window.Polar?.EmbedCheckout) {
-		return Promise.resolve(window.Polar.EmbedCheckout);
-	}
-	if (!polarEmbedPromise) {
-		polarEmbedPromise = new Promise((resolve) => {
-			let settled = false;
-			const settle = (v: PolarCheckout | null) => {
-				if (!settled) {
-					settled = true;
-					resolve(v);
-				}
-			};
-			const timer = setTimeout(
-				() => settle(window.Polar?.EmbedCheckout ?? null),
-				4000,
-			);
-			const done = () => {
-				clearTimeout(timer);
-				settle(window.Polar?.EmbedCheckout ?? null);
-			};
-			const existing = document.querySelector<HTMLScriptElement>(
-				`script[src="${POLAR_EMBED_SRC}"]`,
-			);
-			if (existing) {
-				// Preloaded — its load event may already have fired, so resolve now if it's ready.
-				if (window.Polar?.EmbedCheckout) {
-					done();
-				} else {
-					existing.addEventListener('load', done);
-					existing.addEventListener('error', done);
-				}
-				return;
-			}
-			const node = document.createElement('script');
-			node.src = POLAR_EMBED_SRC;
-			node.async = true;
-			node.addEventListener('load', done);
-			node.addEventListener('error', done);
-			document.head.appendChild(node);
-		});
-	}
-	return polarEmbedPromise;
-}
 
 const REGISTRY: ProviderInfo[] = config.providers || [];
 const PROVIDERS = REGISTRY.map((p) => ({ value: p.value, label: p.label }));
@@ -410,32 +344,8 @@ function PaymentBlock({ account }: { account: AccountData }) {
 		setLoading(kind);
 		try {
 			const url = await billingCheckout(kind);
-			const embed = await ensurePolarEmbed();
-			if (embed) {
-				const co = await embed.create(url, { theme: 'light' });
-				// The overlay is one cross-origin iframe: the SDK's ✕ only closes when served from
-				// polar.sh, Escape can't reach the parent (focus is inside the iframe), and close() never
-				// fires the 'close' listener. Render our own ✕ over the overlay and clean up ourselves.
-				const closeBtn = document.createElement('button');
-				closeBtn.setAttribute('aria-label', 'Close checkout');
-				closeBtn.textContent = '✕';
-				closeBtn.style.cssText =
-					'position:fixed;top:16px;right:16px;z-index:2147483647;width:36px;height:36px;padding:0;border:0;border-radius:9999px;background:#fff;color:#1d2327;font-size:18px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25)';
-				const cleanup = () => {
-					closeBtn.remove();
-					setLoading('');
-				};
-				closeBtn.onclick = () => {
-					co.close();
-					cleanup();
-				};
-				document.body.appendChild(closeBtn);
-				co.addEventListener('success', () => window.location.reload());
-				co.addEventListener('close', cleanup);
-			} else {
-				window.location.href = url; // keep the spinner running through the navigation
-				return;
-			}
+			window.location.href = url; // Polar's hosted checkout; keep the spinner through the navigation
+			return;
 		} catch (e) {
 			toast(
 				String((e as Error)?.message || 'Could not start checkout.'),

@@ -77,13 +77,14 @@ class AdminPage {
 		return false;
 	}
 
-	/** Cardo — the serif both screens share. Registering is enough; each app's style depends on it. */
+	/** Cardo — the serif both screens share. Bundled locally (@font-face in assets/cardo.css); each
+	 * app's style depends on this handle. */
 	private function registerFont(): void {
 		wp_register_style(
 			'djinn-cardo',
-			'https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&display=swap',
+			DJINN_URL . 'assets/cardo.css',
 			array(),
-			null
+			DJINN_VERSION
 		);
 	}
 
@@ -124,9 +125,6 @@ class AdminPage {
 				'proUrl'       => esc_url_raw( Settings::proUrl() ),
 			)
 		);
-		if ( Settings::usesProxy() ) {
-			$this->enqueueBilling();
-		}
 	}
 
 	/** The Lamp — the wish-granting chat. */
@@ -156,11 +154,6 @@ class AdminPage {
 				'chatModel'     => (string) ( $settings['chat_model'] ?? '' ),
 			)
 		);
-	}
-
-	/** Load Polar's embed SDK so the Cave's payment block can open checkout (it drives it directly). */
-	private function enqueueBilling(): void {
-		wp_enqueue_script( 'polar-embed', 'https://cdn.jsdelivr.net/npm/@polar-sh/checkout@latest/dist/embed.global.js', array(), null, true );
 	}
 
 	/** The Cave of Wonders — Account · Capabilities · Spend, mounted by the cave bundle. */
