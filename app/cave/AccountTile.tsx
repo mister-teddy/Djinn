@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
+import { PolarEmbedCheckout } from '@polar-sh/checkout/embed';
 import { config, type ProviderInfo } from '@shared/api';
 import {
 	Tile,
@@ -267,7 +268,7 @@ function ProxyView({
 						? 'auto-renew on'
 						: 'top up to keep wishing'}
 				</div>
-				{config.polarEnabled && <PaymentBlock account={account} />}
+				<PaymentBlock account={account} />
 			</Card>
 		</Cards>
 	);
@@ -358,8 +359,26 @@ function PaymentBlock({ account }: { account: AccountData }) {
 		setLoading(kind);
 		try {
 			const url = await billingCheckout(kind);
-			window.location.href = url; // Polar's hosted checkout; keep the spinner through the navigation
-			return;
+			const co = await PolarEmbedCheckout.create(url, { theme: 'light' });
+			// The overlay is one cross-origin iframe: the SDK's ✕ only closes when the checkout is
+			// served from polar.sh, Escape can't reach the parent (focus is inside the iframe), and
+			// close() never fires the 'close' listener. Render our own ✕ over the overlay.
+			const closeBtn = document.createElement('button');
+			closeBtn.setAttribute('aria-label', 'Close checkout');
+			closeBtn.textContent = '✕';
+			closeBtn.style.cssText =
+				'position:fixed;top:16px;right:16px;z-index:2147483647;width:36px;height:36px;padding:0;border:0;border-radius:9999px;background:#fff;color:#1d2327;font-size:18px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25)';
+			const cleanup = () => {
+				closeBtn.remove();
+				setLoading('');
+			};
+			closeBtn.onclick = () => {
+				co.close();
+				cleanup();
+			};
+			document.body.appendChild(closeBtn);
+			co.addEventListener('success', () => window.location.reload());
+			co.addEventListener('close', cleanup);
 		} catch (e) {
 			toast(
 				String((e as Error)?.message || 'Could not start checkout.'),
