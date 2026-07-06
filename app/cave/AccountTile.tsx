@@ -138,6 +138,17 @@ export function AccountTile() {
 		}
 	}, [provider]);
 
+	// The proxy chooses server-side; a key provider needs a concrete model, so default an unset
+	// choice to the top recommended one rather than leaving it blank (which the backend rejects).
+	useEffect(() => {
+		if (models && !chatModel) {
+			const rec =
+				models.chat.find((m) => m.tier === 'recommended') ||
+				models.chat[0];
+			if (rec) setChatModel(rec.id);
+		}
+	}, [models]);
+
 	if (!settings) {
 		return (
 			<Tile title="Account">
@@ -402,20 +413,25 @@ function PaymentBlock({ account }: { account: AccountData }) {
 			const embed = await ensurePolarEmbed();
 			if (embed) {
 				const co = await embed.create(url, { theme: 'light' });
-				// The SDK's own ✕ posts a message the parent only accepts from polar.sh/sandbox.polar.sh;
-				// if the checkout is served from another origin it's ignored, so guarantee a way out via
-				// the instance's close() on Escape.
-				const onKey = (ev: KeyboardEvent) => {
-					if (ev.key === 'Escape') {
-						co.close();
-					}
-				};
-				window.addEventListener('keydown', onKey);
-				co.addEventListener('success', () => window.location.reload());
-				co.addEventListener('close', () => {
-					window.removeEventListener('keydown', onKey);
+				// The overlay is one cross-origin iframe: the SDK's ✕ only closes when served from
+				// polar.sh, Escape can't reach the parent (focus is inside the iframe), and close() never
+				// fires the 'close' listener. Render our own ✕ over the overlay and clean up ourselves.
+				const closeBtn = document.createElement('button');
+				closeBtn.setAttribute('aria-label', 'Close checkout');
+				closeBtn.textContent = '✕';
+				closeBtn.style.cssText =
+					'position:fixed;top:16px;right:16px;z-index:2147483647;width:36px;height:36px;padding:0;border:0;border-radius:9999px;background:#fff;color:#1d2327;font-size:18px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25)';
+				const cleanup = () => {
+					closeBtn.remove();
 					setLoading('');
-				});
+				};
+				closeBtn.onclick = () => {
+					co.close();
+					cleanup();
+				};
+				document.body.appendChild(closeBtn);
+				co.addEventListener('success', () => window.location.reload());
+				co.addEventListener('close', cleanup);
 			} else {
 				window.location.href = url; // keep the spinner running through the navigation
 				return;
@@ -509,7 +525,6 @@ function KeyView({
 					value={chatModel}
 					onChange={setChatModel}
 					groups={chatGroups}
-					placeholder="Provider default"
 				/>
 			</Field>
 			{models?.error && (
