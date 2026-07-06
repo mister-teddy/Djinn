@@ -51,6 +51,7 @@ jobs:
       # 2) Showcase — boot the real app, seed canned conversations, screenshot the live UI.
       #    The PNGs are consumed by the docs step below (embedded in the PDF), not uploaded loose.
       - name: Capture showcase screenshots
+        continue-on-error: true   # a UI/selector change must never block publishing the ZIPs
         run: |
           set -e
           SLUG=$(basename "$PWD")
@@ -64,6 +65,7 @@ jobs:
 
       # 3) Docs — both variants. build-docs.sh embeds the screenshots captured above.
       - name: Build docs (with showcases embedded)
+        continue-on-error: true
         run: |
           make docs
           make docs compact
@@ -74,6 +76,7 @@ jobs:
 
       # 4) Bundle the raw showcase PNGs into a zip (release assets are flat — no folders).
       - name: Bundle showcase images
+        continue-on-error: true
         run: ( cd build/screenshots && zip -qr "$GITHUB_WORKSPACE/Djinn — Showcase.zip" . -x '*.DS_Store' )
 
       # 5) Publish the release: edition ZIPs + the showcase-bearing PDFs + the showcase image zip.
