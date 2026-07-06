@@ -10,8 +10,19 @@ module.exports = {
 			colors: {
 				midnight: { DEFAULT: 'var(--djinn-midnight)', 2: 'var(--djinn-midnight-2)' },
 				violet: { DEFAULT: 'var(--djinn-violet)', soft: 'var(--djinn-violet-soft)' },
-				ivory: { DEFAULT: 'var(--djinn-ivory)', muted: 'var(--djinn-ivory-muted)' },
-				gold: { DEFAULT: 'var(--djinn-gold)', deep: 'var(--djinn-gold-deep)', ember: 'var(--djinn-gold-ember)' },
+				// Colors used with an opacity modifier (e.g. bg-gold/10) must be authored so Tailwind
+				// can inject the alpha channel; a bare var() can't take one, so those vars hold RGB
+				// channels and resolve through rgb(... / <alpha-value>). ivory DEFAULT stays a raw hex
+				// (used directly in chrome.css) since it's never opacity-modified.
+				ivory: {
+					DEFAULT: 'var(--djinn-ivory)',
+					muted: 'rgb(var(--djinn-ivory-muted) / <alpha-value>)',
+				},
+				gold: {
+					DEFAULT: 'rgb(var(--djinn-gold) / <alpha-value>)',
+					deep: 'rgb(var(--djinn-gold-deep) / <alpha-value>)',
+					ember: 'rgb(var(--djinn-gold-ember) / <alpha-value>)',
+				},
 				line: 'var(--djinn-line)',
 				divider: 'var(--djinn-divider)',
 			},
