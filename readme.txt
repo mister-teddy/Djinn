@@ -4,7 +4,7 @@ Tags: ai, assistant, automation, content, gemini
 Requires at least: 6.6
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.6.0
+Stable tag: 0.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,13 @@ Djinn is developed in the open at https://github.com/mister-teddy/Djinn — incl
 5. "Write and publish a welcome post for the site" — content drafted and published on request.
 
 == Changelog ==
+
+= 0.7.0 =
+* New: import a web page's content into a post — say "import <url> into a new post" and Djinn fetches, cleans, and drafts it. Available in Free.
+* Polar top-ups now open in an in-admin modal, bundled with the plugin.
+* Switching to the managed Djinn proxy links the site as soon as you save.
+* Fixed the gold/ivory highlight opacity across the admin UI.
+* Hardened for the WordPress.org directory: escaped output, sanitized uploads, locally bundled fonts, all assets served from the plugin.
 
 = 0.6.0 =
 * Free/Pro editions: Free writes content (posts, pages, media, taxonomies, comments); Pro unlocks the full schema scope and the REST escape hatch, via a Polar license key.
