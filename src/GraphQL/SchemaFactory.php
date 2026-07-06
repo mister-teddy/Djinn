@@ -105,6 +105,28 @@ class SchemaFactory {
 			)
 		);
 
+		$fetchedPage = new ObjectType(
+			array(
+				'name'        => 'FetchedPage',
+				'description' => 'The readable content of an external web page, fetched by URL.',
+				'fields'      => array(
+					'url'     => array( 'type' => Type::string() ),
+					'title'   => array(
+						'type'        => Type::string(),
+						'description' => 'The page title (from its <title>).',
+					),
+					'content' => array(
+						'type'        => Type::string(),
+						'description' => 'The main content as sanitized HTML — pass to createPost/updatePost content.',
+					),
+					'text'    => array(
+						'type'        => Type::string(),
+						'description' => 'The main content as plain text.',
+					),
+				),
+			)
+		);
+
 		$postInput = new InputObjectType(
 			array(
 				'name'        => 'PostInput',
@@ -131,6 +153,7 @@ class SchemaFactory {
 		$reg->setType( 'User', $user );
 		$reg->setType( 'SiteInfo', $siteInfo );
 		$reg->setType( 'PostInput', $postInput );
+		$reg->setType( 'FetchedPage', $fetchedPage );
 
 		// --- Core content/site fields -------------------------------------
 		$reg->setCurrentDomain( 'Core' );
@@ -192,6 +215,15 @@ class SchemaFactory {
 			)
 		);
 
+		$reg->addQuery(
+			'fetchUrl',
+			array(
+				'type'        => $fetchedPage,
+				'description' => 'Fetch an external web page by URL and return its readable content (title + main HTML/text). To import a page into a post: call fetchUrl, then createPost with the returned title and content.',
+				'args'        => array( 'url' => array( 'type' => Type::nonNull( Type::string() ) ) ),
+				'resolve'     => array( $res, 'fetchUrl' ),
+			)
+		);
 		$reg->addMutation(
 			'createPost',
 			array(

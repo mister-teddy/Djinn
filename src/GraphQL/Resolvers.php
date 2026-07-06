@@ -100,6 +100,97 @@ class Resolvers {
 		return is_scalar( $value ) ? (string) $value : (string) wp_json_encode( $value );
 	}
 
+	/**
+	 * Fetch an external web page and return its readable content, so the model can import it into a
+	 * post. Extraction is a lightweight heuristic (strip chrome, keep the main article/body); the
+	 * model refines the result into blocks.
+	 *
+	 * ponytail: heuristic reader, not full Readability — swap in a scoring extractor if pages import poorly.
+	 *
+	 * @param array<string,mixed> $args
+	 */
+	public function fetchUrl( $root, array $args ): array {
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			throw new UserError( 'You do not have permission to import content.' );
+		}
+		$url = esc_url_raw( (string) $args['url'] );
+		if ( ! $url || ! wp_http_validate_url( $url ) ) {
+			throw new UserError( 'That does not look like a fetchable URL.' );
+		}
+		$resp = wp_remote_get(
+			$url,
+			array(
+				'timeout'     => 15,
+				'redirection' => 3,
+				'user-agent'  => 'Djinn/1.0 (+WordPress content import)',
+			)
+		);
+		if ( is_wp_error( $resp ) ) {
+			throw new UserError( 'Could not fetch that URL: ' . $resp->get_error_message() );
+		}
+		$code = (int) wp_remote_retrieve_response_code( $resp );
+		if ( $code < 200 || $code >= 300 ) {
+			throw new UserError( "That URL returned HTTP $code." );
+		}
+		$ctype = (string) wp_remote_retrieve_header( $resp, 'content-type' );
+		if ( $ctype && ! preg_match( '#(html|text|xml)#i', $ctype ) ) {
+			throw new UserError( "That URL is not a web page (content-type: $ctype)." );
+		}
+		$html = (string) wp_remote_retrieve_body( $resp );
+
+		$title   = '';
+		$content = $html;
+		if ( trim( $html ) !== '' && class_exists( 'DOMDocument' ) ) {
+			$prev = libxml_use_internal_errors( true );
+			$doc  = new \DOMDocument();
+			$doc->loadHTML( '<?xml encoding="UTF-8">' . $html );
+			libxml_clear_errors();
+			libxml_use_internal_errors( $prev );
+
+			$titles = $doc->getElementsByTagName( 'title' );
+			if ( $titles->length ) {
+				$title = trim( $titles->item( 0 )->textContent );
+			}
+
+			foreach ( array( 'script', 'style', 'noscript', 'svg', 'nav', 'header', 'footer', 'aside', 'form', 'iframe' ) as $tag ) {
+				$nodes = $doc->getElementsByTagName( $tag );
+				for ( $i = $nodes->length - 1; $i >= 0; $i-- ) {
+					$node = $nodes->item( $i );
+					if ( $node->parentNode ) {
+						$node->parentNode->removeChild( $node );
+					}
+				}
+			}
+
+			$container = null;
+			foreach ( array( 'article', 'main', 'body' ) as $tag ) {
+				$els = $doc->getElementsByTagName( $tag );
+				if ( $els->length ) {
+					$container = $els->item( 0 );
+					break;
+				}
+			}
+			if ( $container ) {
+				$content = '';
+				foreach ( $container->childNodes as $child ) {
+					$content .= (string) $doc->saveHTML( $child );
+				}
+			}
+		}
+
+		$content = wp_kses_post( trim( $content ) );
+		// ponytail: hard cap so a huge page can't blow the wish's token budget.
+		$content = mb_substr( $content, 0, 200000 );
+		$text    = trim( (string) preg_replace( "/\n{3,}/", "\n\n", wp_strip_all_tags( $content ) ) );
+
+		return array(
+			'url'     => $url,
+			'title'   => $title,
+			'content' => $content,
+			'text'    => $text,
+		);
+	}
+
 	/** @param array<string,mixed> $args */
 	public function createPost( $root, array $args ): array {
 		$input    = $args['input'];

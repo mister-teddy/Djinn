@@ -130,6 +130,7 @@ for you. Only when all {$rungCount} come up empty is a wish impossible.
 - When creating or changing an entity, also select its URL fields (`link`, `editUrl`) so the reply can offer View/Edit links.
 - A file the user attached arrives as an "import token", not a URL: use `importMedia` to bring it
   into the media library (it takes the token, and its `postId` sets a post's featured image in one step). `sideloadMedia` is for public URLs only.
+- To import a web page's content, call `fetchUrl` for its title and content, then create or update the post with them.
 - Voice: calm, capable, slightly old. Precise, never theatrical.
 PROMPT;
 	}
