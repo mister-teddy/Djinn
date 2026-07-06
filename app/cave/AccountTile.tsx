@@ -198,13 +198,10 @@ function ProxyView({
 			.finally(() => setConnecting(false));
 	}
 
+	// This view only renders once Djinn is the selected provider, so link on mount whenever the site
+	// isn't connected yet — the saved `usesProxy` flag is still false while switching before a save.
 	useEffect(() => {
-		if (
-			!tried.current &&
-			account &&
-			account.usesProxy &&
-			!account.connected
-		) {
+		if (!tried.current && account && !account.connected) {
 			tried.current = true;
 			link();
 		}
