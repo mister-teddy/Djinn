@@ -41,6 +41,11 @@ check:
 	@err=0; for f in djinn.php $$(find src -name '*.php'); do \
 		php -l "$$f" >/dev/null 2>&1 || { echo "  ✗ $$f"; php -l "$$f"; err=1; }; \
 	done; [ $$err -eq 0 ] || exit 1; echo "  ✓ PHP OK"
+	@echo "→ Verifying it parses on the PHP 7.4 floor…"
+	@if docker info >/dev/null 2>&1; then \
+		docker run --rm -v "$$PWD":/app -w /app php:7.4-cli sh -c 'e=0; for f in djinn.php $$(find src -name "*.php"); do php -l "$$f" >/dev/null 2>&1 || { php -l "$$f"; e=1; }; done; exit $$e' \
+			&& echo "  ✓ parses on PHP 7.4"; \
+	else echo "  ⚠ Docker down — skipped (CI's php74-lint job enforces the 7.4 floor)"; fi
 	@echo "→ Type-checking the front-end…"
 	@npm run typecheck >/dev/null && echo "  ✓ TypeScript OK"
 	@echo "→ Regenerating Composer autoloader…"

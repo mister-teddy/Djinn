@@ -11,7 +11,25 @@ permissions:
   contents: write   # create the release + upload assets
 
 jobs:
+  # Gate: the shipped code must parse on the declared PHP floor. A real PHP 7.4 runtime rejects any
+  # 8.0+ syntax (match, enums, constructor promotion, nullsafe, …) outright — no static-analyzer
+  # version games. The release job below won't run unless this passes.
+  php74-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+      - name: Parse every PHP file on 7.4
+        run: |
+          for f in djinn.php $(find src -name '*.php'); do
+            php -l "$f" >/dev/null || { php -l "$f"; exit 1; }
+          done
+          echo "✔  All files parse on PHP 7.4"
+
   release:
+    needs: php74-lint
     runs-on: ubuntu-latest   # has Docker, make, zip — everything the build needs
     steps:
       - uses: actions/checkout@v4
