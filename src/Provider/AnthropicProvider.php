@@ -18,11 +18,15 @@ class AnthropicProvider implements Provider {
 	private const VERSION    = '2023-06-01';
 	private const MAX_TOKENS = 4096;
 
-	public function __construct(
-		protected string $apiKey,
-		protected string $chatModel,
-		protected string $baseUrl = 'https://api.anthropic.com'
-	) {}
+	protected string $apiKey;
+	protected string $chatModel;
+	protected string $baseUrl;
+
+	public function __construct( string $apiKey, string $chatModel, string $baseUrl = 'https://api.anthropic.com' ) {
+		$this->apiKey    = $apiKey;
+		$this->chatModel = $chatModel;
+		$this->baseUrl   = $baseUrl;
+	}
 
 	protected function providerLabel(): string {
 		return 'anthropic';

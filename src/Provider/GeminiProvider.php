@@ -16,10 +16,13 @@ class GeminiProvider implements Provider {
 
 	private const BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
-	public function __construct(
-		private string $apiKey,
-		private string $chatModel
-	) {}
+	private string $apiKey;
+	private string $chatModel;
+
+	public function __construct( string $apiKey, string $chatModel ) {
+		$this->apiKey    = $apiKey;
+		$this->chatModel = $chatModel;
+	}
 
 	public function chat( string $system, array $messages, array $tools ): array {
 		$payload = array(

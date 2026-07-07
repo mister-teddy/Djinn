@@ -14,11 +14,15 @@ class OpenAIProvider implements Provider {
 
 	use Http;
 
-	public function __construct(
-		private string $apiKey,
-		private string $chatModel,
-		private string $baseUrl = 'https://api.openai.com/v1'
-	) {}
+	private string $apiKey;
+	private string $chatModel;
+	private string $baseUrl;
+
+	public function __construct( string $apiKey, string $chatModel, string $baseUrl = 'https://api.openai.com/v1' ) {
+		$this->apiKey    = $apiKey;
+		$this->chatModel = $chatModel;
+		$this->baseUrl   = $baseUrl;
+	}
 
 	protected function chatUrl(): string {
 		return rtrim( $this->baseUrl, '/' ) . '/chat/completions';

@@ -11,4 +11,12 @@
 
 	<!-- The WordPress coding style: tabs, spacing, array and brace formatting. -->
 	<rule ref="WordPress-Core"/>
+
+	<!-- Enforce the PHP 7.4 floor: any 8.0+ syntax or function fails the lint (WP core polyfills
+	     like str_starts_with are recognized, so they pass). -->
+	<config name="testVersion" value="7.4-"/>
+	<rule ref="PHPCompatibilityWP">
+		<!-- False positive: matches our Providers::family() method against the ancient `fam` extension. -->
+		<exclude name="PHPCompatibility.Extensions.RemovedExtensions"/>
+	</rule>
 </ruleset>
