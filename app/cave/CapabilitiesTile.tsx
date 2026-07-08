@@ -65,6 +65,28 @@ function ProUpsell() {
 	);
 }
 
+function ProLicenseNotice() {
+	return (
+		<div className="mb-5 rounded-djinn border border-[#dcdcde] bg-[#f6f7f7] p-4">
+			<div className="flex items-center gap-2">
+				<span
+					className="text-[15px] leading-none text-gold"
+					aria-hidden
+				>
+					✦
+				</span>
+				<h3 className="m-0 font-serif text-[18px] leading-none text-[#1d2327]">
+					Djinn Pro installed
+				</h3>
+			</div>
+			<p className="mb-0 mt-1.5 text-[13px] text-[#646970]">
+				Activate your license in the Account tile to unlock the full
+				schema scope on this site.
+			</p>
+		</div>
+	);
+}
+
 export function CapabilitiesTile() {
 	const [ops, setOps] = useState<OperationsData | null>(null);
 	useEffect(() => {
@@ -75,7 +97,12 @@ export function CapabilitiesTile() {
 
 	return (
 		<Tile title="Capabilities">
-			{!config.isPro && <ProUpsell />}
+			{!config.isPro &&
+				(config.edition === 'pro' ? (
+					<ProLicenseNotice />
+				) : (
+					<ProUpsell />
+				))}
 			<p className="text-[#787c82]">
 				Everything the Djinn can do here — the operations it can run,
 				grouped by area.
