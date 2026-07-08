@@ -9,19 +9,22 @@ export interface ProviderInfo {
 	keyHint?: string;
 }
 
-/** The shape injected via wp_localize_script as `Djinn` (Lamp) or `DjinnCave` (Cave). */
+/** The shape injected via wp_localize_script as `DjinnAdmin`. */
 export interface DjinnConfig {
 	restUrl: string;
 	gqlUrl: string;
 	nonce: string;
 	usesProxy: boolean;
 	configured: boolean;
+	page?: 'lamp' | 'cave';
 	privacyUrl?: string;
 	provider?: string;
 	providerLabel?: string;
 	chatModel?: string;
 	// Lamp
 	settingsUrl?: string;
+	lampUrl?: string;
+	caveUrl?: string;
 	siteName?: string;
 	// Cave
 	edition?: string;
@@ -33,12 +36,14 @@ export interface DjinnConfig {
 
 declare global {
 	interface Window {
+		DjinnAdmin?: DjinnConfig;
 		Djinn?: DjinnConfig;
 		DjinnCave?: DjinnConfig;
 	}
 }
 
-export const config: DjinnConfig = (window.DjinnCave ??
+export const config: DjinnConfig = (window.DjinnAdmin ??
+	window.DjinnCave ??
 	window.Djinn) as DjinnConfig;
 
 // apiFetch's nonce middleware sends X-WP-Nonce and refreshes it from the response header, so a

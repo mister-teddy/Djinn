@@ -13,7 +13,8 @@ include .env
 export
 endif
 
-DJINN_PROVIDER ?= openai
+DJINN_PROVIDER ?= proxy
+DJINN_PROVIDER_EFFECTIVE := $(if $(strip $(DJINN_PROVIDER)),$(DJINN_PROVIDER),proxy)
 WPENV := npx @wordpress/env
 WP := $(WPENV) run cli wp
 # wp-env mounts this directory as a plugin under its folder name (case-sensitive).
@@ -77,14 +78,16 @@ activate:
 # The key is written to a short-lived, gitignored file (mounted into the container) and loaded
 # via its path — so it never appears in the command line, process list, or wp-env's echo.
 seed:
-	@printf '{"provider":"%s","api_key":"%s","chat_model":"%s"}' \
-		'$(DJINN_PROVIDER)' '$(DJINN_API_KEY)' '$(DJINN_CHAT_MODEL)' > .djinn-seed.json
-	@$(WP) eval 'update_option("djinn_settings", json_decode(file_get_contents(ABSPATH."wp-content/plugins/$(SLUG)/.djinn-seed.json"), true));' >/dev/null
+	@printf '{"provider":"%s","api_key":"%s","chat_model":"%s","site_token":"%s"}' \
+		'$(DJINN_PROVIDER_EFFECTIVE)' '$(DJINN_API_KEY)' '$(DJINN_CHAT_MODEL)' '$(DJINN_SITE_TOKEN)' > .djinn-seed.json
+	@$(WP) eval '\Djinn\Settings::update(json_decode(file_get_contents(ABSPATH."wp-content/plugins/$(SLUG)/.djinn-seed.json"), true));' >/dev/null
 	@rm -f .djinn-seed.json
-	@if [ -z "$(strip $(DJINN_API_KEY))" ]; then \
-		echo "⚠  DJINN_API_KEY is empty — set it in .env and re-run 'make seed', or use Djinn → Settings."; \
+	@if [ "$(DJINN_PROVIDER_EFFECTIVE)" = "proxy" ]; then \
+		echo "✔  Seeded provider=Djinn into djinn_settings."; \
+	elif [ -z "$(strip $(DJINN_API_KEY))" ]; then \
+		echo "⚠  DJINN_API_KEY is empty — set it in .env and re-run 'make seed', or use Djinn → Cave of Wonders."; \
 	else \
-		echo "✔  Seeded provider=$(DJINN_PROVIDER) and API key into djinn_settings (key not echoed)."; \
+		echo "✔  Seeded provider=$(DJINN_PROVIDER_EFFECTIVE) and API key into djinn_settings (key not echoed)."; \
 	fi
 
 cli:

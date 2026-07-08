@@ -79,7 +79,7 @@ the **Capabilities** tile of **Djinn → Cave of Wonders** lists every operation
 Requires Docker and Node (for [`wp-env`](https://developer.wordpress.org/block-editor/reference-guides/packages/packages-env/)).
 
 ```bash
-cp .env.example .env        # then paste your provider API key into .env
+cp .env.example .env        # optional: set a BYO provider/key; default provider is Djinn
 make up                     # composer install + wp-env start + activate + seed settings
 npm ci && make build        # install JS deps + compile the admin SPA (or `make watch` to rebuild on change)
 make open                   # open wp-admin (admin / password)
@@ -94,8 +94,9 @@ Then visit **Djinn → Lamp** and make a wish. Other targets: `make restart` (fa
 2. `npm ci && npm run build` to compile the admin SPA into `build/` (the admin shows a notice until you do).
 3. Activate **Djinn** in wp-admin (creates the custom tables).
 // out of date
-4. **Djinn → Cave of Wonders**, Account tile: choose a provider, paste an API key (or define
-   `DJINN_API_KEY` in `wp-config.php`); models are picked from dropdowns discovered from your key. Save.
+4. **Djinn → Cave of Wonders**, Account tile: Djinn is selected by default. For a BYO provider,
+   choose OpenAI/Gemini/Anthropic, paste an API key (or define `DJINN_API_KEY` in `wp-config.php`);
+   models are picked from dropdowns discovered from your key. Save.
 5. Open **Djinn → Lamp** and make a wish.
 
 ## Try it

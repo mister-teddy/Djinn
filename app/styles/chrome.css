@@ -1,64 +1,36 @@
-/* Page-level paint and wp-admin chrome adjustments that live outside the SPA root (so they can't
-   be scoped under .djinn-app). Both screens go full-bleed and hide top-level admin notices — each
-   app carries its own feedback inside its panels. */
-
-/* ---- Lamp ---- */
-body.toplevel_page_djinn {
-	background: var(--djinn-midnight);
-	overscroll-behavior: none;
-}
-body.toplevel_page_djinn #wpcontent {
-	padding-left: 0;
-}
-body.toplevel_page_djinn #wpbody-content {
-	padding-bottom: 0;
-}
-body.toplevel_page_djinn #wpfooter {
-	display: none;
-}
-body.toplevel_page_djinn #wpbody-content > .notice,
-body.toplevel_page_djinn #wpbody-content > .updated,
-body.toplevel_page_djinn #wpbody-content > .error,
-body.toplevel_page_djinn #wpbody-content > .update-nag,
-body.toplevel_page_djinn .update-nag {
-	display: none;
-}
+/* Page-level sizing for the React admin app. WordPress owns wp-admin chrome and notices; Djinn
+   stays inside the standard `.wrap` flow so third-party notices cannot overlap the app. */
 .djinn-wrap {
-	margin: 0;
-	padding: 0;
 	max-width: none;
-	height: calc(100vh - 32px);
+}
+#djinn-admin-root {
+	color: #1d2327;
+	font-size: 14px;
+}
+.djinn-admin-shell {
+	margin-right: 20px;
+}
+.djinn-admin-surface {
+	height: clamp(560px, calc(100vh - 220px), 900px);
+	min-height: 560px;
 	overflow: hidden;
+	border: 1px solid var(--djinn-line);
+	border-radius: 8px;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.djinn-admin-shell--lamp .djinn-admin-surface {
+	background: var(--djinn-midnight);
+}
+.djinn-admin-surface > * {
+	height: 100%;
 }
 @media screen and (max-width: 782px) {
-	.djinn-wrap {
-		height: calc(100vh - 46px);
+	.djinn-admin-shell {
+		margin-right: 10px;
 	}
-}
-#djinn-root {
-	height: 100%;
-	color: var(--djinn-ivory);
-	font-size: 16px;
-}
-
-/* ---- Cave ---- */
-body.djinn_page_djinn-cave {
-	background: #fff;
-	overscroll-behavior: none;
-}
-body.djinn_page_djinn-cave #wpcontent {
-	padding-left: 0;
-}
-body.djinn_page_djinn-cave #wpbody-content {
-	padding-bottom: 0;
-}
-body.djinn_page_djinn-cave #wpfooter {
-	display: none;
-}
-body.djinn_page_djinn-cave #wpbody-content > .notice,
-body.djinn_page_djinn-cave #wpbody-content > .updated,
-body.djinn_page_djinn-cave #wpbody-content > .error,
-body.djinn_page_djinn-cave #wpbody-content > .update-nag,
-body.djinn_page_djinn-cave .update-nag {
-	display: none;
+	.djinn-admin-surface {
+		height: calc(100vh - 190px);
+		min-height: 520px;
+	}
 }

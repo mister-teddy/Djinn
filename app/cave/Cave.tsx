@@ -4,8 +4,8 @@ import { AccountTile } from './AccountTile';
 import { CapabilitiesTile } from './CapabilitiesTile';
 import { SpendTile } from './SpendTile';
 
-// Account + Capabilities stack in a resizable left column; Spend fills the right. The page never
-// scrolls — each tile body scrolls on its own.
+// Account + Capabilities stack in a resizable left column; Spend fills the right. The app shell
+// owns the outer height, and each tile body scrolls on its own.
 export function Cave() {
 	const col = usePanelResize({
 		storageKey: 'djinn_cave_split',
@@ -24,7 +24,7 @@ export function Cave() {
 	const resizing = col.resizing || acc.resizing;
 	return (
 		<div
-			className={`flex h-[calc(100vh-32px)] items-stretch bg-white ${resizing ? 'cursor-col-resize select-none' : ''}`}
+			className={`flex h-full items-stretch bg-white ${resizing ? 'cursor-col-resize select-none' : ''}`}
 		>
 			<ToastHost />
 			<div

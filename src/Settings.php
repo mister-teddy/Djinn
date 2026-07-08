@@ -31,7 +31,7 @@ class Settings {
 	/** @return array{provider:string,api_key:string,site_token:string,chat_model:string} */
 	public static function all(): array {
 		$defaults = array(
-			'provider'   => 'openai',
+			'provider'   => 'proxy',
 			'api_key'    => '',
 			'site_token' => '',
 			'chat_model' => '',
@@ -40,7 +40,7 @@ class Settings {
 		return array_merge( $defaults, is_array( $stored ) ? $stored : array() );
 	}
 
-	/** The effective provider (default openai; 'proxy' routes through the hosted gateway). */
+	/** The effective provider (default proxy; 'proxy' routes through the hosted gateway). */
 	public static function provider(): string {
 		return self::all()['provider'];
 	}

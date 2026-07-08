@@ -2,6 +2,6 @@ import '../styles/tokens.css';
 import '../styles/tailwind.css';
 import '../styles/chrome.css';
 import { mount } from '@shared/mount';
-import { Cave } from './Cave';
+import { AdminApp } from './AdminApp';
 
-mount('djinn-cave-root', <Cave />);
+mount( 'djinn-admin-root', <AdminApp /> );

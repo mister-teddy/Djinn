@@ -8,9 +8,9 @@ use Djinn\Provider\Providers;
 use Djinn\Settings;
 
 /**
- * Registers the admin menu (Lamp + Cave of Wonders) and enqueues the compiled React/Tailwind SPA
- * from build/, reading each entry's dependencies and cache-busting version from the *.asset.php
- * that @wordpress/scripts emits.
+ * Registers the admin menu (Lamp + Cave of Wonders) and enqueues the compiled React/Tailwind admin
+ * app from build/, reading dependencies and cache-busting version from the *.asset.php that
+ * @wordpress/scripts emits.
  */
 class AdminPage {
 
@@ -38,7 +38,7 @@ class AdminPage {
 	}
 
 	public function renderApp(): void {
-		echo '<div class="wrap djinn-wrap djinn-app"><div id="djinn-root"></div></div>';
+		$this->renderAdminRoot();
 	}
 
 	/**
@@ -57,15 +57,15 @@ class AdminPage {
 
 	public function enqueue( string $hook ): void {
 		if ( $hook === 'toplevel_page_' . self::SLUG ) {
-			$this->enqueueApp();
+			$this->enqueueAdmin( 'lamp' );
 		} elseif ( $hook === 'djinn_page_' . self::CAVE_SLUG ) {
-			$this->enqueueCave();
+			$this->enqueueAdmin( 'cave' );
 		}
 	}
 
 	/** Whether the front-end has been compiled. If not, surface a notice instead of a blank screen. */
 	private function buildReady(): bool {
-		if ( is_readable( DJINN_DIR . 'build/lamp.asset.php' ) ) {
+		if ( is_readable( DJINN_DIR . 'build/admin.asset.php' ) ) {
 			return true;
 		}
 		add_action(
@@ -101,54 +101,35 @@ class AdminPage {
 		return $handle;
 	}
 
-	/** The Cave of Wonders — Account · Capabilities · Spend. */
-	private function enqueueCave(): void {
+	private function enqueueAdmin( string $page ): void {
 		if ( ! $this->buildReady() ) {
 			return;
 		}
 		$this->registerFont();
-		$handle = $this->enqueueEntry( 'cave' );
-		wp_localize_script(
-			$handle,
-			'DjinnCave',
-			array(
-				'restUrl'      => esc_url_raw( rest_url( 'djinn/v1' ) ),
-				'gqlUrl'       => esc_url_raw( rest_url( 'djinn/v1/graphql' ) ),
-				'nonce'        => wp_create_nonce( 'wp_rest' ),
-				'edition'      => Settings::edition(),
-				'isPro'        => Settings::isPro(),
-				'usesProxy'    => Settings::usesProxy(),
-				'configured'   => Settings::isConfigured(),
-				'polarEnabled' => Settings::usesProxy(),
-				'providers'    => Providers::forClient(),
-				'privacyUrl'   => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
-				'proUrl'       => esc_url_raw( Settings::proUrl() ),
-			)
-		);
-	}
-
-	/** The Lamp — the wish-granting chat. */
-	private function enqueueApp(): void {
-		if ( ! $this->buildReady() ) {
-			return;
-		}
-		$this->registerFont();
-		$handle    = $this->enqueueEntry( 'lamp' );
+		$handle    = $this->enqueueEntry( 'admin' );
 		$settings  = Settings::all();
 		$provider  = (string) ( $settings['provider'] ?? Settings::provider() );
 		$providers = Providers::all();
 		wp_localize_script(
 			$handle,
-			'Djinn',
+			'DjinnAdmin',
 			array(
 				'restUrl'       => esc_url_raw( rest_url( 'djinn/v1' ) ),
 				'gqlUrl'        => esc_url_raw( rest_url( 'djinn/v1/graphql' ) ),
 				'nonce'         => wp_create_nonce( 'wp_rest' ),
+				'page'          => $page,
 				'usesProxy'     => Settings::usesProxy(),
 				'configured'    => Settings::isConfigured(),
 				'settingsUrl'   => admin_url( 'admin.php?page=' . self::CAVE_SLUG ),
+				'lampUrl'       => admin_url( 'admin.php?page=' . self::SLUG ),
+				'caveUrl'       => admin_url( 'admin.php?page=' . self::CAVE_SLUG ),
 				'siteName'      => get_option( 'blogname' ),
 				'privacyUrl'    => esc_url_raw( Settings::proxyUrl() . '/privacy' ),
+				'edition'       => Settings::edition(),
+				'isPro'         => Settings::isPro(),
+				'polarEnabled'  => Settings::usesProxy(),
+				'providers'     => Providers::forClient(),
+				'proUrl'        => esc_url_raw( Settings::proUrl() ),
 				'provider'      => $provider,
 				'providerLabel' => $providers[ $provider ]['label'] ?? $provider,
 				'chatModel'     => (string) ( $settings['chat_model'] ?? '' ),
@@ -156,8 +137,12 @@ class AdminPage {
 		);
 	}
 
-	/** The Cave of Wonders — Account · Capabilities · Spend, mounted by the cave bundle. */
+	/** The Cave of Wonders — Account · Capabilities · Spend. */
 	public function renderCave(): void {
-		echo '<div class="wrap djinn-wrap djinn-cave-wrap djinn-app"><div id="djinn-cave-root"></div></div>';
+		$this->renderAdminRoot();
+	}
+
+	private function renderAdminRoot(): void {
+		echo '<div class="wrap djinn-wrap djinn-app"><div id="djinn-admin-root"></div></div>';
 	}
 }
