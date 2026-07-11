@@ -4,7 +4,7 @@ Tags: ai, assistant, automation, content, gemini
 Requires at least: 5.9
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.7.4
+Stable tag: 0.7.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -81,6 +81,10 @@ Djinn is developed in the open at https://github.com/mister-teddy/Djinn — incl
 5. "Write and publish a welcome post for the site" — content drafted and published on request.
 
 == Changelog ==
+
+= 0.7.5 =
+* Split paid capabilities into a separate Pro add-on so the WordPress.org package contains only fully available base functionality.
+* Hardened uploads, widget writes, user-role assignment, prompt templates, and external-service disclosures for plugin review.
 
 = 0.7.2 =
 * Broader compatibility: now runs on PHP 7.4+ and WordPress 5.9+.
