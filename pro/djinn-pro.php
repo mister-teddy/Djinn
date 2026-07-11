@@ -3,7 +3,7 @@
  * Plugin Name:       Djinn Pro
  * Plugin URI:        https://github.com/mister-teddy/Djinn
  * Description:       Paid capability add-on for Djinn. Requires the base Djinn plugin.
- * Version:           0.7.5
+ * Version:           0.7.6
  * Requires PHP:      7.4
  * Requires at least: 5.9
  * Requires Plugins:  djinn
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'DJINN_PRO_VERSION', '0.7.5' );
+define( 'DJINN_PRO_VERSION', '0.7.6' );
 define( 'DJINN_PRO_FILE', __FILE__ );
 define( 'DJINN_PRO_DIR', plugin_dir_path( __FILE__ ) );
 
