@@ -252,25 +252,4 @@ class Resolvers {
 		return (bool) wp_delete_post( $id, (bool) ( $args['force'] ?? false ) );
 	}
 
-	/** @param array<string,mixed> $args */
-	public function updateOption( $root, array $args ): bool {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			throw new UserError( esc_html( 'You do not have permission to change options.' ) );
-		}
-		return (bool) update_option( $args['name'], $args['value'] );
-	}
-
-	/** @param array<string,mixed> $args */
-	public function updateSiteInfo( $root, array $args ): bool {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			throw new UserError( esc_html( 'You do not have permission to change site settings.' ) );
-		}
-		if ( isset( $args['title'] ) ) {
-			update_option( 'blogname', $args['title'] );
-		}
-		if ( isset( $args['description'] ) ) {
-			update_option( 'blogdescription', $args['description'] );
-		}
-		return true;
-	}
 }

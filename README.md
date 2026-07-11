@@ -13,8 +13,9 @@ and the Djinn works through a small, fixed toolset:
 
 - `run_graphql` — execute a GraphQL operation. Reads run immediately; **wishes that write pause
   for your blessing**, showing the exact mutation and variables before anything happens.
-- `rest_call` — call a WordPress REST route directly, the escape hatch for plugins with no native
-  GraphQL field. Reads run immediately; writes pause for your blessing, like mutations.
+- `rest_call` — added by the Pro add-on. Calls a WordPress REST route directly, the escape hatch
+  for plugins with no native GraphQL field. Reads run immediately; writes pause for your blessing,
+  like mutations.
 
 ```
 Admin SPA (React/Tailwind)  ──POST /wish/stream (SSE)──▶  PHP agent loop (schema in system prompt)
@@ -29,8 +30,9 @@ Admin SPA (React/Tailwind)  ──POST /wish/stream (SSE)──▶  PHP agent lo
   `webonyx/graphql-php` library. Resolvers wrap `WP_Query`, `wp_insert_post`, `update_option`, …
 - **Capabilities are enforced in every resolver** (`current_user_can`) — the Djinn can never
   exceed the logged-in admin's real rights.
-- **Extensible schema.** Capabilities are modular features (`src/GraphQL/Features/`); a plugin can
-  register its own types/resolvers via the `djinn_register_schema` action — no core edits.
+- **Extensible schema.** Base capabilities are modular features (`src/GraphQL/Features/`), and the
+  Pro add-on keeps paid feature classes under `pro/src/GraphQL/Features/`. Any plugin can register
+  its own types/resolvers via the `djinn_register_schema` action — no core edits.
 - **Multi-provider.** OpenAI, Google Gemini, and Anthropic adapters ship today (`src/Provider/`);
   the `Provider` interface makes adding others straightforward.
 - **The admin UI is a TypeScript/React/Tailwind SPA** in `app/`, built with `@wordpress/scripts`
@@ -49,13 +51,16 @@ the Djinn can run), and **Spend** (token + cost usage).
 
 ## What you can wish for
 
-The Djinn's reach is whatever the schema exposes. Today, across modular features:
+The Djinn's reach is whatever the schema exposes. The base WordPress.org plugin includes:
 
 - **Content** — posts, pages, any post type: list, read, create, update, delete.
 - **Taxonomies** — categories, tags, custom taxonomies: list/create/delete terms, assign to posts.
 - **Comments** — list, approve/spam/trash, reply, delete.
-- **Users** — list, create, change role, delete.
 - **Media** — list, import from a URL, set featured image, delete.
+
+The separate Pro add-on adds:
+
+- **Users** — list, create, change role, delete.
 - **Appearance** — list/switch themes, edit the site's Additional CSS.
 - **Site & options** — title, tagline, and any `wp_options` value.
 - **System** — activate/deactivate, install (from WordPress.org), and update plugins & themes;
@@ -134,31 +139,28 @@ pricier per wish. Figures are estimates from public list prices — tune them wi
 
 ## Editions
 
-Djinn ships in two editions, set by the `DJINN_EDITION` build constant (default `free`). They differ
-only in **scope** — every inference provider (your own OpenAI / Gemini / Anthropic / Claude Code key,
-or the managed Djinn proxy) works in both.
+Djinn ships as a base WordPress.org plugin plus a separate Pro add-on. They differ only in
+**scope** — every inference provider (your own OpenAI / Gemini / Anthropic / Claude Code key, or
+the managed Djinn proxy) works with the base plugin.
 
-| | **Free** (WordPress.org) | **Pro** (separate ZIP) |
+| | **Base** (WordPress.org) | **Pro add-on** (separate ZIP) |
 |---|---|---|
 | Writes | Content: posts, pages, media, categories, comments | Full schema: users, settings, navigation, appearance, plugins/themes/core, WooCommerce |
 | `rest_call` escape hatch | — | ✓ (any REST route) |
 | Reads | Everything | Everything |
 | Providers | All (BYO key or managed proxy) | All (BYO key or managed proxy) |
-| Unlock | — | Polar license key, activated in the Cave |
+| Activation | Activate the base plugin | Install and activate `djinn-pro` alongside the base plugin |
 
-The managed proxy is available in **both** editions (prepaid credit via Polar); the edition gates
+The managed proxy is available in the base plugin (prepaid credit via Polar); the add-on extends
 capability scope, not provider access. Build installable ZIPs:
 
 ```bash
-make dist                                     # free → dist/djinn-free-<ver>.zip
-make dist pro PROXY_URL=https://your-proxy    # pro  → dist/djinn-pro-<ver>.zip
+make dist                                  # base -> dist/djinn-free-<ver>.zip
+make dist pro                              # add-on -> dist/djinn-pro-<ver>.zip
+make dist all PROXY_URL=https://your-proxy # both, with an optional proxy override in base
 ```
 
-To test Pro locally, set in `wp-config.php`, then activate your license in Djinn → Cave of Wonders:
-
-```php
-define( 'DJINN_EDITION', 'pro' );
-```
+To test Pro locally, install and activate the `pro/djinn-pro.php` add-on next to the base plugin.
 
 ### Pro features
 

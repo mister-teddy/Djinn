@@ -103,6 +103,20 @@ class WidgetsFeature implements Feature {
 		return preg_replace( '/-\d+$/', '', $widgetId ) ?? $widgetId;
 	}
 
+	private function registeredIdBaseOrFail( string $idBase ): string {
+		global $wp_widget_factory;
+		$idBase = sanitize_key( $idBase );
+		if ( $idBase === '' ) {
+			throw new UserError( esc_html( 'Widget idBase is required.' ) );
+		}
+		foreach ( (array) $wp_widget_factory->widgets as $widget ) {
+			if ( isset( $widget->id_base ) && $widget->id_base === $idBase ) {
+				return $idBase;
+			}
+		}
+		throw new UserError( esc_html( "No registered widget type '$idBase'." ) );
+	}
+
 	/** @return array<int,array<string,mixed>> */
 	/** @param array<string,mixed> $args */
 	public function sidebars( $root = null, array $args = array() ): array {
@@ -140,7 +154,7 @@ class WidgetsFeature implements Feature {
 		if ( ! isset( $wp_registered_sidebars[ $sidebar ] ) ) {
 			throw new UserError( esc_html( "No such sidebar '$sidebar'." ) );
 		}
-		$idBase   = (string) $args['idBase'];
+		$idBase   = $this->registeredIdBaseOrFail( (string) $args['idBase'] );
 		$settings = isset( $args['settings'] ) ? json_decode( (string) $args['settings'], true ) : array();
 		if ( ! is_array( $settings ) ) {
 			throw new UserError( esc_html( 'settings must be a JSON object.' ) );
@@ -171,6 +185,7 @@ class WidgetsFeature implements Feature {
 		$this->gate();
 		$widgetId = (string) $args['id'];
 		$idBase   = $this->idBase( $widgetId );
+		$idBase   = $this->registeredIdBaseOrFail( $idBase );
 		$index    = (int) substr( $widgetId, strlen( $idBase ) + 1 );
 
 		$map   = wp_get_sidebars_widgets(); // phpcs:ignore Generic.PHP.ForbiddenFunctions.Found -- reading the sidebar->widget map; core normalizes legacy option shapes.

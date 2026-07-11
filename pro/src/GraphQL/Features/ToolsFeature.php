@@ -12,9 +12,9 @@ use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
 
 /**
- * Tools: a site-health/system summary, a content export (WXR), and a full database dump. Exports
- * write a file and return a download token (returning multi-MB data inline would be useless in
- * chat); the file is served only by the gated /download endpoint. Gated on manage_options.
+ * Tools: a site-health/system summary and a content export (WXR). Exports write a file and return
+ * a download token (returning multi-MB data inline would be useless in chat); the file is served
+ * only by the gated /download endpoint. Gated on manage_options.
  */
 class ToolsFeature implements Feature {
 
@@ -78,14 +78,6 @@ class ToolsFeature implements Feature {
 					),
 				),
 				'resolve'     => array( $this, 'exportContent' ),
-			)
-		);
-		$r->addQuery(
-			'exportDatabase',
-			array(
-				'type'        => $download,
-				'description' => 'Dump the full WordPress database to a .sql file and return a download token (for backup). Download-only — there is no restore.',
-				'resolve'     => array( $this, 'exportDatabase' ),
 			)
 		);
 		$r->addMutation(
@@ -157,53 +149,6 @@ class ToolsFeature implements Feature {
 			throw new UserError( esc_html( 'Could not write the export file.' ) );
 		}
 		return $this->result( $path, 'text/xml' );
-	}
-
-	/**
-	 * Full database dump, streamed to disk in batches so memory stays flat on large sites.
-	 * Download-only (per design) — there is no restore.
-	 *
-	 * @return array{token:string,filename:string,bytes:int}
-	 */
-	public function exportDatabase(): array {
-		$this->gate();
-		global $wpdb;
-
-		$path = $this->file( 'djinn-db-' . gmdate( 'Ymd-His' ) . '.sql' );
-		// phpcs:disable WordPress.WP.AlternativeFunctions, WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL, PluginCheck.Security.DirectDB -- DB export streams to disk in batches (no incremental WP_Filesystem writer); table names come from SHOW TABLES and values are prepared.
-		$fh   = fopen( $path, 'w' );
-		if ( ! $fh ) {
-			throw new UserError( esc_html( 'Could not open the dump file for writing.' ) );
-		}
-		fwrite( $fh, '-- Djinn database export — ' . gmdate( 'c' ) . "\nSET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n" );
-
-		foreach ( (array) $wpdb->get_col( 'SHOW TABLES' ) as $table ) {
-			$create = $wpdb->get_row( "SHOW CREATE TABLE `$table`", ARRAY_N );
-			fwrite( $fh, "\n-- Table $table\nDROP TABLE IF EXISTS `$table`;\n" . $create[1] . ";\n" );
-
-			$offset = 0;
-			$batch  = 500;
-			do {
-				$rows = $wpdb->get_results( "SELECT * FROM `$table` LIMIT $batch OFFSET $offset", ARRAY_A );
-				foreach ( $rows as $row ) {
-					$cols = implode( ',', array_map( static fn( $c ) => "`$c`", array_keys( $row ) ) );
-					$vals = implode(
-						',',
-						array_map(
-							static fn( $v ) => $v === null ? 'NULL' : $wpdb->prepare( '%s', $v ),
-							array_values( $row )
-						)
-					);
-					fwrite( $fh, "INSERT INTO `$table` ($cols) VALUES ($vals);\n" );
-				}
-				$offset += $batch;
-			} while ( count( $rows ) === $batch );
-		}
-		fwrite( $fh, "\nSET FOREIGN_KEY_CHECKS=1;\n" );
-		fclose( $fh );
-		// phpcs:enable WordPress.WP.AlternativeFunctions, WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL, PluginCheck.Security.DirectDB
-
-		return $this->result( $path, 'application/sql' );
 	}
 
 	/**

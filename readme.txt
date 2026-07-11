@@ -16,19 +16,19 @@ Djinn is an AI assistant for the WordPress admin. Speak plainly — *"create a d
 
 Every action is capability-gated — Djinn can never exceed the logged-in admin's real rights.
 
-What you can wish for: Djinn reads anything on your site, and the free plugin writes content — posts & pages, media, categories & tags, comments — all gated by your capabilities and the approval step. **Djinn Pro** unlocks the full schema: users, settings, appearance & the site editor, options, system management (plugins, themes, core), WooCommerce, and a universal REST escape hatch.
+What you can wish for: the WordPress.org plugin reads anything on your site, and writes content — posts & pages, media, categories & tags, comments — all gated by your capabilities and the approval step. **Djinn Pro** is a separate add-on plugin, distributed outside WordPress.org, that adds schema domains for users, settings, appearance & the site editor, options, system management (plugins, themes, core), WooCommerce, and a universal REST escape hatch.
 
 = Free vs. Pro =
 
-The two editions differ only in **scope** — every model option works in both.
+The base plugin and Pro add-on differ only in **scope** — every model option works with the base plugin.
 
-* **Free** — read anything; write content (posts, pages, media, categories, comments). Use your own OpenAI, Google Gemini, or Anthropic key, or the managed Djinn proxy (no key to paste; prepaid credit handled by Polar).
-* **Pro** — unlocks the full schema scope above plus the REST escape hatch. A separate download, unlocked by a license key bought through Polar. Same model options as Free.
+* **Base plugin** — read anything; write content (posts, pages, media, categories, comments). Use your own OpenAI, Google Gemini, or Anthropic key, or the managed Djinn proxy (no key to paste; prepaid credit handled by Polar).
+* **Pro add-on** — a separate plugin that requires the base plugin and adds the full schema scope above plus the REST escape hatch. The Pro add-on code is not included in this WordPress.org package.
 
 = How LLM calls reach a provider =
 
 * **Your own key** — calls go directly from your server to the provider you configure (OpenAI, Google Gemini, or Anthropic).
-* **Managed proxy** — no key needed; wishes route through Djinn's hosted gateway, which meters usage and bills prepaid credit (see *External services*).
+* **Managed proxy** — no key needed; wishes route through Djinn's hosted gateway, which forwards model requests to Google Gemini, meters usage, and bills prepaid credit through Polar (see *External services*).
 
 == External services ==
 
@@ -38,10 +38,11 @@ To fulfil a wish, Djinn sends data to a large language model. This happens **onl
 
 **Where it goes:**
 
-* **Managed proxy** — to **Djinn's hosted gateway** at https://djinn-proxy-351601184057.asia-northeast1.run.app , which forwards the request to **Google Gemini** and meters usage. Operated by Nguyễn Hồng Phát. Terms: https://djinn-proxy-351601184057.asia-northeast1.run.app/terms — Privacy: https://djinn-proxy-351601184057.asia-northeast1.run.app/privacy
-* **Your own key** — directly from your server to the provider you configure (**OpenAI**, **Google Gemini**, or **Anthropic**) using your own key.
-
-**Provider policies:** Google Gemini https://ai.google.dev/terms · OpenAI https://openai.com/policies/ · Anthropic https://www.anthropic.com/legal/consumer-terms
+* **Djinn hosted gateway** — if you choose the managed proxy, requests go to https://djinn-proxy-351601184057.asia-northeast1.run.app . It is used to forward your wish to Google Gemini, meter token usage, and return the model response. It receives the wish payload described above when you make a wish, plus site/account metadata needed for pairing and metering. Operated by Nguyễn Hồng Phát. Terms: https://djinn-proxy-351601184057.asia-northeast1.run.app/terms — Privacy: https://djinn-proxy-351601184057.asia-northeast1.run.app/privacy
+* **Google Gemini** — used when you choose Google Gemini with your own key, and also used behind the managed proxy. It receives the wish payload described above when you make a wish. Gemini API terms: https://ai.google.dev/gemini-api/terms — Google privacy policy: https://policies.google.com/privacy
+* **OpenAI** — used only when you choose OpenAI with your own key. It receives the wish payload described above when you make a wish. Terms: https://openai.com/policies/row-terms-of-use/ — Privacy: https://openai.com/policies/row-privacy-policy/
+* **Anthropic** — used only when you choose Anthropic with your own key. It receives the wish payload described above when you make a wish. Commercial terms: https://www.anthropic.com/legal/commercial-terms — Privacy center: https://privacy.claude.com/en/
+* **Polar** — used only when you add prepaid credit or enable auto top-up for the managed proxy. Checkout opens from the admin screen and sends billing/checkout information needed to process payment; Djinn does not send wish prompt bodies to Polar. Buyer terms: https://polar.sh/legal/checkout-buyer-terms — Privacy: https://polar.sh/legal/privacy
 
 The hosted gateway retains only usage metadata (token counts, model, timestamps, your account) to meter and bill — not your prompt or response bodies. Top-ups, if you add credit, are handled by Polar (the merchant of record).
 
@@ -73,10 +74,10 @@ Djinn is developed in the open at https://github.com/mister-teddy/Djinn — incl
 
 == Screenshots ==
 
-1. "Is my site healthy and up to date?" — Djinn reads your site and reports back.
-2. "Add the product 'Aladdin's Brass Lamp'" — one wish creates a WooCommerce product.
-3. "Make About my homepage, and blog at /news" — settings changed, shown for approval first.
-4. "Install and activate Yoast SEO" — plugin management from a plain-language request.
+1. "List my five newest posts" — Djinn reads your content and reports back.
+2. "Import this URL into a new draft post" — Djinn fetches the page and drafts content.
+3. "Create an About page" — a content write pauses for approval first.
+4. "Reply to this comment" — comment actions use your WordPress capabilities.
 5. "Write and publish a welcome post for the site" — content drafted and published on request.
 
 == Changelog ==
@@ -95,8 +96,8 @@ Djinn is developed in the open at https://github.com/mister-teddy/Djinn — incl
 * Hardened for the WordPress.org directory: escaped output, sanitized uploads, locally bundled fonts, all assets served from the plugin.
 
 = 0.6.0 =
-* Free/Pro editions: Free writes content (posts, pages, media, taxonomies, comments); Pro unlocks the full schema scope and the REST escape hatch, via a Polar license key.
-* Every model option — your own key or the managed proxy — works in both editions; the proxy is prepaid via Polar (the free-wishes trial is retired).
+* Base/Pro split: the base plugin writes content (posts, pages, media, taxonomies, comments); the separate Pro add-on adds the full schema scope and the REST escape hatch.
+* Every model option — your own key or the managed proxy — works with the base plugin; the proxy is prepaid via Polar (the free-wishes trial is retired).
 
 = 0.5.2 =
 * Site-bound onboarding via the hosted gateway; usage metering; capability-gated, approval-gated actions.

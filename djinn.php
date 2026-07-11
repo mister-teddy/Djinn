@@ -20,12 +20,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'DJINN_VERSION', '0.7.4' );
 define( 'DJINN_FILE', __FILE__ );
 
-// Build edition: 'free' by default (the WordPress.org build); the dist build stamps 'pro' for the
-// paid build, whose full scope is unlocked by a Polar license key. Override in wp-config.php for
-// local testing if needed.
-if ( ! defined( 'DJINN_EDITION' ) ) {
-	define( 'DJINN_EDITION', 'free' );
-}
 define( 'DJINN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'DJINN_URL', plugin_dir_url( __FILE__ ) );
 

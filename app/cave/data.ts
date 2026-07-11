@@ -148,18 +148,6 @@ export async function connect(): Promise<AccountData> {
 	return d.connect as AccountData;
 }
 
-export async function activateLicense(key: string): Promise<SettingsData> {
-	const d = await gql.mutation({
-		activateLicense: { __args: { key }, ...SETTINGS_FIELDS },
-	});
-	return d.activateLicense as SettingsData;
-}
-
-export async function deactivateLicense(): Promise<SettingsData> {
-	const d = await gql.mutation({ deactivateLicense: SETTINGS_FIELDS });
-	return d.deactivateLicense as SettingsData;
-}
-
 export async function loadOperations(): Promise<OperationsData> {
 	const d = await gql.query({
 		operations: {

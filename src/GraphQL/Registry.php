@@ -100,7 +100,7 @@ class Registry {
 			$out[] = array(
 				'name'     => (string) $argName,
 				'type'     => $type,
-				'required' => str_ends_with( $type, '!' ),
+				'required' => substr( $type, -1 ) === '!',
 			);
 		}
 		return $out;

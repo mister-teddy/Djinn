@@ -221,7 +221,7 @@ class ModelCatalog {
 		$chat     = array();
 		foreach ( Pricing::table() as $model => $rates ) {
 			foreach ( $prefix as $p ) {
-				if ( str_starts_with( $model, $p ) ) {
+				if ( strpos( $model, $p ) === 0 ) {
 					$chat[] = $model;
 					break;
 				}

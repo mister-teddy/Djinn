@@ -8,19 +8,19 @@ use Djinn\GraphQL\Runner;
 use Throwable;
 
 /**
- * A replayable view of a conversation: wishes, Djinn's replies, the GraphQL operations it ran
- * (read-only "incantation" cards), and any mutation still awaiting a grant.
+ * A replayable view of a conversation: wishes, Djinn's replies, surfaced tool actions, and any
+ * write still awaiting a grant.
  *
  * Calls are paired with their results by ORDER, not by tool_call_id — the loop runs exactly one
  * tool per assistant turn and its result follows immediately, and some providers reuse the same id
- * for every call. A run_graphql call that never gets a result is a pending mutation.
+ * for every call. A surfaced write call that never gets a result is pending confirmation.
  */
 class Transcript {
 
 	/** @return array<int,array<string,mixed>> */
 	public static function of( int $chatId ): array {
 		$out      = array();
-		$awaiting = -1; // index in $out of a run_graphql action awaiting its result; -2 = ignore
+		$awaiting = -1; // index in $out of a surfaced action awaiting its result; -2 = ignore
 
 		foreach ( Repository::getMessages( $chatId ) as $entry ) {
 			$role = $entry['role'] ?? '';
@@ -60,40 +60,41 @@ class Transcript {
 				);
 			}
 			foreach ( $entry['tool_calls'] ?? array() as $call ) {
-				$name = $call['name'] ?? '';
-				if ( $name === 'run_graphql' ) {
-					$out[]    = self::baseAction( $call );
+				$name   = $call['name'] ?? '';
+				$action = self::baseAction( $call );
+				if ( $action ) {
+					$out[]    = $action;
 					$awaiting = count( $out ) - 1;
 				} elseif ( $name !== '' ) {
-					$awaiting = -2; // e.g. rest_call — consume its result, don't surface it
+					$awaiting = -2; // e.g. rest_call reads — consume the result, don't surface it
 				}
 			}
 		}
 
-		// A run_graphql action that never received a result is a mutation still awaiting a grant.
+		// A surfaced write action that never received a result is still awaiting a grant.
 		if ( $awaiting >= 0 ) {
-			$open             = Repository::openPending( $chatId );
-			$action           = $out[ $awaiting ];
-			$out[ $awaiting ] = array(
-				'role'       => 'pending',
-				'pending_id' => $open ? (int) $open['id'] : 0,
-				'summary'    => $action['summary'] ?? ( $open['summary'] ?? '' ),
-				'operation'  => $action['operation'],
-				'variables'  => $action['variables'],
-			);
+			$open              = Repository::openPending( $chatId );
+			$out[ $awaiting ] = $open ? PendingWish::transcriptEntry( $open ) : self::pendingFromAction( $out[ $awaiting ] );
 		}
 
 		return $out;
 	}
 
 	/**
-	 * A run_graphql call as a transcript entry, before its result is known. The summary comes
-	 * straight from the call's arguments (the model supplies one for mutations).
+	 * A surfaced tool call as a transcript entry, before its result is known.
 	 *
 	 * @param array<string,mixed> $call
-	 * @return array<string,mixed>
+	 * @return array<string,mixed>|null Null for tool calls that should stay hidden from transcript.
 	 */
-	private static function baseAction( array $call ): array {
+	private static function baseAction( array $call ): ?array {
+		$name = (string) ( $call['name'] ?? '' );
+		if ( $name === 'rest_call' ) {
+			return self::restAction( $call );
+		}
+		if ( $name !== 'run_graphql' ) {
+			return null;
+		}
+
 		$args      = $call['arguments'] ?? array();
 		$operation = (string) ( $args['operation'] ?? '' );
 
@@ -106,7 +107,7 @@ class Transcript {
 		$entry = array(
 			'role'      => 'action',
 			'kind'      => $kind,
-			'status'    => $kind === 'mutation' ? 'granted' : 'ok', // refined once the result arrives
+			'status'    => self::isWriteActionKind( $kind ) ? 'granted' : 'ok', // refined once the result arrives
 			'operation' => $operation,
 			'variables' => (array) ( $args['variables'] ?? array() ),
 		);
@@ -117,8 +118,56 @@ class Transcript {
 	}
 
 	/**
-	 * Fold a tool result into its action entry: refused, error (with message), or success (with the
-	 * GraphQL response payload).
+	 * @param array<string,mixed> $call
+	 * @return array<string,mixed>|null
+	 */
+	private static function restAction( array $call ): ?array {
+		$args   = (array) ( $call['arguments'] ?? array() );
+		$method = strtoupper( (string) ( $args['method'] ?? 'GET' ) );
+		if ( ! PendingWish::isRestWrite( $method ) ) {
+			return null;
+		}
+
+		$path      = (string) ( $args['path'] ?? '' );
+		$variables = PendingWish::restVariables(
+			$method,
+			(array) ( $args['body'] ?? array() ),
+			(array) ( $args['params'] ?? array() )
+		);
+		$pending   = array(
+			'kind'      => PendingWish::KIND_REST,
+			'operation' => $path,
+			'variables' => $variables,
+			'summary'   => (string) ( $args['summary'] ?? "$method $path" ),
+		);
+
+		return array_merge(
+			array(
+				'role'   => 'action',
+				'status' => 'granted',
+			),
+			PendingWish::displayPayload( $pending )
+		);
+	}
+
+	/**
+	 * @param array<string,mixed> $action
+	 * @return array<string,mixed>
+	 */
+	private static function pendingFromAction( array $action ): array {
+		return array(
+			'role'       => 'pending',
+			'pending_id' => 0,
+			'kind'       => (string) ( $action['kind'] ?? '' ),
+			'summary'    => (string) ( $action['summary'] ?? '' ),
+			'operation'  => (string) ( $action['operation'] ?? '' ),
+			'variables'  => (array) ( $action['variables'] ?? array() ),
+		);
+	}
+
+	/**
+	 * Fold a tool result into its action entry: refused, error (with message), or success with the
+	 * tool response payload.
 	 *
 	 * @param array<string,mixed> $action
 	 * @param array<string,mixed> $toolEntry
@@ -135,9 +184,13 @@ class Transcript {
 			$action['status']  = 'error';
 			$action['message'] = (string) $res['error'];
 		} else {
-			$action['status'] = $action['kind'] === 'mutation' ? 'granted' : 'ok';
-			$action['result'] = $res; // the GraphQL response the Djinn got back
+			$action['status'] = self::isWriteActionKind( (string) ( $action['kind'] ?? '' ) ) ? 'granted' : 'ok';
+			$action['result'] = $res; // the tool response the Djinn got back
 		}
 		return $action;
+	}
+
+	private static function isWriteActionKind( string $kind ): bool {
+		return $kind === 'mutation' || $kind === PendingWish::KIND_REST;
 	}
 }

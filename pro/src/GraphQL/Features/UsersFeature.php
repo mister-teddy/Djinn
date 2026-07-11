@@ -100,12 +100,25 @@ class UsersFeature implements Feature {
 		return $role;
 	}
 
+	private function assignableRoleOrFail( string $role ): string {
+		$role = $this->roleOrFail( $role );
+		if ( ! function_exists( 'get_editable_roles' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/user.php';
+		}
+		$editable = get_editable_roles();
+		if ( ! is_array( $editable ) || ! array_key_exists( $role, $editable ) ) {
+			throw new UserError( esc_html( "You do not have permission to assign the '$role' role." ) );
+		}
+		return $role;
+	}
+
 	/** @param array<string,mixed> $args */
 	public function createUser( $root, array $args ): array {
 		if ( ! current_user_can( 'create_users' ) ) {
 			throw new UserError( esc_html( 'You do not have permission to create users.' ) );
 		}
-		$role = isset( $args['role'] ) ? $this->roleOrFail( (string) $args['role'] ) : get_option( 'default_role', 'subscriber' );
+		$role = isset( $args['role'] ) ? (string) $args['role'] : (string) get_option( 'default_role', 'subscriber' );
+		$role = $this->assignableRoleOrFail( $role );
 		$id   = wp_insert_user(
 			array(
 				'user_login' => (string) $args['username'],
@@ -155,10 +168,13 @@ class UsersFeature implements Feature {
 		if ( ! current_user_can( 'promote_users' ) ) {
 			throw new UserError( esc_html( 'You do not have permission to change user roles.' ) );
 		}
-		$role = $this->roleOrFail( (string) $args['role'] );
+		$role = $this->assignableRoleOrFail( (string) $args['role'] );
 		$user = get_userdata( (int) $args['id'] );
 		if ( ! $user ) {
 			throw new UserError( esc_html( 'No such user.' ) );
+		}
+		if ( ! current_user_can( 'edit_user', $user->ID ) ) {
+			throw new UserError( esc_html( 'You do not have permission to edit this user.' ) );
 		}
 		$user->set_role( $role );
 		return true;

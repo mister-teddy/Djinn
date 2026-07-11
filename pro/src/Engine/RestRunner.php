@@ -13,9 +13,6 @@ namespace Djinn\Engine;
  */
 class RestRunner {
 
-	/** Methods that mutate — classified as writes and gated behind a Grant. */
-	public const WRITE_METHODS = array( 'POST', 'PUT', 'PATCH', 'DELETE' );
-
 	/**
 	 * Enumerate the site's registered REST routes, optionally narrowed by namespace or a substring
 	 * search. Live (not RAG-indexed), so newly-activated plugins appear immediately.
@@ -25,10 +22,10 @@ class RestRunner {
 	public static function routes( ?string $namespace = null, ?string $search = null, int $limit = 60 ): array {
 		$out = array();
 		foreach ( rest_get_server()->get_routes() as $route => $handlers ) {
-			if ( $route === '/' || str_starts_with( $route, '/batch' ) ) {
+			if ( $route === '/' || strpos( $route, '/batch' ) === 0 ) {
 				continue;
 			}
-			if ( $namespace !== null && $namespace !== '' && ! str_starts_with( ltrim( $route, '/' ), trim( $namespace, '/' ) ) ) {
+			if ( $namespace !== null && $namespace !== '' && strpos( ltrim( $route, '/' ), trim( $namespace, '/' ) ) !== 0 ) {
 				continue;
 			}
 			if ( $search !== null && $search !== '' && stripos( $route, $search ) === false ) {

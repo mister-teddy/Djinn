@@ -6,7 +6,6 @@ namespace Djinn\GraphQL\Admin;
 
 use Djinn\GraphQL\PairingSchema;
 use Djinn\GraphQL\SchemaFactory;
-use Djinn\License\LicenseClient;
 use Djinn\Provider\ModelCatalog;
 use Djinn\Provider\ProxyAccount;
 use Djinn\Provider\ProxyClient;
@@ -229,23 +228,6 @@ class AdminResolvers {
 	public static function resetUsage(): bool {
 		Repository::clearUsage();
 		return true;
-	}
-
-	/** Activate a Polar license key to unlock Pro scope on this site. @return array<string,mixed> */
-	public static function activateLicense( string $key ): array {
-		if ( Settings::edition() !== 'pro' ) {
-			throw new UserError( esc_html( 'Licensing applies to the Pro edition.' ) );
-		}
-		if ( ! LicenseClient::activate( $key ) ) {
-			throw new UserError( esc_html( 'That license key could not be activated. Check the key and that your plan has a spare activation.' ) );
-		}
-		return self::settings();
-	}
-
-	/** Release this site's activation and forget the key. @return array<string,mixed> */
-	public static function deactivateLicense(): array {
-		LicenseClient::deactivate();
-		return self::settings();
 	}
 
 	/** @return array<string,mixed> */

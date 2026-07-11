@@ -23,9 +23,7 @@ const PRO_CAPABILITIES = [
 // A premium, gold-accented teaser shown to Free users at the top of Capabilities: what Pro unlocks,
 // plus the purchase link. Matches the plugin's lamp-and-gold language (✦, Cardo serif, gold chips).
 function ProUpsell() {
-	const url =
-		config.proUrl ||
-		'https://buy.polar.sh/polar_cl_DGwSeP4nDmqeEXZLw4vC6RFkEBP7frjlGPU3u2768kC';
+	const url = config.proUrl || '';
 	return (
 		<div className="mb-5 rounded-djinn border border-gold/40 bg-gradient-to-br from-[#fffaf2] to-[#fbeecb] p-4 shadow-[0_2px_14px_-6px_rgba(251,191,36,0.6)]">
 			<div className="flex items-center gap-2">
@@ -53,36 +51,16 @@ function ProUpsell() {
 					</li>
 				))}
 			</ul>
-			<a
-				className="mt-3.5 inline-flex items-center rounded-control border-0 bg-gradient-to-b from-gold to-gold-deep px-4 py-2 font-sans text-[13px] font-semibold text-midnight no-underline shadow-glow transition hover:-translate-y-px hover:text-midnight hover:brightness-110 hover:no-underline"
-				href={url}
-				target="_blank"
-				rel="noopener"
-			>
-				Get Djinn Pro →
-			</a>
-		</div>
-	);
-}
-
-function ProLicenseNotice() {
-	return (
-		<div className="mb-5 rounded-djinn border border-[#dcdcde] bg-[#f6f7f7] p-4">
-			<div className="flex items-center gap-2">
-				<span
-					className="text-[15px] leading-none text-gold"
-					aria-hidden
+			{url && (
+				<a
+					className="mt-3.5 inline-flex items-center rounded-control border-0 bg-gradient-to-b from-gold to-gold-deep px-4 py-2 font-sans text-[13px] font-semibold text-midnight no-underline shadow-glow transition hover:-translate-y-px hover:text-midnight hover:brightness-110 hover:no-underline"
+					href={url}
+					target="_blank"
+					rel="noopener"
 				>
-					✦
-				</span>
-				<h3 className="m-0 font-serif text-[18px] leading-none text-[#1d2327]">
-					Djinn Pro installed
-				</h3>
-			</div>
-			<p className="mb-0 mt-1.5 text-[13px] text-[#646970]">
-				Activate your license in the Account tile to unlock the full
-				schema scope on this site.
-			</p>
+					Get Djinn Pro →
+				</a>
+			)}
 		</div>
 	);
 }
@@ -97,12 +75,7 @@ export function CapabilitiesTile() {
 
 	return (
 		<Tile title="Capabilities">
-			{!config.isPro &&
-				(config.edition === 'pro' ? (
-					<ProLicenseNotice />
-				) : (
-					<ProUpsell />
-				))}
+			{!config.isPro && <ProUpsell />}
 			<p className="text-[#787c82]">
 				Everything the Djinn can do here — the operations it can run,
 				grouped by area.

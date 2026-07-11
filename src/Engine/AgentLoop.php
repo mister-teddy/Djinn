@@ -8,6 +8,7 @@ use Djinn\GraphQL\Runner;
 use Djinn\Provider\ProviderFactory;
 use Djinn\Provider\ProxyProvider;
 use Djinn\Security\Guard;
+use Djinn\Store\PendingWish;
 use Djinn\Store\Repository;
 use Djinn\Usage\UsageRecorder;
 use Throwable;
@@ -36,8 +37,12 @@ class AgentLoop {
 	 * @return array<string,mixed>
 	 */
 	public function run( int $chatId, string $userText, array $attachments = array() ): array {
-		Repository::addMessage( $chatId, $this->userEntry( $userText, $attachments ) );
-		return $this->attachUsage( $chatId, $this->loop( $chatId ) );
+		try {
+			$result = $this->startRun( $chatId, $userText, $attachments );
+		} catch ( Throwable $e ) {
+			$result = $this->errorResult( $chatId, $e->getMessage() );
+		}
+		return $this->attachUsage( $chatId, $result );
 	}
 
 	/**
@@ -48,17 +53,12 @@ class AgentLoop {
 	 * @param callable(string,array):void $emit
 	 */
 	public function streamRun( int $chatId, string $userText, callable $emit, array $attachments = array() ): void {
-		Repository::addMessage( $chatId, $this->userEntry( $userText, $attachments ) );
-
 		try {
-			$result = $this->loop( $chatId, $emit );
+			$result = $this->startRun( $chatId, $userText, $attachments, $emit );
 		} catch ( Throwable $e ) {
 			$emit(
 				'error',
-				array(
-					'message' => $e->getMessage(),
-					'chat_id' => $chatId,
-				)
+				$this->errorResult( $chatId, $e->getMessage() )
 			);
 			return;
 		}
@@ -87,60 +87,38 @@ class AgentLoop {
 
 	/**
 	 * Resume after the user granted or refused a pending wish. We append the tool result for
-	 * the paused run_graphql call, then continue the loop.
+	 * the paused write tool call, then continue the loop.
 	 *
 	 * @return array<string,mixed>
 	 */
 	public function resume( int $chatId, int $pendingId, bool $confirmed ): array {
-		$pending = Repository::getPending( $pendingId );
-		if ( ! $pending || (int) $pending['chat_id'] !== $chatId ) {
+		$status  = $confirmed ? PendingWish::STATUS_CONFIRMED : PendingWish::STATUS_CANCELLED;
+		$pending = Repository::claimPending( $pendingId, $chatId );
+		if ( ! $pending ) {
 			return array(
 				'status'  => 'error',
 				'message' => 'That wish is no longer pending.',
 			);
 		}
-		if ( $pending['status'] !== 'pending' ) {
-			return array(
-				'status'  => 'error',
-				'message' => 'That wish was already resolved.',
-			);
-		}
-
-		$isRest   = ( $pending['kind'] ?? 'graphql' ) === 'rest';
-		$toolName = $isRest ? 'rest_call' : 'run_graphql';
 
 		if ( $confirmed ) {
-			if ( $isRest ) {
-				$v      = (array) $pending['variables'];
-				$result = RestRunner::execute(
-					(string) $pending['operation'],
-					(string) ( $v['method'] ?? 'GET' ),
-					(array) ( $v['body'] ?? array() ),
-					(array) ( $v['params'] ?? array() )
-				);
-			} else {
-				$result = $this->executeGraphql( (string) $pending['operation'], (array) $pending['variables'] );
-			}
-			Repository::setPendingStatus( $pendingId, 'confirmed' );
+			$result = $this->executePending( $pending );
 		} else {
 			$result = array(
 				'refused' => true,
 				'message' => 'The user refused this wish; it was not granted.',
 			);
-			Repository::setPendingStatus( $pendingId, 'cancelled' );
 		}
 
-		Repository::addMessage(
-			$chatId,
-			array(
-				'role'         => 'tool',
-				'tool_call_id' => (string) $pending['tool_call_id'],
-				'name'         => $toolName,
-				'content'      => (string) wp_json_encode( $result ),
-			)
-		);
+		$this->addPendingToolResult( $chatId, $pending, $result );
+		Repository::finishPending( $pendingId, $status );
 
-		return $this->attachUsage( $chatId, $this->loop( $chatId ) );
+		try {
+			$result = $this->loop( $chatId );
+		} catch ( Throwable $e ) {
+			$result = $this->errorResult( $chatId, $e->getMessage() );
+		}
+		return $this->attachUsage( $chatId, $result );
 	}
 
 	/**
@@ -154,11 +132,33 @@ class AgentLoop {
 		return $result;
 	}
 
+	/** @return array<string,mixed> */
+	private function errorResult( int $chatId, string $message ): array {
+		return array(
+			'status'  => 'error',
+			'message' => $message,
+			'chat_id' => $chatId,
+		);
+	}
+
 	/**
-	 * @param callable(string,array):void|null $emit When set, the turn streams: text deltas are
-	 *        sent as 'delta' events and each tool step as a 'step' event.
+	 * Start or stream a user turn only when the previous write has been resolved. This keeps the
+	 * provider transcript valid: every assistant tool call must be followed by its tool result
+	 * before another user message is appended.
+	 *
+	 * @param callable(string,array):void|null $emit
 	 * @return array<string,mixed>
 	 */
+	private function startRun( int $chatId, string $userText, array $attachments = array(), ?callable $emit = null ): array {
+		$pending = Repository::openPending( $chatId );
+		if ( $pending ) {
+			return PendingWish::response( $chatId, $pending );
+		}
+
+		Repository::addMessage( $chatId, $this->userEntry( $userText, $attachments ) );
+		return $this->loop( $chatId, $emit );
+	}
+
 	/**
 	 * The stored user turn. Attachments ride as metadata so the chat UI can show a chip and the
 	 * typed text stays verbatim; expandAttachments() folds the import token into the content only
@@ -234,11 +234,7 @@ class AgentLoop {
 					? $provider->chatStream( $system, $history, $tools, static fn( $d ) => $emit( 'delta', array( 'token' => $d ) ) )
 					: $provider->chat( $system, $history, $tools );
 			} catch ( Throwable $e ) {
-				return array(
-					'status'  => 'error',
-					'message' => $e->getMessage(),
-					'chat_id' => $chatId,
-				);
+				return $this->errorResult( $chatId, $e->getMessage() );
 			}
 
 			$calls = $turn['tool_calls'] ?? array();
@@ -294,18 +290,8 @@ class AgentLoop {
 				}
 
 				if ( $type === 'mutation' ) {
-					$summary   = (string) ( $call['arguments']['summary'] ?? 'Grant a GraphQL mutation.' );
-					$pendingId = Repository::createPending( $chatId, (string) $call['id'], 'graphql', $operation, $variables, $summary );
-					return array(
-						'status'  => 'awaiting_confirmation',
-						'chat_id' => $chatId,
-						'pending' => array(
-							'id'        => $pendingId,
-							'summary'   => $summary,
-							'operation' => $operation,
-							'variables' => $variables,
-						),
-					);
+					$summary = (string) ( $call['arguments']['summary'] ?? 'Grant a GraphQL mutation.' );
+					return $this->awaitConfirmation( $chatId, $call, PendingWish::KIND_GRAPHQL, $operation, $variables, $summary );
 				}
 
 				$result = $this->executeGraphql( $operation, $variables );
@@ -326,33 +312,19 @@ class AgentLoop {
 
 				// Writes (POST/PUT/PATCH/DELETE) are gated like mutations; the method — not a GraphQL
 				// operation type — is the trustworthy read/write signal for REST.
-				if ( in_array( $method, RestRunner::WRITE_METHODS, true ) ) {
-					$summary   = (string) ( $call['arguments']['summary'] ?? "$method $path" );
-					$pendingId = Repository::createPending(
+				if ( PendingWish::isRestWrite( $method ) ) {
+					$summary = (string) ( $call['arguments']['summary'] ?? "$method $path" );
+					return $this->awaitConfirmation(
 						$chatId,
-						(string) $call['id'],
-						'rest',
+						$call,
+						PendingWish::KIND_REST,
 						$path,
-						array(
-							'method' => $method,
-							'body'   => $body,
-							'params' => $params,
-						),
+						PendingWish::restVariables( $method, $body, $params ),
 						$summary
-					);
-					return array(
-						'status'  => 'awaiting_confirmation',
-						'chat_id' => $chatId,
-						'pending' => array(
-							'id'        => $pendingId,
-							'summary'   => $summary,
-							'operation' => "$method $path",
-							'variables' => $body,
-						),
 					);
 				}
 
-				$result = RestRunner::execute( $path, $method, $body, $params );
+				$result = $this->executeRestCall( $path, $method, $body, $params );
 				$this->addToolResult( $chatId, $call, $result );
 				continue;
 			}
@@ -374,6 +346,66 @@ class AgentLoop {
 			'message' => $msg,
 			'chat_id' => $chatId,
 		);
+	}
+
+	/**
+	 * @param array<string,mixed> $call
+	 * @param array<string,mixed> $variables
+	 * @return array<string,mixed>
+	 */
+	private function awaitConfirmation( int $chatId, array $call, string $kind, string $operation, array $variables, string $summary ): array {
+		$pendingId = Repository::createPending( $chatId, (string) $call['id'], $kind, $operation, $variables, $summary );
+		return PendingWish::response(
+			$chatId,
+			array(
+				'id'           => $pendingId,
+				'chat_id'      => $chatId,
+				'tool_call_id' => (string) $call['id'],
+				'kind'         => $kind,
+				'operation'    => $operation,
+				'variables'    => $variables,
+				'summary'      => $summary,
+				'status'       => PendingWish::STATUS_PENDING,
+			)
+		);
+	}
+
+	/**
+	 * @param array<string,mixed> $pending
+	 * @param array<string,mixed> $result
+	 */
+	private function addPendingToolResult( int $chatId, array $pending, array $result ): void {
+		Repository::addMessage(
+			$chatId,
+			array(
+				'role'         => 'tool',
+				'tool_call_id' => (string) $pending['tool_call_id'],
+				'name'         => PendingWish::toolName( $pending ),
+				'content'      => (string) wp_json_encode( $result ),
+			)
+		);
+	}
+
+	/**
+	 * @param array<string,mixed> $pending
+	 * @return array<string,mixed>
+	 */
+	private function executePending( array $pending ): array {
+		try {
+			if ( PendingWish::toolName( $pending ) === 'rest_call' ) {
+				$v = (array) $pending['variables'];
+				return $this->executeRestCall(
+					(string) $pending['operation'],
+					(string) ( $v['method'] ?? 'GET' ),
+					(array) ( $v['body'] ?? array() ),
+					(array) ( $v['params'] ?? array() )
+				);
+			}
+
+			return Runner::execute( (string) $pending['operation'], (array) $pending['variables'] );
+		} catch ( Throwable $e ) {
+			return array( 'error' => $e->getMessage() );
+		}
 	}
 
 	/**
@@ -402,5 +434,15 @@ class AgentLoop {
 		} catch ( Throwable $e ) {
 			return array( 'error' => $e->getMessage() );
 		}
+	}
+
+	/**
+	 * @param array<string,mixed> $body
+	 * @param array<string,mixed> $params
+	 * @return array<string,mixed>
+	 */
+	private function executeRestCall( string $path, string $method, array $body, array $params ): array {
+		$result = apply_filters( 'djinn_execute_rest_call', null, $path, strtoupper( $method ), $body, $params );
+		return is_array( $result ) ? $result : array( 'error' => 'The REST tool is not available on this site.' );
 	}
 }

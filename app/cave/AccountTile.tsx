@@ -22,8 +22,6 @@ import {
 	saveSettings,
 	connect,
 	billingCheckout,
-	activateLicense,
-	deactivateLicense,
 	type SettingsData,
 	type AccountData,
 	type ModelsData,
@@ -91,8 +89,6 @@ export function AccountTile() {
 			</Tile>
 		);
 	}
-	const isProBuild = settings.edition === 'pro';
-
 	async function save() {
 		setSaving(true);
 		try {
@@ -154,9 +150,6 @@ export function AccountTile() {
 			>
 				Save settings
 			</Button>
-			{isProBuild && (
-				<LicenseView settings={settings} setSettings={setSettings} />
-			)}
 		</Tile>
 	);
 }
@@ -271,82 +264,6 @@ function ProxyView({
 				<PaymentBlock account={account} />
 			</Card>
 		</Cards>
-	);
-}
-
-// Pro build: paste a Polar license key to unlock the full schema scope on this site.
-function LicenseView({
-	settings,
-	setSettings,
-}: {
-	settings: SettingsData;
-	setSettings: (s: SettingsData) => void;
-}) {
-	const [key, setKey] = useState('');
-	const [busy, setBusy] = useState(false);
-
-	async function activate() {
-		setBusy(true);
-		try {
-			setSettings(await activateLicense(key));
-			setKey('');
-			toast('Pro unlocked — the full schema is available.');
-		} catch (e) {
-			toast(String((e as Error)?.message || e), 'error');
-		} finally {
-			setBusy(false);
-		}
-	}
-
-	async function remove() {
-		setBusy(true);
-		try {
-			setSettings(await deactivateLicense());
-			toast('License removed from this site.');
-		} catch (e) {
-			toast(String((e as Error)?.message || e), 'error');
-		} finally {
-			setBusy(false);
-		}
-	}
-
-	if (settings.isPro) {
-		return (
-			<div className="mt-4 border-t border-[#e4e4e7] pt-3.5">
-				<p className="text-[#787c82]">
-					✓ Djinn Pro is active on this site — the full schema scope
-					is unlocked.
-				</p>
-				<Button className="mt-2" busy={busy} onClick={remove}>
-					Remove license
-				</Button>
-			</div>
-		);
-	}
-	return (
-		<div className="mt-4 border-t border-[#e4e4e7] pt-3.5">
-			<Field
-				label="Pro license key"
-				htmlFor="djinn-license"
-				description="From your Polar purchase. Unlocks the full schema scope on this site."
-			>
-				<PasswordField
-					id="djinn-license"
-					value={key}
-					onChange={setKey}
-					placeholder="Paste your license key"
-				/>
-			</Field>
-			<Button
-				variant="primary"
-				className="mt-2"
-				busy={busy}
-				disabled={!key.trim()}
-				onClick={activate}
-			>
-				Activate Pro
-			</Button>
-		</div>
 	);
 }
 

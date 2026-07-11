@@ -211,18 +211,50 @@ class Repository {
 		if ( ! $row ) {
 			return null;
 		}
-		$row['variables'] = json_decode( $row['variables'], true ) ?: array();
-		return $row;
-	}
-
-	public static function setPendingStatus( int $id, string $status ): void {
-		global $wpdb;
-		$wpdb->update( $wpdb->prefix . 'djinn_pending', array( 'status' => $status ), array( 'id' => $id ) );
+		return PendingWish::normalizeRow( $row );
 	}
 
 	/**
-	 * The conversation's mutation still awaiting a grant, if any. The loop allows only one open
-	 * wish at a time, so this is unambiguous (and avoids relying on tool_call_ids, which some
+	 * Atomically claim a wish for resolution. The conditional UPDATE is the concurrency guard: only
+	 * the first grant/refuse request can move the row to resolving and execute the write.
+	 *
+	 * @return array<string,mixed>|null The claimed pending row, or null if it was missing, owned by
+	 *                                  another chat, or already resolved.
+	 */
+	public static function claimPending( int $id, int $chatId ): ?array {
+		global $wpdb;
+		$table   = $wpdb->prefix . 'djinn_pending';
+		$updated = $wpdb->update(
+			$table,
+			array( 'status' => PendingWish::STATUS_RESOLVING ),
+			array(
+				'id'      => $id,
+				'chat_id' => $chatId,
+				'status'  => PendingWish::STATUS_PENDING,
+			),
+			array( '%s' ),
+			array( '%d', '%d', '%s' )
+		);
+		if ( (int) $updated !== 1 ) {
+			return null;
+		}
+		return self::getPending( $id );
+	}
+
+	public static function finishPending( int $id, string $status ): void {
+		global $wpdb;
+		$wpdb->update(
+			$wpdb->prefix . 'djinn_pending',
+			array( 'status' => $status ),
+			array( 'id' => $id ),
+			array( '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * The conversation's write still awaiting or applying a grant, if any. The loop allows only one
+	 * open wish at a time, so this is unambiguous (and avoids relying on tool_call_ids, which some
 	 * providers — e.g. Gemini — don't make unique).
 	 *
 	 * @return array<string,mixed>|null
@@ -231,10 +263,10 @@ class Repository {
 		global $wpdb;
 		$table = $wpdb->prefix . 'djinn_pending';
 		$row   = $wpdb->get_row(
-			$wpdb->prepare( "SELECT id, summary FROM $table WHERE chat_id = %d AND status = 'pending' ORDER BY id DESC LIMIT 1", $chatId ),
+			$wpdb->prepare( "SELECT * FROM $table WHERE chat_id = %d AND status IN ('pending', 'resolving') ORDER BY id DESC LIMIT 1", $chatId ),
 			ARRAY_A
 		);
-		return $row ?: null;
+		return $row ? PendingWish::normalizeRow( $row ) : null;
 	}
 
 	// ---- Usage (token + cost telemetry) -----------------------------------

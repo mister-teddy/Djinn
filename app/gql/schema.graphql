@@ -150,8 +150,6 @@ type ChatUsage {
 type Mutation {
   saveSettings(input: SettingsInput!): Settings!
   connect: Account!
-  activateLicense(key: String!): Settings!
-  deactivateLicense: Settings!
   resetUsage: Boolean!
   billingCheckout(kind: BillingKind!): CheckoutSession!
   deleteChat(id: Int!): Boolean!

@@ -5,9 +5,9 @@ declare( strict_types=1 );
 namespace Djinn\Files;
 
 /**
- * Brokers generated files (exports, dumps) for download. Files are written to a private folder
+ * Brokers generated files and uploads for download. Files are written to a private folder
  * under uploads (web-server access denied) and handed out only via a short-lived token resolved by
- * the gated REST /download endpoint — so a sensitive SQL dump is never sitting at a public URL.
+ * the gated REST /download endpoint, so sensitive files are never sitting at a public URL.
  */
 class Downloads {
 

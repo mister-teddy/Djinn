@@ -4,7 +4,6 @@ declare( strict_types=1 );
 
 namespace Djinn\GraphQL;
 
-use Djinn\Settings;
 use GraphQL\Type\Definition\InputObjectType;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
@@ -257,33 +256,6 @@ class SchemaFactory {
 				'resolve' => array( $res, 'deletePost' ),
 			)
 		);
-		// Site-settings writes are Pro: Free can read options/site info but changes only content.
-		if ( Settings::isPro() ) {
-			$reg->addMutation(
-				'updateOption',
-				array(
-					'type'        => Type::boolean(),
-					'description' => 'Set a wp_options value. Value is a string (use JSON for non-scalar values).',
-					'args'        => array(
-						'name'  => array( 'type' => Type::nonNull( Type::string() ) ),
-						'value' => array( 'type' => Type::nonNull( Type::string() ) ),
-					),
-					'resolve'     => array( $res, 'updateOption' ),
-				)
-			);
-			$reg->addMutation(
-				'updateSiteInfo',
-				array(
-					'type'    => Type::boolean(),
-					'args'    => array(
-						'title'       => array( 'type' => Type::string() ),
-						'description' => array( 'type' => Type::string() ),
-					),
-					'resolve' => array( $res, 'updateSiteInfo' ),
-				)
-			);
-		}
-
 		// --- Built-in feature domains -------------------------------------
 		foreach ( self::features() as $feature ) {
 			$reg->setCurrentDomain( self::domainLabel( $feature ) );
@@ -330,57 +302,16 @@ class SchemaFactory {
 	}
 
 	/**
-	 * The Free edition's content-only feature set. Everything else is Pro — a newly added Feature is
-	 * Pro by default until it is listed here, which is the safe direction for a new capability.
-	 */
-	private const FREE_FEATURES = array(
-		Features\MediaFeature::class,
-		Features\TaxonomyFeature::class,
-		Features\CommentsFeature::class,
-	);
-
-	/**
-	 * Built-in capability domains, in menu-ish order. Add a class here to grow the schema. Free
-	 * registers only FREE_FEATURES (plus the always-on inline content block); Pro registers all, so
-	 * the scope gate is purely which features exist in the schema — no per-call tier checks.
+	 * Built-in base capability domains, in menu-ish order. Paid add-ons register additional domains
+	 * through djinn_register_schema so their code is not bundled in the directory package.
 	 *
 	 * @return array<int,Feature>
 	 */
 	private static function features(): array {
-		$features = array(
-			new Features\MetaFeature(),
-			new Features\AppearanceFeature(),
-			new Features\MenusFeature(),
-			new Features\WidgetsFeature(),
-			new Features\CustomizerFeature(),
-			new Features\SiteEditorFeature(),
-			new Features\PageStructureFeature(),
+		return array(
 			new Features\TaxonomyFeature(),
 			new Features\CommentsFeature(),
-			new Features\UsersFeature(),
 			new Features\MediaFeature(),
-			new Features\SettingsFeature(),
-			new Features\SystemFeature(),
-			new Features\ToolsFeature(),
-			new Features\CronFeature(),
-			new Features\RestFeature(),
 		);
-
-		// Curated per-plugin domains, registered only when their plugin is active — so their types
-		// (and therefore their RAG chunks) never appear on sites that don't have the plugin.
-		if ( Features\WooCommerceFeature::isActive() ) {
-			$features[] = new Features\WooCommerceFeature();
-		}
-
-		if ( ! Settings::isPro() ) {
-			$features = array_values(
-				array_filter(
-					$features,
-					static fn( Feature $f ) => in_array( get_class( $f ), self::FREE_FEATURES, true )
-				)
-			);
-		}
-
-		return $features;
 	}
 }

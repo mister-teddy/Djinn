@@ -329,15 +329,6 @@ class AdminSchema {
 						'type'    => Type::nonNull( $account ),
 						'resolve' => static fn() => AdminResolvers::connect(),
 					),
-					'activateLicense'   => array(
-						'type'    => Type::nonNull( $settings ),
-						'args'    => array( 'key' => Type::nonNull( Type::string() ) ),
-						'resolve' => static fn( $root, $args ) => AdminResolvers::activateLicense( (string) $args['key'] ),
-					),
-					'deactivateLicense' => array(
-						'type'    => Type::nonNull( $settings ),
-						'resolve' => static fn() => AdminResolvers::deactivateLicense(),
-					),
 					'resetUsage'        => array(
 						'type'    => Type::nonNull( Type::boolean() ),
 						'resolve' => static fn() => AdminResolvers::resetUsage(),

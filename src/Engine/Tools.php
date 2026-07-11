@@ -4,15 +4,12 @@ declare( strict_types=1 );
 
 namespace Djinn\Engine;
 
-use Djinn\Settings;
-
 /**
  * The Djinn's entire tool surface. The full schema rides in the system prompt, so a single
  * run_graphql handles reads and writes; the engine decides which by parsing the
  * operation type, and gates mutations behind human confirmation ("grant this wish?").
  *
- * `rest_call` (the universal escape hatch) is Pro-only and matches `RestFeature` being unregistered
- * in Free — so the gate is purely which capabilities exist, with no tier checks in the agent loop.
+ * Add-ons can append tool specs with the `djinn_tool_specs` filter.
  */
 class Tools {
 
@@ -43,39 +40,6 @@ class Tools {
 			),
 		);
 
-		if ( Settings::isPro() ) {
-			$specs[] = array(
-				'name'        => 'rest_call',
-				'description' => 'Call a WordPress REST route — the escape hatch for plugins with no native GraphQL field. Discover routes first via the `restRoutes` GraphQL query. GET/HEAD run immediately; POST/PUT/PATCH/DELETE are paused for the user to Grant. Each route enforces its own permissions.',
-				'parameters'  => array(
-					'type'       => 'object',
-					'properties' => array(
-						'method'  => array(
-							'type'        => 'string',
-							'description' => 'HTTP method: GET, POST, PUT, PATCH, or DELETE.',
-						),
-						'path'    => array(
-							'type'        => 'string',
-							'description' => 'REST route path beginning with "/", e.g. "/wp/v2/pages" or "/wc/v3/products/12".',
-						),
-						'body'    => array(
-							'type'        => 'object',
-							'description' => 'Body parameters for writes. Omit for reads.',
-						),
-						'params'  => array(
-							'type'        => 'object',
-							'description' => 'Query-string parameters, e.g. {"per_page": 5, "search": "hat"}. Omit if none.',
-						),
-						'summary' => array(
-							'type'        => 'string',
-							'description' => 'For writes: a one-sentence plain-language description, shown on the confirmation card.',
-						),
-					),
-					'required'   => array( 'method', 'path' ),
-				),
-			);
-		}
-
-		return $specs;
+		return (array) apply_filters( 'djinn_tool_specs', $specs );
 	}
 }

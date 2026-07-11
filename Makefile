@@ -39,12 +39,12 @@ restart:
 # Static checks: lint every PHP file, syntax-check the front-end, refresh the autoloader.
 check:
 	@echo "→ Linting PHP…"
-	@err=0; for f in djinn.php $$(find src -name '*.php'); do \
+	@err=0; for f in djinn.php $$(find src pro -name '*.php'); do \
 		php -l "$$f" >/dev/null 2>&1 || { echo "  ✗ $$f"; php -l "$$f"; err=1; }; \
 	done; [ $$err -eq 0 ] || exit 1; echo "  ✓ PHP OK"
 	@echo "→ Verifying it parses on the PHP 7.4 floor…"
 	@if docker info >/dev/null 2>&1; then \
-		docker run --rm -v "$$PWD":/app -w /app php:7.4-cli sh -c 'e=0; for f in djinn.php $$(find src -name "*.php"); do php -l "$$f" >/dev/null 2>&1 || { php -l "$$f"; e=1; }; done; exit $$e' \
+		docker run --rm -v "$$PWD":/app -w /app php:7.4-cli sh -c 'e=0; for f in djinn.php $$(find src pro -name "*.php"); do php -l "$$f" >/dev/null 2>&1 || { php -l "$$f"; e=1; }; done; exit $$e' \
 			&& echo "  ✓ parses on PHP 7.4"; \
 	else echo "  ⚠ Docker down — skipped (CI's php74-lint job enforces the 7.4 floor)"; fi
 	@echo "→ Type-checking the front-end…"
@@ -119,8 +119,8 @@ fmt:
 	@echo "→ prettier (front-end)"; npm run format --if-present
 	@if [ -x vendor/bin/phpcbf ]; then echo "→ phpcbf (PHP)"; vendor/bin/phpcbf || true; else echo "→ phpcbf not installed (run: composer install)"; fi
 
-# Build an installable plugin ZIP (excludes the proxy, dev tooling, build artifacts).
-# `make dist pro` or `make dist EDITION=pro` for the paid build; default is the free WordPress.org build.
+# Build installable ZIPs. Default is the base WordPress.org plugin; `make dist pro` builds the
+# separate paid add-on; `make dist all` builds both.
 dist:
 	bash bin/build-dist.sh "$(or $(EDITION),$(filter-out dist,$(MAKECMDGOALS)))"
 

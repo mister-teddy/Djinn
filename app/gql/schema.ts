@@ -178,8 +178,6 @@ export interface ChatUsage {
 export interface Mutation {
     saveSettings: Settings
     connect: Account
-    activateLicense: Settings
-    deactivateLicense: Settings
     resetUsage: Scalars['Boolean']
     billingCheckout: CheckoutSession
     deleteChat: Scalars['Boolean']
@@ -378,8 +376,6 @@ export interface ChatUsageGenqlSelection{
 export interface MutationGenqlSelection{
     saveSettings?: (SettingsGenqlSelection & { __args: {input: SettingsInput} })
     connect?: AccountGenqlSelection
-    activateLicense?: (SettingsGenqlSelection & { __args: {key: Scalars['String']} })
-    deactivateLicense?: SettingsGenqlSelection
     resetUsage?: boolean | number
     billingCheckout?: (CheckoutSessionGenqlSelection & { __args: {kind: BillingKind} })
     deleteChat?: { __args: {id: Scalars['Int']} }

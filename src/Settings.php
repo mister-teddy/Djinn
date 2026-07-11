@@ -10,22 +10,20 @@ use Djinn\Provider\Providers;
  * Plugin settings: edition, which LLM provider to use, the API key / proxy token, and model names.
  * Stored in a single option array; secrets are never sent back to the client.
  *
- * Editions (DJINN_EDITION, stamped at build time, default 'free'):
- *   - 'free' — WordPress.org build: any provider (BYO key or the managed proxy), content-only writes.
- *   - 'pro'  — paid build: full schema scope, unlocked by a valid Polar license key.
- * The edition gates capability scope only; every provider is available in both.
+ * The WordPress.org plugin is the base edition. Paid capabilities live in a separate add-on and
+ * announce themselves through filters, so no dormant premium functionality ships in this package.
  */
 class Settings {
 
 	private const OPTION = 'djinn_settings';
 
 	public static function edition(): string {
-		return defined( 'DJINN_EDITION' ) && DJINN_EDITION === 'pro' ? 'pro' : 'free';
+		return self::isPro() ? 'pro' : 'free';
 	}
 
-	/** A licensed Pro build. The free build and an unlicensed Pro build both report false. */
+	/** Whether a paid add-on has extended the base plugin on this site. */
 	public static function isPro(): bool {
-		return self::edition() === 'pro' && \Djinn\License\LicenseClient::active();
+		return (bool) apply_filters( 'djinn_is_pro', false );
 	}
 
 	/** @return array{provider:string,api_key:string,site_token:string,chat_model:string} */
@@ -92,12 +90,12 @@ class Settings {
 		return 'https://djinn-proxy-351601184057.asia-northeast1.run.app';
 	}
 
-	/** Polar checkout URL for the Pro upgrade. Baked at build (DJINN_PRO_URL); defaults to the live link. */
+	/** Optional marketing URL for the paid add-on. Empty by default for directory builds. */
 	public static function proUrl(): string {
 		if ( defined( 'DJINN_PRO_URL' ) && DJINN_PRO_URL ) {
 			return (string) DJINN_PRO_URL;
 		}
-		return 'https://buy.polar.sh/polar_cl_DGwSeP4nDmqeEXZLw4vC6RFkEBP7frjlGPU3u2768kC';
+		return (string) apply_filters( 'djinn_pro_url', '' );
 	}
 
 	/** The chosen chat model, or '' if none is set. No fallback: the user must pick one explicitly. */

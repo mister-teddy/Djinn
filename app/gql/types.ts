@@ -406,18 +406,6 @@ export default {
             "connect": [
                 5
             ],
-            "activateLicense": [
-                4,
-                {
-                    "key": [
-                        1,
-                        "String!"
-                    ]
-                }
-            ],
-            "deactivateLicense": [
-                4
-            ],
             "resetUsage": [
                 2
             ],

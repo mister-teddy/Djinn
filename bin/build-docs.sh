@@ -154,12 +154,15 @@ case "$SIZE" in
 esac
 
 echo "→ Rendering $OUT (pandoc via Docker)…"
-# pandoc/latex ships amd64 only; run under emulation on arm64 hosts (Apple Silicon). fvextra (for
-# wrapping long code lines) isn't preinstalled, so install it, then exec pandoc with the args
-# passed positionally (so the font options keep their spaces/commas without re-quoting).
-docker run --rm --platform=linux/amd64 -v "$PWD":/data -w /data --entrypoint sh pandoc/latex:latest -c '
-	tlmgr install fvextra >/dev/null 2>&1 || true
-	exec pandoc "$@"
-' pandoc "${PANDOC_ARGS[@]}"
+# pandoc/latex ships amd64 only; run under emulation on arm64 hosts (Apple Silicon). The wrapper
+# image installs and verifies fvextra, which wraps long code lines in the generated LaTeX.
+PANDOC_BASE_IMAGE="${PANDOC_BASE_IMAGE:-pandoc/latex:latest}"
+PANDOC_IMAGE="${PANDOC_IMAGE:-djinn-docs-pandoc:fvextra}"
+docker build --pull --platform=linux/amd64 \
+	--build-arg BASE_IMAGE="$PANDOC_BASE_IMAGE" \
+	-t "$PANDOC_IMAGE" \
+	-f bin/docs-pandoc.Dockerfile bin
+
+docker run --rm --platform=linux/amd64 -v "$PWD":/data -w /data --entrypoint pandoc "$PANDOC_IMAGE" "${PANDOC_ARGS[@]}"
 
 echo "✓ Wrote $OUT ($( du -h "$OUT" | cut -f1 ))"

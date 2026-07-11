@@ -247,7 +247,7 @@ class Controller {
 	 * to import tools (e.g. importWxr). Type-restricted; nonce + manage_options enforced.
 	 */
 	public function upload( WP_REST_Request $req ): WP_REST_Response {
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- REST cookie nonce is verified before permission_callback; the file fields are validated below via wp_check_filetype_and_ext(), sanitize_file_name(), and move_uploaded_file().
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- REST cookie nonce is verified before permission_callback; the file fields are validated below before wp_handle_upload().
 		$f = $_FILES['file'] ?? null;
 		if ( ! is_array( $f ) || ( $f['error'] ?? UPLOAD_ERR_NO_FILE ) !== UPLOAD_ERR_OK ) {
 			return new WP_REST_Response( array( 'message' => 'No file was uploaded.' ), 400 );
@@ -257,19 +257,48 @@ class Controller {
 		}
 		$check   = wp_check_filetype_and_ext( $f['tmp_name'], $f['name'] );
 		$ext     = strtolower( (string) ( $check['ext'] ?: pathinfo( $f['name'], PATHINFO_EXTENSION ) ) );
-		$allowed = array( 'xml', 'json', 'csv', 'txt', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'zip' );
+		$mimes   = array(
+			'xml'  => 'application/xml',
+			'json' => 'application/json',
+			'csv'  => 'text/csv',
+			'txt'  => 'text/plain',
+			'jpg'  => 'image/jpeg',
+			'jpeg' => 'image/jpeg',
+			'png'  => 'image/png',
+			'gif'  => 'image/gif',
+			'webp' => 'image/webp',
+			'zip'  => 'application/zip',
+		);
+		$allowed = array_keys( $mimes );
 		if ( ! in_array( $ext, $allowed, true ) ) {
 			return new WP_REST_Response( array( 'message' => "Unsupported file type: .$ext" ), 415 );
 		}
 
-		$dir  = Downloads::dir();
-		$name = wp_unique_filename( $dir, sanitize_file_name( $f['name'] ) );
-		$path = trailingslashit( $dir ) . $name;
-		// phpcs:ignore Generic.PHP.ForbiddenFunctions.Found -- storing to Djinn's private dir, not the public uploads library; wp_handle_upload() would relocate it.
-		if ( ! @move_uploaded_file( $f['tmp_name'], $path ) ) {
-			return new WP_REST_Response( array( 'message' => 'Could not store the upload.' ), 500 );
+		if ( ! function_exists( 'wp_handle_upload' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
-		$mime = $check['type'] ?: 'application/octet-stream';
+		$dir          = Downloads::dir();
+		$upload_filter = static function ( array $uploads ) use ( $dir ): array {
+			$uploads['path']   = $dir;
+			$uploads['url']    = '';
+			$uploads['subdir'] = '';
+			return $uploads;
+		};
+		add_filter( 'upload_dir', $upload_filter );
+		$handled = wp_handle_upload(
+			$f,
+			array(
+				'test_form' => false,
+				'mimes'     => $mimes,
+			)
+		);
+		remove_filter( 'upload_dir', $upload_filter );
+		if ( ! is_array( $handled ) || isset( $handled['error'] ) || empty( $handled['file'] ) ) {
+			return new WP_REST_Response( array( 'message' => (string) ( $handled['error'] ?? 'Could not store the upload.' ) ), 500 );
+		}
+		$path = (string) $handled['file'];
+		$name = basename( $path );
+		$mime = (string) ( $handled['type'] ?? ( $check['type'] ?: 'application/octet-stream' ) );
 		return new WP_REST_Response(
 			array(
 				'token'    => Downloads::register( $path, $name, $mime ),
@@ -290,7 +319,7 @@ class Controller {
 			return new WP_REST_Response( array( 'message' => 'That download has expired or does not exist.' ), 404 );
 		}
 		$mime        = (string) ( $file['mime'] ?: 'application/octet-stream' );
-		$disposition = ( $req->get_param( 'inline' ) && str_starts_with( $mime, 'image/' ) )
+		$disposition = ( $req->get_param( 'inline' ) && strpos( $mime, 'image/' ) === 0 )
 			? 'inline'
 			: 'attachment';
 		nocache_headers();

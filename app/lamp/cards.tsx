@@ -23,12 +23,21 @@ function actionPurpose(action: TranscriptMessage): string {
 	if (action.summary) {
 		return action.summary;
 	}
+	if (action.kind === 'rest') {
+		return action.operation || 'Called a REST route';
+	}
 	const m = /\{\s*([A-Za-z_][A-Za-z0-9_]*)/.exec(action.operation || '');
 	const field = m ? humanize(m[1]) : 'the site';
 	return (
 		(action.kind === 'mutation' ? 'Changed ' : 'Looked up ') +
 		field.toLowerCase()
 	);
+}
+
+function operationCode(msg: TranscriptMessage) {
+	return msg.kind === 'rest'
+		? msg.operation || ''
+		: highlightGraphql(msg.operation || '');
 }
 
 interface LinkHit {
@@ -112,9 +121,7 @@ function PendingCard({
 				<summary className="cursor-pointer select-none text-xs text-ivory-muted hover:text-gold">
 					Show the incantation
 				</summary>
-				<pre className={CODE}>
-					{highlightGraphql(pending.operation || '')}
-				</pre>
+				<pre className={CODE}>{operationCode(pending)}</pre>
 				{hasVars && (
 					<pre className={`${CODE} bg-black/30`}>
 						{highlightJson(pending.variables)}
@@ -311,9 +318,7 @@ function IncantationCard({ action }: { action: TranscriptMessage }) {
 						</div>
 					)}
 					<div className={CODE_LABEL}>Operation</div>
-					<pre className={CODE}>
-						{highlightGraphql(action.operation || '')}
-					</pre>
+					<pre className={CODE}>{operationCode(action)}</pre>
 					{hasVars && (
 						<>
 							<div className={CODE_LABEL}>Variables</div>

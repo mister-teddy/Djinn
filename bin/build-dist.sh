@@ -1,35 +1,46 @@
 #!/usr/bin/env bash
 #
-# Build an installable plugin ZIP: the plugin code + production Composer deps only. Excludes the
-# proxy service, dev tooling, and build artifacts. Output: dist/djinn-<edition>-<version>.zip
+# Build installable ZIPs.
 #
-# Usage: build-dist.sh [free|pro]   (default free)
-#   Pro builds stamp DJINN_EDITION='pro'. Set PROXY_URL=https://…, POLAR_ORG_ID=…, and/or
-#   PRO_URL=https://buy.polar.sh/… to bake those constants (define-if-not-set, so wp-config.php
-#   can still override).
+# Usage:
+#   build-dist.sh [base|free]  # WordPress.org/base plugin, default
+#   build-dist.sh pro          # paid add-on plugin
+#   build-dist.sh all          # both packages
 #
 set -euo pipefail
 cd "$( dirname "$0" )/.."
 
-EDITION="${1:-free}"
-[ -z "$EDITION" ] && EDITION="free"
-case "$EDITION" in
-	free|pro) ;;
-	*) echo "Unknown edition '$EDITION' (use: free|pro)." >&2; exit 1 ;;
+TARGET="${1:-base}"
+[ -z "$TARGET" ] && TARGET="base"
+case "$TARGET" in
+	base|free|pro|all) ;;
+	*) echo "Unknown target '$TARGET' (use: base, free, pro, all)." >&2; exit 1 ;;
 esac
 
 VERSION="$( grep -oE "DJINN_VERSION', '[^']+" djinn.php | cut -d"'" -f3 )"
-STAGE="build/dist/djinn"
-ZIP="dist/djinn-$EDITION-$VERSION.zip"
+rm -rf build/dist
+mkdir -p build/dist dist
 
-rm -rf build/dist "$ZIP"
-mkdir -p "$STAGE" dist
+inject_base_constants() {
+	local file="$1"
+	local inject=""
+	[ -n "${PROXY_URL:-}" ] && inject="${inject}if ( ! defined( 'DJINN_PROXY_URL' ) ) { define( 'DJINN_PROXY_URL', '${PROXY_URL}' ); }\\n"
+	[ -n "${PRO_URL:-}" ] && inject="${inject}if ( ! defined( 'DJINN_PRO_URL' ) ) { define( 'DJINN_PRO_URL', '${PRO_URL}' ); }\\n"
+	if [ -n "$inject" ]; then
+		sed -i.bak "s#define( 'DJINN_URL', plugin_dir_url( __FILE__ ) );#define( 'DJINN_URL', plugin_dir_url( __FILE__ ) );\\n${inject}#" "$file"
+		rm -f "$file.bak"
+	fi
+}
 
-# Copy the plugin, leaving out everything that isn't part of the installable artifact. vendor/ is
-# regenerated fresh (prod-only) in the stage so dev packages (phpunit, …) never ship; the compiled
-# front-end in build/ DOES ship (CI runs `npm run build` first), but its TS source + tooling don't.
-rsync -a --exclude-from=- ./ "$STAGE/" <<'EXCL'
+build_base() {
+	local stage="build/dist/djinn"
+	local zip="dist/djinn-free-$VERSION.zip"
+	rm -rf "$stage" "$zip"
+	mkdir -p "$stage"
+
+	rsync -a --exclude-from=- ./ "$stage/" <<'EXCL'
 /proxy/
+/pro/
 /bin/
 /app/
 /schema/
@@ -56,27 +67,43 @@ rsync -a --exclude-from=- ./ "$STAGE/" <<'EXCL'
 .DS_Store
 EXCL
 
-# Stamp the edition into the built plugin (the default build stays 'free').
-if [ "$EDITION" = "pro" ]; then
-	sed -i.bak "s/define( 'DJINN_EDITION', 'free' )/define( 'DJINN_EDITION', 'pro' )/" "$STAGE/djinn.php"
-	rm -f "$STAGE/djinn.php.bak"
-fi
+	inject_base_constants "$stage/djinn.php"
 
-# Optionally bake constants after the edition line (define-if-not-set, so wp-config.php can override).
-inject=""
-[ -n "${PROXY_URL:-}" ]    && inject="${inject}if ( ! defined( 'DJINN_PROXY_URL' ) ) { define( 'DJINN_PROXY_URL', '${PROXY_URL}' ); }\\n"
-[ -n "${POLAR_ORG_ID:-}" ] && inject="${inject}if ( ! defined( 'DJINN_POLAR_ORG_ID' ) ) { define( 'DJINN_POLAR_ORG_ID', '${POLAR_ORG_ID}' ); }\\n"
-[ -n "${PRO_URL:-}" ]      && inject="${inject}if ( ! defined( 'DJINN_PRO_URL' ) ) { define( 'DJINN_PRO_URL', '${PRO_URL}' ); }\\n"
-if [ -n "$inject" ]; then
-	sed -i.bak "s#define( 'DJINN_EDITION', '${EDITION}' );#define( 'DJINN_EDITION', '${EDITION}' );\\n${inject}#" "$STAGE/djinn.php"
-	rm -f "$STAGE/djinn.php.bak"
-fi
+	echo "-> Installing production dependencies for base plugin..."
+	( cd "$stage" && composer install --no-dev --optimize-autoloader --no-interaction --quiet )
 
-echo "→ Installing production dependencies…"
-( cd "$STAGE" && composer install --no-dev --optimize-autoloader --no-interaction --quiet )
+	echo "-> Zipping base plugin..."
+	( cd build/dist && zip -qr "$OLDPWD/$zip" djinn -x '*.DS_Store' )
+	echo "✓ Wrote $zip ($( du -h "$zip" | cut -f1 ))"
+	echo "  Pro add-on files included: $( unzip -Z1 "$zip" | grep -c '^djinn/pro/' )"
+}
 
-echo "→ Zipping…"
-( cd build/dist && zip -qr "$OLDPWD/$ZIP" djinn -x '*.DS_Store' )
+build_pro() {
+	local stage="build/dist/djinn-pro"
+	local zip="dist/djinn-pro-$VERSION.zip"
+	rm -rf "$stage" "$zip"
+	mkdir -p "$stage"
 
-echo "✓ Wrote $ZIP ($( du -h "$ZIP" | cut -f1 )) — edition: $EDITION"
-echo "  Proxy excluded: $( unzip -Z1 "$ZIP" | grep -c '^djinn/proxy/' ) proxy files."
+	rsync -a --exclude-from=- pro/ "$stage/" <<'EXCL'
+/.*
+*.zip
+.DS_Store
+EXCL
+
+	echo "-> Zipping Pro add-on..."
+	( cd build/dist && zip -qr "$OLDPWD/$zip" djinn-pro -x '*.DS_Store' )
+	echo "✓ Wrote $zip ($( du -h "$zip" | cut -f1 ))"
+}
+
+case "$TARGET" in
+	base|free)
+		build_base
+		;;
+	pro)
+		build_pro
+		;;
+	all)
+		build_base
+		build_pro
+		;;
+esac
