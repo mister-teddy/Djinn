@@ -11,7 +11,7 @@ RUN set -eux; \
 	fi; \
 	if command -v apt-get >/dev/null 2>&1; then \
 		apt-get update; \
-		apt-get install -y --no-install-recommends texlive-fonts-recommended texlive-latex-extra texlive-xetex; \
+		apt-get install -y --no-install-recommends lmodern texlive-fonts-recommended texlive-latex-extra texlive-xetex; \
 		rm -rf /var/lib/apt/lists/*; \
 	elif command -v tlmgr >/dev/null 2>&1; then \
 		tlmgr update --self; \
@@ -23,4 +23,5 @@ RUN set -eux; \
 		exit 1; \
 	fi; \
 	kpsewhich fvextra.sty >/dev/null; \
+	kpsewhich lmodern.sty >/dev/null; \
 	xelatex --version >/dev/null
