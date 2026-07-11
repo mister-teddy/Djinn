@@ -83,7 +83,6 @@ jobs:
 
       # 3) Docs — both variants. build-docs.sh embeds the screenshots captured above.
       - name: Build docs (with showcases embedded)
-        continue-on-error: true
         run: |
           make docs
           make docs compact

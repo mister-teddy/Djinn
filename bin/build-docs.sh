@@ -154,9 +154,9 @@ case "$SIZE" in
 esac
 
 echo "→ Rendering $OUT (pandoc via Docker)…"
-# pandoc/latex ships amd64 only; run under emulation on arm64 hosts (Apple Silicon). The wrapper
-# image installs and verifies fvextra, which wraps long code lines in the generated LaTeX.
-PANDOC_BASE_IMAGE="${PANDOC_BASE_IMAGE:-pandoc/latex:latest}"
+# Use a fixed Ubuntu stack so texlive-latex-extra augments the same TeX tree that pandoc uses.
+# The wrapper image installs and verifies fvextra, which wraps long code lines in the generated LaTeX.
+PANDOC_BASE_IMAGE="${PANDOC_BASE_IMAGE:-pandoc/latex:3.10.0.0-ubuntu}"
 PANDOC_IMAGE="${PANDOC_IMAGE:-djinn-docs-pandoc:fvextra}"
 docker build --pull --platform=linux/amd64 \
 	--build-arg BASE_IMAGE="$PANDOC_BASE_IMAGE" \
