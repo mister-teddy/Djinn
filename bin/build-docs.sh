@@ -154,7 +154,7 @@ case "$SIZE" in
 esac
 
 echo "→ Rendering $OUT (pandoc via Docker)…"
-# Use a fixed Ubuntu stack so texlive-latex-extra augments the same TeX tree that pandoc uses.
+# Use a fixed Ubuntu stack and prefer Ubuntu's TeX tools so fvextra and xelatex come from one tree.
 # The wrapper image installs and verifies fvextra, which wraps long code lines in the generated LaTeX.
 PANDOC_BASE_IMAGE="${PANDOC_BASE_IMAGE:-pandoc/latex:3.10.0.0-ubuntu}"
 PANDOC_IMAGE="${PANDOC_IMAGE:-djinn-docs-pandoc:fvextra}"
