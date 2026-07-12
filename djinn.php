@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       Djinn
+ * Plugin Name:       Djinn Admin AI Assistant
  * Plugin URI:        https://github.com/mister-teddy/Djinn
- * Description:       Whisper your wish to the Djinn — a wish-granting AI assistant in your WordPress admin that fulfils requests by generating GraphQL against an in-house schema of your site.
- * Version:           0.7.7
+ * Description:       Whisper your wish to Djinn — an admin AI assistant that fulfils requests by generating GraphQL against an in-house schema of your site.
+ * Version:           0.7.8
  * Requires PHP:      7.4
  * Requires at least: 5.9
  * Author:            mister-teddy
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'DJINN_VERSION', '0.7.7' );
+define( 'DJINN_VERSION', '0.7.8' );
 define( 'DJINN_FILE', __FILE__ );
 
 define( 'DJINN_DIR', plugin_dir_path( __FILE__ ) );

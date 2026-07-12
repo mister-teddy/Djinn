@@ -25,15 +25,15 @@ class AdminPage {
 
 	public function menu(): void {
 		add_menu_page(
-			'Djinn',
-			'Djinn',
+			'Djinn Admin AI Assistant',
+			'Djinn Admin AI Assistant',
 			'manage_options',
 			self::SLUG,
 			array( $this, 'renderApp' ),
 			self::menuIcon(),
 			58
 		);
-		add_submenu_page( self::SLUG, 'Djinn', 'Lamp', 'manage_options', self::SLUG, array( $this, 'renderApp' ) );
+		add_submenu_page( self::SLUG, 'Djinn Admin AI Assistant', 'Lamp', 'manage_options', self::SLUG, array( $this, 'renderApp' ) );
 		add_submenu_page( self::SLUG, 'Cave of Wonders', 'Cave of Wonders', 'manage_options', self::CAVE_SLUG, array( $this, 'renderCave' ) );
 	}
 

@@ -1,14 +1,14 @@
-=== Djinn ===
+=== Djinn Admin AI Assistant ===
 Contributors: misterteddy
 Tags: ai, assistant, automation, content, gemini
 Requires at least: 5.9
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.7.7
+Stable tag: 0.7.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Whisper a wish in plain language and the Djinn grants it — an admin AI assistant that acts on your site by generating GraphQL on the fly.
+Whisper a wish in plain language and Djinn Admin AI Assistant grants it — an admin AI assistant that acts on your site by generating GraphQL on the fly.
 
 == Description ==
 
@@ -81,6 +81,9 @@ Djinn is developed in the open at https://github.com/mister-teddy/Djinn — incl
 5. "Write and publish a welcome post for the site" — content drafted and published on request.
 
 == Changelog ==
+
+= 0.7.8 =
+* Renamed the WordPress-facing plugin display name to Djinn Admin AI Assistant.
 
 = 0.7.7 =
 * Improved Lamp tool-result layout so useful result links stay visible when collapsed without interrupting expanded operation details.
