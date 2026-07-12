@@ -259,6 +259,11 @@ class AdminResolvers {
 		return true;
 	}
 
+	public static function deleteMessage( int $chatId, int $messageId ): bool {
+		self::assertOwns( $chatId );
+		return Repository::deleteMessage( $chatId, $messageId );
+	}
+
 	private static function assertOwns( int $chatId ): void {
 		if ( Repository::chatOwner( $chatId ) !== get_current_user_id() ) {
 			throw new UserError( esc_html( 'Not your lamp.' ) );

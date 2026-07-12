@@ -169,13 +169,89 @@ class Repository {
 		global $wpdb;
 		$table = $wpdb->prefix . 'djinn_messages';
 		$rows  = $wpdb->get_results(
-			$wpdb->prepare( "SELECT content FROM $table WHERE chat_id = %d ORDER BY id ASC", $chatId ),
+			$wpdb->prepare( "SELECT id, content FROM $table WHERE chat_id = %d ORDER BY id ASC", $chatId ),
 			ARRAY_A
 		);
 		return array_map(
-			static fn( $r ) => json_decode( $r['content'], true ) ?: array(),
+			static function ( $r ) {
+				$entry        = json_decode( $r['content'], true ) ?: array();
+				$entry['_id'] = (int) $r['id'];
+				return $entry;
+			},
 			$rows ?: array()
 		);
+	}
+
+	public static function deleteMessage( int $chatId, int $messageId ): bool {
+		global $wpdb;
+		$table = $wpdb->prefix . 'djinn_messages';
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare( "SELECT id, role, content FROM $table WHERE chat_id = %d ORDER BY id ASC", $chatId ),
+			ARRAY_A
+		);
+		if ( ! $rows ) {
+			return false;
+		}
+
+		$idx = -1;
+		foreach ( $rows as $i => $row ) {
+			if ( (int) $row['id'] === $messageId ) {
+				$idx = (int) $i;
+				break;
+			}
+		}
+		if ( $idx < 0 ) {
+			return false;
+		}
+
+		$entry     = json_decode( (string) $rows[ $idx ]['content'], true ) ?: array();
+		$deleteIds = array( $messageId );
+		if ( ! empty( $entry['tool_calls'] ) ) {
+			$next = $rows[ $idx + 1 ] ?? null;
+			if ( $next && (string) $next['role'] === 'tool' ) {
+				$deleteIds[] = (int) $next['id'];
+			}
+			self::deletePendingForCalls( $chatId, (array) $entry['tool_calls'] );
+		}
+
+		foreach ( array_unique( $deleteIds ) as $id ) {
+			$wpdb->delete(
+				$table,
+				array(
+					'id'      => (int) $id,
+					'chat_id' => $chatId,
+				),
+				array( '%d', '%d' )
+			);
+		}
+		return true;
+	}
+
+	/** @param array<int,array<string,mixed>> $calls */
+	private static function deletePendingForCalls( int $chatId, array $calls ): void {
+		global $wpdb;
+		$ids = array_values(
+			array_filter(
+				array_map(
+					static fn( $call ) => is_array( $call ) ? (string) ( $call['id'] ?? '' ) : '',
+					$calls
+				),
+				static fn( $id ) => $id !== ''
+			)
+		);
+		if ( ! $ids ) {
+			return;
+		}
+		foreach ( array_unique( $ids ) as $id ) {
+			$wpdb->delete(
+				$wpdb->prefix . 'djinn_pending',
+				array(
+					'chat_id'      => $chatId,
+					'tool_call_id' => $id,
+				),
+				array( '%d', '%s' )
+			);
+		}
 	}
 
 	// ---- Pending wishes ----------------------------------------------------

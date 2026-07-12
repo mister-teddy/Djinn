@@ -196,11 +196,12 @@ class AdminSchema {
 		);
 		$chatMessage = new ObjectType(
 			array(
-				'name'   => 'ChatMessage',
-				'fields' => array(
-					'role'        => Type::nonNull( Type::string() ),
-					'content'     => Type::string(),
-					'attachments' => Type::listOf( Type::nonNull( $attachment ) ),
+					'name'   => 'ChatMessage',
+					'fields' => array(
+						'id'          => Type::int(),
+						'role'        => Type::nonNull( Type::string() ),
+						'content'     => Type::string(),
+						'attachments' => Type::listOf( Type::nonNull( $attachment ) ),
 					'kind'        => Type::string(),
 					'status'      => Type::string(),
 					'operation'   => Type::string(),
@@ -338,14 +339,22 @@ class AdminSchema {
 						'args'    => array( 'kind' => Type::nonNull( $billingKind ) ),
 						'resolve' => static fn( $root, $args ) => AdminResolvers::billingCheckout( (string) $args['kind'] ),
 					),
-					'deleteChat'        => array(
-						'type'    => Type::nonNull( Type::boolean() ),
-						'args'    => array( 'id' => Type::nonNull( Type::int() ) ),
-						'resolve' => static fn( $root, $args ) => AdminResolvers::deleteChat( (int) $args['id'] ),
+						'deleteChat'        => array(
+							'type'    => Type::nonNull( Type::boolean() ),
+							'args'    => array( 'id' => Type::nonNull( Type::int() ) ),
+							'resolve' => static fn( $root, $args ) => AdminResolvers::deleteChat( (int) $args['id'] ),
+						),
+						'deleteMessage'     => array(
+							'type'    => Type::nonNull( Type::boolean() ),
+							'args'    => array(
+								'chatId'    => Type::nonNull( Type::int() ),
+								'messageId' => Type::nonNull( Type::int() ),
+							),
+							'resolve' => static fn( $root, $args ) => AdminResolvers::deleteMessage( (int) $args['chatId'], (int) $args['messageId'] ),
+						),
 					),
-				),
-			)
-		);
+				)
+			);
 
 		return self::$schema = new Schema(
 			array(

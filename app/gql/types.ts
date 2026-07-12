@@ -318,6 +318,9 @@ export default {
             ]
         },
         "ChatMessage": {
+            "id": [
+                3
+            ],
             "role": [
                 1
             ],
@@ -422,6 +425,19 @@ export default {
                 2,
                 {
                     "id": [
+                        3,
+                        "Int!"
+                    ]
+                }
+            ],
+            "deleteMessage": [
+                2,
+                {
+                    "chatId": [
+                        3,
+                        "Int!"
+                    ],
+                    "messageId": [
                         3,
                         "Int!"
                     ]

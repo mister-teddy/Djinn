@@ -127,9 +127,12 @@ export async function loadAccountSettings(): Promise<{
 	};
 }
 
-export async function loadModels(provider: string): Promise<ModelsData> {
+export async function loadModels(
+	provider: string,
+	refresh = false,
+): Promise<ModelsData> {
 	const d = await gql.query({
-		models: { __args: { provider }, ...MODELS_FIELDS },
+		models: { __args: { provider, refresh }, ...MODELS_FIELDS },
 	});
 	return d.models as unknown as ModelsData;
 }

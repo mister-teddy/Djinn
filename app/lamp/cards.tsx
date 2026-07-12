@@ -95,6 +95,68 @@ function collectDownloads(
 	return acc;
 }
 
+function LinkPills({ links }: { links: LinkHit[] }) {
+	if (!links.length) {
+		return null;
+	}
+	return (
+		<div className="my-2 flex flex-wrap gap-2 pl-8">
+			{links.slice(0, 8).map((l, idx) => (
+				<span
+					key={idx}
+					className="inline-flex max-w-full items-center gap-2 rounded-full bg-gold/[0.14] px-2.5 py-1 text-xs"
+				>
+					{l.label && (
+						<span className="max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap text-ivory-muted">
+							{l.label}
+						</span>
+					)}
+					{l.view && (
+						<a
+							className="font-semibold text-gold hover:text-gold-deep"
+							href={l.view}
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							View ↗
+						</a>
+					)}
+					{l.edit && (
+						<a
+							className="font-semibold text-gold hover:text-gold-deep"
+							href={l.edit}
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							Edit ✎
+						</a>
+					)}
+				</span>
+			))}
+		</div>
+	);
+}
+
+function DownloadPills({ downloads }: { downloads: DownloadHit[] }) {
+	if (!downloads.length) {
+		return null;
+	}
+	return (
+		<div className="my-2 flex flex-wrap gap-2 pl-8">
+			{downloads.map((d, idx) => (
+				<a
+					key={idx}
+					className="inline-flex max-w-full items-center rounded-full bg-gold/[0.2] px-3 py-1 font-semibold text-gold hover:bg-gold/[0.28]"
+					href={downloadUrl(d.token)}
+				>
+					⤓ {d.filename}
+					{d.bytes ? ` (${formatBytes(d.bytes)})` : ''}
+				</a>
+			))}
+		</div>
+	);
+}
+
 function PendingCard({
 	pending,
 	busy,
@@ -164,8 +226,7 @@ function isImageAttachment(a: AttachmentLike): boolean {
 	const mime = String(a.mime || '').toLowerCase();
 	const filename = String(a.filename || '').toLowerCase();
 	return (
-		mime.startsWith('image/') ||
-		/\.(png|jpe?g|gif|webp)$/i.test(filename)
+		mime.startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(filename)
 	);
 }
 
@@ -258,64 +319,18 @@ function IncantationCard({ action }: { action: TranscriptMessage }) {
 					{open ? '▾' : '▸'}
 				</span>
 			</button>
+			{!open && (
+				<>
+					<LinkPills links={links} />
+					<DownloadPills downloads={downloads} />
+				</>
+			)}
 			{open && (
 				<div className="ml-1 mt-0.5 px-3 pb-1 pt-0.5">
 					{action.message && (
 						<p className="mt-1.5 text-[13px] text-[#f87171]">
 							{action.message}
 						</p>
-					)}
-					{!!links.length && (
-						<div className="my-2 flex flex-wrap gap-2">
-							{links.slice(0, 8).map((l, idx) => (
-								<span
-									key={idx}
-									className="inline-flex items-center gap-2 rounded-full bg-gold/[0.14] px-2.5 py-1 text-xs"
-								>
-									{l.label && (
-										<span className="max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap text-ivory-muted">
-											{l.label}
-										</span>
-									)}
-									{l.view && (
-										<a
-											className="font-semibold text-gold hover:text-gold-deep"
-											href={l.view}
-											target="_blank"
-											rel="noopener noreferrer"
-										>
-											View ↗
-										</a>
-									)}
-									{l.edit && (
-										<a
-											className="font-semibold text-gold hover:text-gold-deep"
-											href={l.edit}
-											target="_blank"
-											rel="noopener noreferrer"
-										>
-											Edit ✎
-										</a>
-									)}
-								</span>
-							))}
-						</div>
-					)}
-					{!!downloads.length && (
-						<div className="my-2 flex flex-wrap gap-2">
-							{downloads.map((d, idx) => (
-								<a
-									key={idx}
-									className="inline-flex items-center rounded-full bg-gold/[0.2] px-3 py-1 font-semibold text-gold hover:bg-gold/[0.28]"
-									href={downloadUrl(d.token)}
-								>
-									⤓ {d.filename}
-									{d.bytes
-										? ` (${formatBytes(d.bytes)})`
-										: ''}
-								</a>
-							))}
-						</div>
 					)}
 					<div className={CODE_LABEL}>Operation</div>
 					<pre className={CODE}>{operationCode(action)}</pre>
@@ -339,6 +354,12 @@ function IncantationCard({ action }: { action: TranscriptMessage }) {
 					)}
 				</div>
 			)}
+			{open && (
+				<>
+					<LinkPills links={links} />
+					<DownloadPills downloads={downloads} />
+				</>
+			)}
 		</div>
 	);
 }
@@ -348,24 +369,32 @@ export function Message({
 	busy,
 	onConfirm,
 	onCancel,
+	onContextMenu,
 }: {
 	msg: TranscriptMessage;
 	busy: boolean;
 	onConfirm: () => void;
 	onCancel: () => void;
+	onContextMenu?: (event: React.MouseEvent) => void;
 }) {
 	if (msg.role === 'pending') {
 		return (
-			<PendingCard
-				pending={msg}
-				busy={busy}
-				onConfirm={onConfirm}
-				onCancel={onCancel}
-			/>
+			<div onContextMenu={onContextMenu}>
+				<PendingCard
+					pending={msg}
+					busy={busy}
+					onConfirm={onConfirm}
+					onCancel={onCancel}
+				/>
+			</div>
 		);
 	}
 	if (msg.role === 'action') {
-		return <IncantationCard action={msg} />;
+		return (
+			<div onContextMenu={onContextMenu}>
+				<IncantationCard action={msg} />
+			</div>
+		);
 	}
 	const isAssistant = msg.role === 'assistant';
 	const hasText = (msg.content || '') !== '';
@@ -390,6 +419,7 @@ export function Message({
 	return (
 		<div
 			className={`my-3 flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : ''}`}
+			onContextMenu={onContextMenu}
 		>
 			{isAssistant && (
 				<div className="flex h-7 w-7 flex-none items-center justify-center rounded-full border border-gold/35 bg-gold/10 text-gold">

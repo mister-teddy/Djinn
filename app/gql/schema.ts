@@ -144,6 +144,7 @@ export interface ChatDetail {
 }
 
 export interface ChatMessage {
+    id: (Scalars['Int'] | null)
     role: Scalars['String']
     content: (Scalars['String'] | null)
     attachments: (Attachment[] | null)
@@ -181,6 +182,7 @@ export interface Mutation {
     resetUsage: Scalars['Boolean']
     billingCheckout: CheckoutSession
     deleteChat: Scalars['Boolean']
+    deleteMessage: Scalars['Boolean']
     __typename: 'Mutation'
 }
 
@@ -339,6 +341,7 @@ export interface ChatDetailGenqlSelection{
 }
 
 export interface ChatMessageGenqlSelection{
+    id?: boolean | number
     role?: boolean | number
     content?: boolean | number
     attachments?: AttachmentGenqlSelection
@@ -379,6 +382,7 @@ export interface MutationGenqlSelection{
     resetUsage?: boolean | number
     billingCheckout?: (CheckoutSessionGenqlSelection & { __args: {kind: BillingKind} })
     deleteChat?: { __args: {id: Scalars['Int']} }
+    deleteMessage?: { __args: {chatId: Scalars['Int'], messageId: Scalars['Int']} }
     __typename?: boolean | number
     __scalar?: boolean | number
 }

@@ -15,14 +15,17 @@ import {
 	Sparkle,
 	ResizeHandle,
 	ToastHost,
+	toast,
 } from '@shared/ui';
 import { usePanelResize } from '@shared/usePanelResize';
+import { safeUrl } from '@shared/url';
 import { AttachmentPreview, Message } from './cards';
 import { Sidebar, Meter } from './Sidebar';
 import {
 	loadChats,
 	loadTranscript,
 	deleteChat as deleteChatApi,
+	deleteMessage as deleteMessageApi,
 	type ChatSummary,
 	type ChatUsage,
 	type TranscriptMessage,
@@ -75,6 +78,109 @@ const SUGGESTIONS = [
 	'Set the tagline to Built with Djinn',
 ];
 
+interface MessageMenu {
+	x: number;
+	y: number;
+	messageId: number;
+}
+
+interface LinkHit {
+	label: string;
+	view: string | null;
+	edit: string | null;
+}
+
+function collectLinks(node: unknown, acc: LinkHit[] = []): LinkHit[] {
+	if (!node || typeof node !== 'object') {
+		return acc;
+	}
+	if (Array.isArray(node)) {
+		node.forEach((n) => collectLinks(n, acc));
+		return acc;
+	}
+	const obj = node as Record<string, unknown>;
+	const view = obj.link ? safeUrl(String(obj.link)) : null;
+	const edit = obj.editUrl ? safeUrl(String(obj.editUrl)) : null;
+	if (view || edit) {
+		acc.push({
+			view,
+			edit,
+			label: String(obj.title || obj.name || obj.id || ''),
+		});
+	}
+	Object.keys(obj).forEach((k) => collectLinks(obj[k], acc));
+	return acc;
+}
+
+function prettyJson(value: unknown): string {
+	return JSON.stringify(value, null, 2);
+}
+
+function actionLabel(msg: TranscriptMessage): string {
+	if (msg.summary) {
+		return msg.summary;
+	}
+	if (msg.kind === 'rest') {
+		return msg.operation || 'REST call';
+	}
+	if (msg.kind === 'mutation') {
+		return 'Mutation';
+	}
+	if (msg.kind === 'query') {
+		return 'Query';
+	}
+	return 'Action';
+}
+
+function copyMessageText(msg: TranscriptMessage): string {
+	if (msg.role === 'user' || msg.role === 'assistant') {
+		const parts = [(msg.content || '').trim()].filter(Boolean);
+		const attachments = (msg.attachments || [])
+			.map((a) => a.filename || 'Attached file')
+			.filter(Boolean);
+		if (attachments.length) {
+			parts.push(
+				'Attachments:\n' + attachments.map((a) => `- ${a}`).join('\n'),
+			);
+		}
+		return parts.join('\n\n');
+	}
+	const parts = [actionLabel(msg)];
+	if (msg.message) {
+		parts.push(msg.message);
+	}
+	const links = msg.result ? collectLinks(msg.result) : [];
+	if (links.length) {
+		parts.push(
+			'Links:\n' +
+				links
+					.map((l) => {
+						const urls = [l.view, l.edit].filter(Boolean).join(' ');
+						return `${l.label || 'Item'}: ${urls}`;
+					})
+					.join('\n'),
+		);
+	}
+	return parts.filter(Boolean).join('\n\n');
+}
+
+function copyOperationText(msg: TranscriptMessage): string {
+	const parts = [(msg.operation || '').trim()].filter(Boolean);
+	if (msg.variables && Object.keys(msg.variables).length) {
+		parts.push(prettyJson(msg.variables));
+	}
+	return parts.join('\n\n');
+}
+
+function copyLinksText(msg: TranscriptMessage): string {
+	return (msg.result ? collectLinks(msg.result) : [])
+		.map((l) => {
+			const urls = [l.view, l.edit].filter(Boolean).join(' ');
+			return `${l.label || 'Item'}: ${urls}`;
+		})
+		.join('\n');
+}
+
 function modelSummary(): string {
 	if (config.usesProxy) {
 		return 'Using Djinn gateway · managed model routing';
@@ -95,6 +201,7 @@ export function App() {
 	const [attachment, setAttachment] = useState<Attachment | null>(null);
 	const [step, setStep] = useState('');
 	const [dragOver, setDragOver] = useState(false);
+	const [messageMenu, setMessageMenu] = useState<MessageMenu | null>(null);
 	const [collapsed, setCollapsed] = useState(() => {
 		try {
 			const s = localStorage.getItem('djinn_sidebar_collapsed');
@@ -145,6 +252,26 @@ export function App() {
 	useEffect(() => {
 		autosize(inputRef.current);
 	}, [input]);
+
+	useEffect(() => {
+		if (!messageMenu) {
+			return;
+		}
+		const close = () => setMessageMenu(null);
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				close();
+			}
+		};
+		document.addEventListener('click', close);
+		document.addEventListener('keydown', onKey);
+		window.addEventListener('resize', close);
+		return () => {
+			document.removeEventListener('click', close);
+			document.removeEventListener('keydown', onKey);
+			window.removeEventListener('resize', close);
+		};
+	}, [messageMenu]);
 
 	async function refreshChats() {
 		try {
@@ -404,6 +531,84 @@ export function App() {
 		refreshChats();
 	}
 
+	function openMessageMenu(e: React.MouseEvent, msg: TranscriptMessage) {
+		const target = e.target as HTMLElement | null;
+		if (
+			busy ||
+			!chatId ||
+			!msg.id ||
+			target?.closest('a,input,textarea,select')
+		) {
+			return;
+		}
+		e.preventDefault();
+		setMessageMenu({
+			x: Math.max(8, Math.min(e.clientX, window.innerWidth - 206)),
+			y: Math.max(8, Math.min(e.clientY, window.innerHeight - 54)),
+			messageId: msg.id,
+		});
+	}
+
+	async function deleteSelectedMessage() {
+		const selected = messageMenu;
+		setMessageMenu(null);
+		if (!selected || !chatId) {
+			return;
+		}
+		if (
+			!window.confirm(
+				'Delete this message from the conversation? This cannot be undone.',
+			)
+		) {
+			return;
+		}
+		setBusy(true);
+		setError('');
+		try {
+			const ok = await deleteMessageApi(chatId, selected.messageId);
+			if (!ok) {
+				throw new Error('not found');
+			}
+			await refreshTranscript(chatId);
+			refreshChats();
+		} catch {
+			setError('Could not delete that message.');
+		} finally {
+			setBusy(false);
+		}
+	}
+
+	async function writeClipboardText(text: string): Promise<void> {
+		if (navigator.clipboard?.writeText) {
+			await navigator.clipboard.writeText(text);
+			return;
+		}
+		const node = document.createElement('textarea');
+		node.value = text;
+		node.setAttribute('readonly', 'readonly');
+		node.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+		document.body.appendChild(node);
+		node.select();
+		const ok = document.execCommand('copy');
+		node.remove();
+		if (!ok) {
+			throw new Error('copy failed');
+		}
+	}
+
+	async function copyFromMenu(text: string, label: string) {
+		setMessageMenu(null);
+		if (!text.trim()) {
+			return;
+		}
+		try {
+			await writeClipboardText(text);
+			toast(label);
+		} catch {
+			toast('Could not copy.', 'error');
+		}
+	}
+
 	async function resolvePending(
 		pending: TranscriptMessage,
 		confirmed: boolean,
@@ -447,6 +652,21 @@ export function App() {
 	}
 
 	const empty = messages.length === 0;
+	const selectedMessage = messageMenu
+		? messages.find((m) => m.id === messageMenu.messageId) || null
+		: null;
+	const selectedCopyText = selectedMessage
+		? copyMessageText(selectedMessage)
+		: '';
+	const selectedOperationText = selectedMessage
+		? copyOperationText(selectedMessage)
+		: '';
+	const selectedLinksText = selectedMessage
+		? copyLinksText(selectedMessage)
+		: '';
+	const selectedResponseText = selectedMessage?.result
+		? prettyJson(selectedMessage.result)
+		: '';
 
 	return (
 		<div
@@ -457,6 +677,76 @@ export function App() {
 			onDrop={onDrop}
 		>
 			<ToastHost />
+			{messageMenu && selectedMessage && (
+				<div
+					className="fixed z-[100001] min-w-[190px] rounded-[8px] border border-white/10 bg-[#1d142f] p-1.5 text-ivory shadow-[0_12px_34px_-14px_rgba(0,0,0,0.85)]"
+					style={{ left: messageMenu.x, top: messageMenu.y }}
+					onMouseDown={(e) => e.stopPropagation()}
+					onContextMenu={(e) => e.preventDefault()}
+				>
+					{selectedCopyText && (
+						<button
+							type="button"
+							className="block w-full rounded-[6px] bg-transparent px-3 py-2 text-left text-[13px] text-ivory transition hover:bg-white/10 hover:text-white"
+							onClick={() =>
+								copyFromMenu(
+									selectedCopyText,
+									'Message copied.',
+								)
+							}
+						>
+							Copy message
+						</button>
+					)}
+					{selectedLinksText && (
+						<button
+							type="button"
+							className="block w-full rounded-[6px] bg-transparent px-3 py-2 text-left text-[13px] text-ivory transition hover:bg-white/10 hover:text-white"
+							onClick={() =>
+								copyFromMenu(selectedLinksText, 'Links copied.')
+							}
+						>
+							Copy links
+						</button>
+					)}
+					{selectedOperationText && (
+						<button
+							type="button"
+							className="block w-full rounded-[6px] bg-transparent px-3 py-2 text-left text-[13px] text-ivory transition hover:bg-white/10 hover:text-white"
+							onClick={() =>
+								copyFromMenu(
+									selectedOperationText,
+									'Operation copied.',
+								)
+							}
+						>
+							Copy operation
+						</button>
+					)}
+					{selectedResponseText && (
+						<button
+							type="button"
+							className="block w-full rounded-[6px] bg-transparent px-3 py-2 text-left text-[13px] text-ivory transition hover:bg-white/10 hover:text-white"
+							onClick={() =>
+								copyFromMenu(
+									selectedResponseText,
+									'Response copied.',
+								)
+							}
+						>
+							Copy response
+						</button>
+					)}
+					<div className="my-1 border-t border-white/10" />
+					<button
+						type="button"
+						className="block w-full rounded-[6px] bg-transparent px-3 py-2 text-left text-[13px] text-[#fecaca] transition hover:bg-white/10 hover:text-white"
+						onClick={deleteSelectedMessage}
+					>
+						Delete message
+					</button>
+				</div>
+			)}
 			{dragOver && (
 				<div className="pointer-events-none fixed inset-0 z-[100000] flex items-center justify-center bg-[rgba(15,10,30,0.66)] backdrop-blur-sm">
 					<div className="flex items-center gap-3 rounded-djinn border-2 border-dashed border-gold/70 bg-gradient-to-br from-midnight-2 to-violet px-8 py-5 text-[1.05rem] font-semibold text-ivory shadow-[0_18px_50px_-12px_rgba(0,0,0,0.6),0_0_44px_-10px_rgba(251,191,36,0.45)]">
@@ -558,6 +848,7 @@ export function App() {
 								busy={busy}
 								onConfirm={() => resolvePending(msg, true)}
 								onCancel={() => resolvePending(msg, false)}
+								onContextMenu={(e) => openMessageMenu(e, msg)}
 							/>
 						))
 					)}

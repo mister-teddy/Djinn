@@ -116,6 +116,7 @@ type ChatDetail {
 }
 
 type ChatMessage {
+  id: Int
   role: String!
   content: String
   attachments: [Attachment!]
@@ -153,6 +154,7 @@ type Mutation {
   resetUsage: Boolean!
   billingCheckout(kind: BillingKind!): CheckoutSession!
   deleteChat(id: Int!): Boolean!
+  deleteMessage(chatId: Int!, messageId: Int!): Boolean!
 }
 
 input SettingsInput {

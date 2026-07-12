@@ -23,6 +23,7 @@ export interface MsgAttachment {
 
 // A transcript entry — heterogeneous by `role` (user | assistant | action | pending).
 export interface TranscriptMessage {
+	id?: number | null;
 	role: string;
 	content?: string | null;
 	attachments?: MsgAttachment[] | null;
@@ -45,6 +46,7 @@ export interface ChatDetail {
 }
 
 const MESSAGE_FIELDS = {
+	id: true,
 	role: true,
 	content: true,
 	attachments: { filename: true, token: true, size: true, mime: true },
@@ -85,4 +87,14 @@ export async function loadTranscript(id: number): Promise<ChatDetail> {
 
 export async function deleteChat(id: number): Promise<void> {
 	await gql.mutation({ deleteChat: { __args: { id } } });
+}
+
+export async function deleteMessage(
+	chatId: number,
+	messageId: number,
+): Promise<boolean> {
+	const d = await gql.mutation({
+		deleteMessage: { __args: { chatId, messageId } },
+	});
+	return !!d.deleteMessage;
 }

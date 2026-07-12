@@ -27,7 +27,6 @@ import {
 	type ModelsData,
 } from './data';
 
-
 const REGISTRY: ProviderInfo[] = config.providers || [];
 const PROVIDERS = REGISTRY.map((p) => ({ value: p.value, label: p.label }));
 const KEY_PROVIDERS = REGISTRY.filter((p) => p.needsKey).map((p) => p.value);
@@ -50,6 +49,7 @@ export function AccountTile() {
 	const [apiKey, setApiKey] = useState('');
 	const [chatModel, setChatModel] = useState('');
 	const [models, setModels] = useState<ModelsData | null>(null);
+	const [modelsLoading, setModelsLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
 
 	useEffect(() => {
@@ -65,20 +65,34 @@ export function AccountTile() {
 
 	useEffect(() => {
 		if (KEY_PROVIDERS.includes(provider)) {
-			loadModels(provider)
-				.then(setModels)
-				.catch(() => {});
+			refreshModels(false);
+		} else {
+			setModels(null);
 		}
 	}, [provider]);
 
-	// The proxy chooses server-side; a key provider needs a concrete model, so default an unset
-	// choice to the top recommended one rather than leaving it blank (which the backend rejects).
+	function refreshModels(refresh: boolean) {
+		if (!KEY_PROVIDERS.includes(provider)) {
+			return;
+		}
+		setModelsLoading(true);
+		loadModels(provider, refresh)
+			.then(setModels)
+			.catch(() => {})
+			.finally(() => setModelsLoading(false));
+	}
+
+	// The proxy chooses server-side; a key provider needs a concrete current model, so default an
+	// unset or retired choice to the top recommended one rather than leaving it on a provider 404.
 	useEffect(() => {
-		if (models && !chatModel) {
-			const rec =
-				models.chat.find((m) => m.tier === 'recommended') ||
-				models.chat[0];
-			if (rec) setChatModel(rec.id);
+		if (models && models.chat.length) {
+			const available = models.chat.some((m) => m.id === chatModel);
+			if (!chatModel || !available) {
+				const rec =
+					models.chat.find((m) => m.tier === 'recommended') ||
+					models.chat[0];
+				if (rec) setChatModel(rec.id);
+			}
 		}
 	}, [models]);
 
@@ -139,6 +153,8 @@ export function AccountTile() {
 					chatModel={chatModel}
 					setChatModel={setChatModel}
 					models={models}
+					modelsLoading={modelsLoading}
+					onRefreshModels={() => refreshModels(true)}
 					hasApiKey={settings.hasApiKey}
 				/>
 			)}
@@ -338,6 +354,8 @@ function KeyView({
 	chatModel,
 	setChatModel,
 	models,
+	modelsLoading,
+	onRefreshModels,
 	hasApiKey,
 }: {
 	provider: string;
@@ -346,9 +364,15 @@ function KeyView({
 	chatModel: string;
 	setChatModel: (v: string) => void;
 	models: ModelsData | null;
+	modelsLoading: boolean;
+	onRefreshModels: () => void;
 	hasApiKey: boolean;
 }) {
 	const chatList = models?.chat || [];
+	const selectedMissing =
+		!!chatModel &&
+		!!chatList.length &&
+		!chatList.some((m) => m.id === chatModel);
 	const withPrice = (m: { id: string; price: string | null }) => ({
 		value: m.id,
 		label: m.price ? `${m.id} — ${m.price}` : m.id,
@@ -380,13 +404,29 @@ function KeyView({
 				/>
 			</Field>
 			<Field label="Chat model" htmlFor="djinn-chat">
-				<Select
-					id="djinn-chat"
-					value={chatModel}
-					onChange={setChatModel}
-					groups={chatGroups}
-				/>
+				<div className="flex flex-wrap items-center gap-2">
+					<Select
+						id="djinn-chat"
+						value={chatModel}
+						onChange={setChatModel}
+						groups={chatGroups}
+						disabled={modelsLoading}
+					/>
+					<Button
+						variant="secondary"
+						busy={modelsLoading}
+						onClick={onRefreshModels}
+					>
+						Refresh
+					</Button>
+				</div>
 			</Field>
+			{selectedMissing && (
+				<p className="text-[#b45309]">
+					The saved model is no longer in the provider list. Choose a
+					current model and save settings.
+				</p>
+			)}
 			{models?.error && (
 				<p className="text-[#787c82]">
 					⚠ {models.error} Showing known models as a fallback.

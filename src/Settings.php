@@ -90,12 +90,12 @@ class Settings {
 		return 'https://djinn-proxy-351601184057.asia-northeast1.run.app';
 	}
 
-	/** Optional marketing URL for the paid add-on. Empty by default for directory builds. */
+	/** Optional marketing URL for the paid add-on. Override with DJINN_PRO_URL when a checkout page exists. */
 	public static function proUrl(): string {
 		if ( defined( 'DJINN_PRO_URL' ) && DJINN_PRO_URL ) {
 			return (string) DJINN_PRO_URL;
 		}
-		return (string) apply_filters( 'djinn_pro_url', '' );
+		return (string) apply_filters( 'djinn_pro_url', 'https://github.com/mister-teddy/Djinn/releases/latest' );
 	}
 
 	/** The chosen chat model, or '' if none is set. No fallback: the user must pick one explicitly. */

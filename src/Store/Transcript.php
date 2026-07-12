@@ -28,11 +28,12 @@ class Transcript {
 			if ( $role === 'user' ) {
 				$content     = (string) ( $entry['content'] ?? '' );
 				$attachments = $entry['attachments'] ?? array();
-				if ( $content !== '' || $attachments ) {
-					$msg = array(
-						'role'    => 'user',
-						'content' => $content,
-					);
+					if ( $content !== '' || $attachments ) {
+						$msg = array(
+							'id'      => (int) ( $entry['_id'] ?? 0 ),
+							'role'    => 'user',
+							'content' => $content,
+						);
 					if ( $attachments ) {
 						$msg['attachments'] = $attachments;
 					}
@@ -53,19 +54,21 @@ class Transcript {
 				continue;
 			}
 
-			if ( ! empty( $entry['content'] ) ) {
-				$out[] = array(
-					'role'    => 'assistant',
-					'content' => (string) $entry['content'],
-				);
-			}
+				if ( ! empty( $entry['content'] ) ) {
+					$out[] = array(
+						'id'      => (int) ( $entry['_id'] ?? 0 ),
+						'role'    => 'assistant',
+						'content' => (string) $entry['content'],
+					);
+				}
 			foreach ( $entry['tool_calls'] ?? array() as $call ) {
 				$name   = $call['name'] ?? '';
-				$action = self::baseAction( $call );
-				if ( $action ) {
-					$out[]    = $action;
-					$awaiting = count( $out ) - 1;
-				} elseif ( $name !== '' ) {
+					$action = self::baseAction( $call );
+					if ( $action ) {
+						$action['id'] = (int) ( $entry['_id'] ?? 0 );
+						$out[]    = $action;
+						$awaiting = count( $out ) - 1;
+					} elseif ( $name !== '' ) {
 					$awaiting = -2; // e.g. rest_call reads — consume the result, don't surface it
 				}
 			}
@@ -155,9 +158,10 @@ class Transcript {
 	 * @return array<string,mixed>
 	 */
 	private static function pendingFromAction( array $action ): array {
-		return array(
-			'role'       => 'pending',
-			'pending_id' => 0,
+			return array(
+				'id'         => (int) ( $action['id'] ?? 0 ),
+				'role'       => 'pending',
+				'pending_id' => 0,
 			'kind'       => (string) ( $action['kind'] ?? '' ),
 			'summary'    => (string) ( $action['summary'] ?? '' ),
 			'operation'  => (string) ( $action['operation'] ?? '' ),

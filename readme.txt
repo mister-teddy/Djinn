@@ -4,7 +4,7 @@ Tags: ai, assistant, automation, content, gemini
 Requires at least: 5.9
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.7.6
+Stable tag: 0.7.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -81,6 +81,11 @@ Djinn is developed in the open at https://github.com/mister-teddy/Djinn — incl
 5. "Write and publish a welcome post for the site" — content drafted and published on request.
 
 == Changelog ==
+
+= 0.7.7 =
+* Improved Lamp tool-result layout so useful result links stay visible when collapsed without interrupting expanded operation details.
+* Added right-click message actions for copying messages, links, operations, responses, and deleting individual conversation entries.
+* Added a Djinn Pro link fallback and refreshed model-selection handling for retired provider models.
 
 = 0.7.6 =
 * Restored release PDF generation by using a fixed Pandoc Ubuntu image with the required TeX packages.

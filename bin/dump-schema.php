@@ -17,5 +17,5 @@ $path = dirname( __DIR__ ) . '/schema/admin.graphql';
 if ( ! is_dir( dirname( $path ) ) ) {
 	mkdir( dirname( $path ), 0755, true );
 }
-file_put_contents( $path, SchemaPrinter::doPrint( $schema ) . "\n" );
+file_put_contents( $path, rtrim( SchemaPrinter::doPrint( $schema ) ) . "\n" );
 fwrite( STDERR, "Wrote schema/admin.graphql\n" );
