@@ -255,9 +255,10 @@ class Controller {
 		if ( (int) $f['size'] > wp_max_upload_size() ) {
 			return new WP_REST_Response( array( 'message' => 'That file is too large.' ), 413 );
 		}
-		$check   = wp_check_filetype_and_ext( $f['tmp_name'], $f['name'] );
-		$ext     = strtolower( (string) ( $check['ext'] ?: pathinfo( $f['name'], PATHINFO_EXTENSION ) ) );
-		$mimes   = array(
+		$originalName = sanitize_file_name( (string) $f['name'] );
+		$check        = wp_check_filetype_and_ext( $f['tmp_name'], $f['name'] );
+		$ext          = strtolower( (string) ( $check['ext'] ?: pathinfo( $f['name'], PATHINFO_EXTENSION ) ) );
+		$mimes        = array(
 			'xml'  => 'application/xml',
 			'json' => 'application/json',
 			'csv'  => 'text/csv',
@@ -288,8 +289,9 @@ class Controller {
 		$handled = wp_handle_upload(
 			$f,
 			array(
-				'test_form' => false,
-				'mimes'     => $mimes,
+				'test_form'                => false,
+				'mimes'                    => $mimes,
+				'unique_filename_callback' => array( Downloads::class, 'opaqueFilename' ),
 			)
 		);
 		remove_filter( 'upload_dir', $upload_filter );
@@ -297,7 +299,7 @@ class Controller {
 			return new WP_REST_Response( array( 'message' => (string) ( $handled['error'] ?? 'Could not store the upload.' ) ), 500 );
 		}
 		$path = (string) $handled['file'];
-		$name = basename( $path );
+		$name = $originalName !== '' ? $originalName : 'attachment.' . $ext;
 		$mime = (string) ( $handled['type'] ?? ( $check['type'] ?: 'application/octet-stream' ) );
 		return new WP_REST_Response(
 			array(

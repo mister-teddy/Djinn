@@ -4,11 +4,11 @@ Tags: ai, assistant, automation, content, gemini
 Requires at least: 5.9
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.7.8
+Stable tag: 0.7.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Whisper a wish in plain language and Djinn Admin AI Assistant grants it — an admin AI assistant that acts on your site by generating GraphQL on the fly.
+An admin AI assistant that turns plain-language wishes into capability-gated WordPress actions with one-click approval.
 
 == Description ==
 
@@ -22,11 +22,12 @@ What you can wish for: the WordPress.org plugin reads anything on your site, and
 
 The base plugin and Pro add-on differ only in **scope** — every model option works with the base plugin.
 
-* **Base plugin** — read anything; write content (posts, pages, media, categories, comments). Use your own OpenAI, Google Gemini, or Anthropic key, or the managed Djinn proxy (no key to paste; prepaid credit handled by Polar).
+* **Base plugin** — read anything; write content (posts, pages, media, categories, comments). Use WordPress AI Client when your site has it configured, your own OpenAI, Google Gemini, or Anthropic key, or the managed Djinn proxy (no key to paste; prepaid credit handled by Polar).
 * **Pro add-on** — a separate plugin that requires the base plugin and adds the full schema scope above plus the REST escape hatch. The Pro add-on code is not included in this WordPress.org package.
 
 = How LLM calls reach a provider =
 
+* **WordPress AI Client** — when available, calls go through the site-level AI provider configured in WordPress.
 * **Your own key** — calls go directly from your server to the provider you configure (OpenAI, Google Gemini, or Anthropic).
 * **Managed proxy** — no key needed; wishes route through Djinn's hosted gateway, which forwards model requests to Google Gemini, meters usage, and bills prepaid credit through Polar (see *External services*).
 
@@ -38,6 +39,7 @@ To fulfil a wish, Djinn sends data to a large language model. This happens **onl
 
 **Where it goes:**
 
+* **WordPress AI Client** — used only when you choose WordPress AI Client. Djinn passes the wish payload described above to the site-level AI provider configured in WordPress; the destination and credentials are managed by WordPress and that provider's connector.
 * **Djinn hosted gateway** — if you choose the managed proxy, requests go to https://djinn-proxy-351601184057.asia-northeast1.run.app . It is used to forward your wish to Google Gemini, meter token usage, and return the model response. It receives the wish payload described above when you make a wish, plus site/account metadata needed for pairing and metering. Operated by Nguyễn Hồng Phát. Terms: https://djinn-proxy-351601184057.asia-northeast1.run.app/terms — Privacy: https://djinn-proxy-351601184057.asia-northeast1.run.app/privacy
 * **Google Gemini** — used when you choose Google Gemini with your own key, and also used behind the managed proxy. It receives the wish payload described above when you make a wish. Gemini API terms: https://ai.google.dev/gemini-api/terms — Google privacy policy: https://policies.google.com/privacy
 * **OpenAI** — used only when you choose OpenAI with your own key. It receives the wish payload described above when you make a wish. Terms: https://openai.com/policies/row-terms-of-use/ — Privacy: https://openai.com/policies/row-privacy-policy/
@@ -50,6 +52,7 @@ The hosted gateway retains only usage metadata (token counts, model, timestamps,
 
 1. Install and activate the plugin.
 2. In **Djinn → Cave of Wonders** (Account tile), pick how to pay for LLM calls:
+   **WordPress AI Client:** if WordPress has a site-level AI provider configured, choose WordPress AI Client and Djinn will use that provider.
    **Your own key:** choose a provider and paste your API key (or define `DJINN_API_KEY` in `wp-config.php`).
    **Managed proxy:** choose *Djinn key* — your site links to the hosted gateway automatically; add prepaid credit via Polar to start. If your site isn't publicly reachable, paste an account token instead.
 3. Open **Djinn → Lamp** and make a wish.
@@ -58,7 +61,7 @@ The hosted gateway retains only usage metadata (token counts, model, timestamps,
 
 = Does Djinn require an account or API key? =
 
-Either, your choice. Bring your own provider key (OpenAI, Google Gemini, or Anthropic) with no account, or use the managed Djinn proxy — your site registers automatically and you add prepaid credit via Polar to start wishing.
+Either, your choice. Use WordPress AI Client when your site has a provider configured, bring your own provider key (OpenAI, Google Gemini, or Anthropic) with no account, or use the managed Djinn proxy — your site registers automatically and you add prepaid credit via Polar to start wishing.
 
 = Can Djinn change my site without asking? =
 
@@ -81,6 +84,11 @@ Djinn is developed in the open at https://github.com/mister-teddy/Djinn — incl
 5. "Write and publish a welcome post for the site" — content drafted and published on request.
 
 == Changelog ==
+
+= 0.7.9 =
+* Added WordPress AI Client as a provider option when the site has a compatible text model with function calling configured.
+* Hardened temporary uploads and exports with opaque storage names and removed generated PHP guard files.
+* Fixed the Cave of Wonders blank page after the plugin display-name change.
 
 = 0.7.8 =
 * Renamed the WordPress-facing plugin display name to Djinn Admin AI Assistant.

@@ -33,8 +33,8 @@ Admin SPA (React/Tailwind)  ──POST /wish/stream (SSE)──▶  PHP agent lo
 - **Extensible schema.** Base capabilities are modular features (`src/GraphQL/Features/`), and the
   Pro add-on keeps paid feature classes under `pro/src/GraphQL/Features/`. Any plugin can register
   its own types/resolvers via the `djinn_register_schema` action — no core edits.
-- **Multi-provider.** OpenAI, Google Gemini, and Anthropic adapters ship today (`src/Provider/`);
-  the `Provider` interface makes adding others straightforward.
+- **Multi-provider.** WordPress AI Client, OpenAI, Google Gemini, and Anthropic adapters ship today
+  (`src/Provider/`); the `Provider` interface makes adding others straightforward.
 - **The admin UI is a TypeScript/React/Tailwind SPA** in `app/`, built with `@wordpress/scripts`
   into `build/` (React comes from WordPress's bundled `wp-element`). Run `npm run build` (or
   `make watch`) to compile it.

@@ -47,6 +47,10 @@ class Settings {
 		return self::provider() === 'proxy';
 	}
 
+	public static function usesWordPressAIClient(): bool {
+		return self::provider() === \Djinn\Provider\WordPressAIClientProvider::ID;
+	}
+
 	public static function apiKey(): string {
 		// Allow overriding the key with a constant so it never has to live in the DB.
 		if ( defined( 'DJINN_API_KEY' ) && DJINN_API_KEY ) {
@@ -104,7 +108,13 @@ class Settings {
 	}
 
 	public static function isConfigured(): bool {
-		return self::usesProxy() ? self::siteToken() !== '' : self::apiKey() !== '';
+		if ( self::usesProxy() ) {
+			return self::siteToken() !== '';
+		}
+		if ( self::usesWordPressAIClient() ) {
+			return \Djinn\Provider\WordPressAIClientProvider::isAvailable();
+		}
+		return self::apiKey() !== '';
 	}
 
 	public static function register(): void {
@@ -141,7 +151,7 @@ class Settings {
 			'provider'   => $provider,
 			'api_key'    => $api_key,
 			'site_token' => $site_token,
-			'chat_model' => isset( $input['chat_model'] ) ? sanitize_text_field( (string) $input['chat_model'] ) : '',
+			'chat_model' => Providers::needsModel( $provider ) && isset( $input['chat_model'] ) ? sanitize_text_field( (string) $input['chat_model'] ) : '',
 		);
 	}
 }

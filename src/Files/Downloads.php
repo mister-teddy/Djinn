@@ -5,25 +5,35 @@ declare( strict_types=1 );
 namespace Djinn\Files;
 
 /**
- * Brokers generated files and uploads for download. Files are written to a private folder
- * under uploads (web-server access denied) and handed out only via a short-lived token resolved by
- * the gated REST /download endpoint, so sensitive files are never sitting at a public URL.
+ * Brokers generated files and uploads for download. Files are written with opaque names under
+ * uploads and handed out only via a short-lived token resolved by the gated REST /download
+ * endpoint. Apache receives an additional deny-all rule for defense in depth.
  */
 class Downloads {
 
 	private const TTL    = 3600; // tokens live one hour
 	private const PREFIX = 'djinn_dl_';
 
-	/** Private storage dir under uploads, created with access-deny guards on first use. */
+	/** Private storage dir under uploads, created with an Apache access-deny guard on first use. */
 	public static function dir(): string {
 		$uploads = wp_upload_dir();
 		$dir     = trailingslashit( $uploads['basedir'] ) . 'djinn-private';
 		if ( ! is_dir( $dir ) ) {
 			wp_mkdir_p( $dir );
 			@file_put_contents( $dir . '/.htaccess', "Require all denied\nDeny from all\n" );
-			@file_put_contents( $dir . '/index.php', "<?php // Silence is golden.\n" );
 		}
 		return $dir;
+	}
+
+	/** Allocate an opaque storage path while retaining the original extension. */
+	public static function path( string $filename ): string {
+		$dir = self::dir();
+		return trailingslashit( $dir ) . wp_unique_filename( $dir, $filename, array( self::class, 'opaqueFilename' ) );
+	}
+
+	/** @internal Callback for WordPress's unique filename API. */
+	public static function opaqueFilename( string $directory, string $filename, string $extension ): string {
+		return wp_generate_uuid4() . strtolower( $extension );
 	}
 
 	/** Register a written file; returns a token for the /download endpoint. */

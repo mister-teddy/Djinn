@@ -45,6 +45,7 @@ build_base() {
 /app/
 /schema/
 /dist/
+/build/dist/
 /node_modules/
 /vendor/
 /tests/

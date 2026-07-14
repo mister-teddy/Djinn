@@ -30,6 +30,9 @@ import {
 const REGISTRY: ProviderInfo[] = config.providers || [];
 const PROVIDERS = REGISTRY.map((p) => ({ value: p.value, label: p.label }));
 const KEY_PROVIDERS = REGISTRY.filter((p) => p.needsKey).map((p) => p.value);
+const MODEL_PROVIDERS = REGISTRY.filter((p) => p.needsModel).map(
+	(p) => p.value,
+);
 const DESC: Record<string, string> = {};
 const KEY_HINT: Record<string, string> = {};
 REGISTRY.forEach((p) => {
@@ -64,7 +67,7 @@ export function AccountTile() {
 	}, []);
 
 	useEffect(() => {
-		if (KEY_PROVIDERS.includes(provider)) {
+		if (MODEL_PROVIDERS.includes(provider)) {
 			refreshModels(false);
 		} else {
 			setModels(null);
@@ -72,7 +75,7 @@ export function AccountTile() {
 	}, [provider]);
 
 	function refreshModels(refresh: boolean) {
-		if (!KEY_PROVIDERS.includes(provider)) {
+		if (!MODEL_PROVIDERS.includes(provider)) {
 			return;
 		}
 		setModelsLoading(true);
@@ -108,7 +111,7 @@ export function AccountTile() {
 		try {
 			const input = {
 				provider,
-				chatModel,
+				chatModel: MODEL_PROVIDERS.includes(provider) ? chatModel : '',
 				...(apiKey ? { apiKey } : {}),
 			};
 			const s = await saveSettings(input);
@@ -145,6 +148,8 @@ export function AccountTile() {
 			</Field>
 			{provider === 'proxy' ? (
 				<ProxyView account={account} setAccount={setAccount} />
+			) : provider === 'wp-ai-client' ? (
+				<WordPressAIClientView />
 			) : (
 				<KeyView
 					provider={provider}
@@ -156,6 +161,7 @@ export function AccountTile() {
 					modelsLoading={modelsLoading}
 					onRefreshModels={() => refreshModels(true)}
 					hasApiKey={settings.hasApiKey}
+					needsKey={KEY_PROVIDERS.includes(provider)}
 				/>
 			)}
 			<Button
@@ -167,6 +173,17 @@ export function AccountTile() {
 				Save settings
 			</Button>
 		</Tile>
+	);
+}
+
+function WordPressAIClientView() {
+	return (
+		<Notice status="info">
+			<span>
+				Djinn will use the site-level AI provider configured in
+				WordPress.
+			</span>
+		</Notice>
 	);
 }
 
@@ -357,6 +374,7 @@ function KeyView({
 	modelsLoading,
 	onRefreshModels,
 	hasApiKey,
+	needsKey,
 }: {
 	provider: string;
 	apiKey: string;
@@ -367,6 +385,7 @@ function KeyView({
 	modelsLoading: boolean;
 	onRefreshModels: () => void;
 	hasApiKey: boolean;
+	needsKey: boolean;
 }) {
 	const chatList = models?.chat || [];
 	const selectedMissing =
@@ -387,22 +406,24 @@ function KeyView({
 	}));
 	return (
 		<div>
-			<Field
-				label="API key"
-				htmlFor="djinn-key"
-				description={KEY_HINT[provider] || ''}
-			>
-				<PasswordField
-					id="djinn-key"
-					value={apiKey}
-					onChange={setApiKey}
-					placeholder={
-						hasApiKey
-							? '•••••••• (saved — leave blank to keep)'
-							: 'Paste your key'
-					}
-				/>
-			</Field>
+			{needsKey && (
+				<Field
+					label="API key"
+					htmlFor="djinn-key"
+					description={KEY_HINT[provider] || ''}
+				>
+					<PasswordField
+						id="djinn-key"
+						value={apiKey}
+						onChange={setApiKey}
+						placeholder={
+							hasApiKey
+								? '•••••••• (saved — leave blank to keep)'
+								: 'Paste your key'
+						}
+					/>
+				</Field>
+			)}
 			<Field label="Chat model" htmlFor="djinn-chat">
 				<div className="flex flex-wrap items-center gap-2">
 					<Select

@@ -5,6 +5,7 @@ export interface ProviderInfo {
 	value: string;
 	label: string;
 	needsKey?: boolean;
+	needsModel?: boolean;
 	description?: string;
 	keyHint?: string;
 }

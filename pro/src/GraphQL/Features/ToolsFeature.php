@@ -144,11 +144,12 @@ class ToolsFeature implements Feature {
 			throw new UserError( esc_html( 'The export produced no data.' ) );
 		}
 
-		$path = $this->file( 'djinn-content-' . gmdate( 'Ymd-His' ) . '.xml' );
+		$filename = 'djinn-content-' . gmdate( 'Ymd-His' ) . '.xml';
+		$path     = Downloads::path( $filename );
 		if ( file_put_contents( $path, $xml ) === false ) {
 			throw new UserError( esc_html( 'Could not write the export file.' ) );
 		}
-		return $this->result( $path, 'text/xml' );
+		return $this->result( $path, $filename, 'text/xml' );
 	}
 
 	/**
@@ -231,17 +232,10 @@ class ToolsFeature implements Feature {
 		return "Imported {$created} item(s)" . ( $skipped ? ", skipped {$skipped} (attachments or invalid)" : '' ) . '.';
 	}
 
-	/** Allocate a unique path in the private downloads dir. */
-	private function file( string $filename ): string {
-		$dir = Downloads::dir();
-		return trailingslashit( $dir ) . wp_unique_filename( $dir, $filename );
-	}
-
 	/**
 	 * @return array{token:string,filename:string,bytes:int}
 	 */
-	private function result( string $path, string $mime ): array {
-		$filename = basename( $path );
+	private function result( string $path, string $filename, string $mime ): array {
 		return array(
 			'token'    => Downloads::register( $path, $filename, $mime ),
 			'filename' => $filename,

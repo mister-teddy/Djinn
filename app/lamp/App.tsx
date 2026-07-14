@@ -186,8 +186,7 @@ function modelSummary(): string {
 		return 'Using Djinn gateway · managed model routing';
 	}
 	const provider = config.providerLabel || config.provider || 'AI provider';
-	const model = config.chatModel || 'choose a chat model';
-	return `Using ${provider} · ${model}`;
+	return config.chatModel ? `Using ${provider} · ${config.chatModel}` : `Using ${provider}`;
 }
 
 export function App() {
@@ -638,7 +637,8 @@ export function App() {
 						The lamp is empty.
 					</h1>
 					<p className="mx-auto mb-6 max-w-xs leading-relaxed text-ivory-muted">
-						Place an offering — an API key — to summon the Djinn.
+						Choose a provider or connect an account to summon the
+						Djinn.
 					</p>
 					<a
 						className="inline-flex items-center rounded-control border-0 bg-gradient-to-b from-gold to-gold-deep px-5 py-2.5 font-sans font-semibold text-midnight no-underline shadow-glow transition hover:-translate-y-px hover:text-midnight hover:brightness-110 hover:no-underline"

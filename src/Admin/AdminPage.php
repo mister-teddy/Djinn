@@ -16,6 +16,8 @@ class AdminPage {
 
 	private const SLUG      = 'djinn';
 	private const CAVE_SLUG = 'djinn-cave';
+	private string $lampHook = '';
+	private string $caveHook = '';
 
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'menu' ) );
@@ -24,7 +26,7 @@ class AdminPage {
 	}
 
 	public function menu(): void {
-		add_menu_page(
+		$this->lampHook = add_menu_page(
 			'Djinn Admin AI Assistant',
 			'Djinn Admin AI Assistant',
 			'manage_options',
@@ -34,7 +36,8 @@ class AdminPage {
 			58
 		);
 		add_submenu_page( self::SLUG, 'Djinn Admin AI Assistant', 'Lamp', 'manage_options', self::SLUG, array( $this, 'renderApp' ) );
-		add_submenu_page( self::SLUG, 'Cave of Wonders', 'Cave of Wonders', 'manage_options', self::CAVE_SLUG, array( $this, 'renderCave' ) );
+		$caveHook      = add_submenu_page( self::SLUG, 'Cave of Wonders', 'Cave of Wonders', 'manage_options', self::CAVE_SLUG, array( $this, 'renderCave' ) );
+		$this->caveHook = is_string( $caveHook ) ? $caveHook : '';
 	}
 
 	public function renderApp(): void {
@@ -56,9 +59,9 @@ class AdminPage {
 	}
 
 	public function enqueue( string $hook ): void {
-		if ( $hook === 'toplevel_page_' . self::SLUG ) {
+		if ( $hook === $this->lampHook ) {
 			$this->enqueueAdmin( 'lamp' );
-		} elseif ( $hook === 'djinn_page_' . self::CAVE_SLUG ) {
+		} elseif ( $hook === $this->caveHook ) {
 			$this->enqueueAdmin( 'cave' );
 		}
 	}
